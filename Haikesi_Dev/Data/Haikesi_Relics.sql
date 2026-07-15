@@ -245,29 +245,38 @@ UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'ORBSYMBIOSISRUNE';
 -- 仿生战士批次
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'COSPLAYRUNE';         -- COSPLAY（赠送独立单位）
 
--- 终身乐队（复用未实装 SYMPHONYOFWARRUNE 图标）：赠送高场地等级摇滚乐队
-UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'SYMPHONYOFWARRUNE';   -- 能陪我组一辈子的乐队吗？
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SYMPHONYOFWARRUNE';
-UPDATE Haikesi_Relics SET MinTurn = 150 WHERE RelicType = 'SYMPHONYOFWARRUNE';    -- 偏后期文化工具
-UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'SYMPHONYOFWARRUNE';
+-- Dev 新增卡：只借占位图标，不改写占位 RelicType / LOC / IsActive
+-- 永生乐队：暂借战争交响乐 SYMPHONYOFWARRUNE 图标
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('ETERNALBANDRUNE', 'LOC_HAIKESI_RELIC_ETERNALBANDRUNE_NAME', 'LOC_HAIKESI_RELIC_ETERNALBANDRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_ETERNALBANDRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_ETERNALBANDRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'ETERNALBANDRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'ETERNALBANDRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 150 WHERE RelicType = 'ETERNALBANDRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'ETERNALBANDRUNE';
 
--- 联合作战（复用未实装 TAPDANCERUNE 图标与 RelicType）：二环内同盟/宗主城邦部队叠战斗力
-UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'TAPDANCERUNE';       -- 联合作战
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'TAPDANCERUNE';
-UPDATE Haikesi_Relics SET MinTurn = 40 WHERE RelicType = 'TAPDANCERUNE';         -- 需城邦宗主或同盟雏形
-UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'TAPDANCERUNE';
+-- 德古拉：暂借不祥契约 OMINOUSPACTRUNE 图标；仅秘密结社模式进池（见 Prerequisites）
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('DRACULARUNE', 'LOC_HAIKESI_RELIC_DRACULARUNE_NAME', 'LOC_HAIKESI_RELIC_DRACULARUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_DRACULARUNE_FLAVOR', 'ICON_HAIKESI_RELIC_DRACULARUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DRACULARUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'DRACULARUNE';
+UPDATE Haikesi_Relics SET MinTurn = 40 WHERE RelicType = 'DRACULARUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'DRACULARUNE';
 
--- 德古拉（复用未实装 OMINOUSPACTRUNE 图标）：首都立即获得 3 个吸血鬼；仅秘密结社模式进池
-UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'OMINOUSPACTRUNE';     -- 德古拉
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'OMINOUSPACTRUNE';
-UPDATE Haikesi_Relics SET MinTurn = 40 WHERE RelicType = 'OMINOUSPACTRUNE';       -- 与结社早期晋升时段大致对齐
-UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'OMINOUSPACTRUNE';
+-- 种地仙人：暂借当心葡萄柚 WATCHOUTGRAPEFRUITRUNE 图标
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('FARMIMMORTALRUNE', 'LOC_HAIKESI_RELIC_FARMIMMORTALRUNE_NAME', 'LOC_HAIKESI_RELIC_FARMIMMORTALRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_FARMIMMORTALRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_FARMIMMORTALRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'FARMIMMORTALRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'FARMIMMORTALRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 40 WHERE RelicType = 'FARMIMMORTALRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'FARMIMMORTALRUNE';
 
--- 种地仙人（复用未实装 WATCHOUTGRAPEFRUITRUNE 图标）：首都赠送可种植加成/奢侈资源的特殊建造者
-UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'WATCHOUTGRAPEFRUITRUNE';  -- 种地仙人
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'WATCHOUTGRAPEFRUITRUNE';
-UPDATE Haikesi_Relics SET MinTurn = 20 WHERE RelicType = 'WATCHOUTGRAPEFRUITRUNE';
-UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'WATCHOUTGRAPEFRUITRUNE';
+-- 掌上明猪：暂借未实装「群獭献礼」OTTERANDFRIENDSRUNE 图标（占位 RelicType/LOC 不动）
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('PEARLPIGRUNE', 'LOC_HAIKESI_RELIC_PEARLPIGRUNE_NAME', 'LOC_HAIKESI_RELIC_PEARLPIGRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_PEARLPIGRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_PEARLPIGRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'PEARLPIGRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'PEARLPIGRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 20 WHERE RelicType = 'PEARLPIGRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'PEARLPIGRUNE';
 
 -- District 升级套（7 个，复用未实装海克斯 RelicType 以共享预导入图标，均不可重复）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DRAWYOURSWORDRUNE';       -- 礁石船坞（英国）

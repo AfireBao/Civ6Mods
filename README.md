@@ -62,12 +62,15 @@
 
 | 上传日期 | 描述 |
 |----------|------|
-| 2026-07-15 | **玩家海克斯「种地仙人」**：复用未实装「当心葡萄柚」图标；首都获赠特殊建造者，可在合法地形种植加成/奢侈资源（白名单 + `CanHaveResource`）；挂 `CLASS_BUILDER` 以吃金字塔等建造次数修正；普通工人无此能力。种植 UI 借鉴 BP_ResourcePlanter，不依赖该模组。 |
-| 2026-07-15 | **玩家海克斯「德古拉」**：复用未实装不祥契约（`OMINOUSPACTRUNE`）图标；立即在首都获得 3 个吸血鬼。前置表新增 `CAPABILITY` 种类，仅秘密结社模式进入选卡池。 |
-| 2026-07-15 | **玩家海克斯「联合作战」**：复用未实装踢踏舞（`TAPDANCERUNE`）图标；己方战斗单位二环内每有 1 个同盟或宗主城邦战斗单位则 +1 战斗力（按单位数叠加）。 |
+| 2026-07-15 | **移除**：玩家海克斯「联合作战」（`JOINTOPSRUNE`）。引擎无「二环同盟/宗主城邦」计数 Effect，光环 GRANT 方案易崩溃，故删除卡面与全部 Modifier/文案/图标别名。 |
+| 2026-07-15 | **修复**：`Haikesi_GamePlay_Script.lua` 文件级 local 触顶（Lua 5.1 寄存器上限）导致整文件加载失败、选卡不落地（娟等赠单位不出现）；种地逻辑拆至 `Haikesi_Planter_GamePlay.lua`。 |
+| 2026-07-15 | **重构**：种地仙人 / 德古拉 / 永生乐队改为「新增 RelicType + 只借图标」；恢复原占位「当心葡萄柚」「不祥契约」「战争交响乐」（`IsActive=0`、效果待填充）。新键：`FARMIMMORTALRUNE` / `DRACULARUNE` / `ETERNALBANDRUNE`。（联合作战已移除） |
+| 2026-07-15 | **玩家海克斯「掌上明猪」**：新增 `PEARLPIGRUNE`（卡面暂借未实装「群獭献礼」图标，占位不动）；首都获赠特殊单位「娟」（单位用猪鼻图标，3D 复用古典大将军）。娟周围 3 格内己方单位 +1 移动力（大将军 AOE 范式）。 |
+| 2026-07-15 | **玩家海克斯「种地仙人」**：新增 `FARMIMMORTALRUNE`（暂借「当心葡萄柚」图标）；首都获赠特殊建造者，可在合法地形种植加成/奢侈资源（白名单 + `CanHaveResource`）；挂 `CLASS_BUILDER` 以吃金字塔等建造次数修正；普通工人无此能力。种植 UI 借鉴 BP_ResourcePlanter，不依赖该模组。白名单在 LoadOrder 16798 时从 `Resources` 表扫入（BONUS/LUXURY 且 Frequency 或 SeaFrequency > 0）；第三方资源模组若更晚写入 `Resources`，需自行补入 `Haikesi_PlanterResources` 或调高本模组加载顺序才会被捕获。 |
+| 2026-07-15 | **玩家海克斯「德古拉」**：新增 `DRACULARUNE`（暂借「不祥契约」图标）；立即在首都获得 3 个吸血鬼。前置表新增 `CAPABILITY` 种类，仅秘密结社模式进入选卡池。 |
 | 2026-07-15 | **AI 海克斯系列扩展**：新增「混乱干扰」系列（南蛮入侵归入）；新增「和平互利」系列与「天朝上国」——通往该文明城市的国际商路为对方 +1 科 +1 文、为本方 +4 金 +2 信仰（埃及同款 Incoming Trade Modifier）。 |
 | 2026-07-15 | **外部大模型选卡加固与局势情报**：修复 ExtAI 落地时 `Haikesi_GetPlayerRelicCount` 前置声明错误（Apply 崩溃导致 pending 不清、下次选卡才随机补齐）；Apply/超时路径加 `pcall`；LLM Prompt 改为逐位领袖迷雾视角（本国城市、已遇文明、视野威胁、RST/宗教/胜利进度），并补齐**双向外交不满**、对方观感修饰语与**世界会议决议**；DeepSeek V4 默认关 thinking / JSON Mode、非法 JSON 自动重试；`.env.example` 补充模型与 token 说明。 |
-| 2026-07-15 | **仓库首发**：联机/非 0 号位 AI 海克斯发放修复（主机权威 + 确定性 `AIChoices` 回退）；新增「外部大模型 AI 海克斯」异步决策（FireTuner / MCP 提交 choices + reasons，超时确定性回退）；追踪面板展示决策理由；**人类侧新海克斯**——三角贸易（同盟/宗主城邦商路产出加成，国际海洋商路完成后自到达城转移人口）、永生乐队（首都赠送高场地等级「终身乐队」摇滚乐队单位）；AI 海克斯池扩展——南蛮入侵、资源创建类型（棉花/烟草/糖/丝绸/茶等，数据表 `Haikesi_Relic_ResourceSpawns`）；vendored `civ6-mcp-haikesi` 与 DeepSeek/通用 LLM 监听脚本。 |
+| 2026-07-15 | **仓库首发**：联机/非 0 号位 AI 海克斯发放修复（主机权威 + 确定性 `AIChoices` 回退）；新增「外部大模型 AI 海克斯」异步决策（FireTuner / MCP 提交 choices + reasons，超时确定性回退）；追踪面板展示决策理由；**人类侧新海克斯**——三角贸易（`TRIANGULARTRADERUNE`，暂借三折光图标）、永生乐队（后迁为 `ETERNALBANDRUNE`，暂借战争交响乐图标；首都赠送高场地等级「终身乐队」）；AI 海克斯池扩展——南蛮入侵、资源创建类型（棉花/烟草/糖/丝绸/茶等，数据表 `Haikesi_Relic_ResourceSpawns`）；vendored `civ6-mcp-haikesi` 与 DeepSeek/通用 LLM 监听脚本。 |
 
 ---
 

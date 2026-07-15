@@ -222,9 +222,16 @@
         <Row Name="ATLAS_ICON_UNIT_NW_COSPLAY_MIMIC" IconSize="50" Filename="ICON_UNIT_NW_COSPLAY_MIMIC_50"/>
         <Row Name="ATLAS_ICON_UNIT_NW_COSPLAY_MIMIC" IconSize="80" Filename="ICON_UNIT_NW_COSPLAY_MIMIC_80"/>
         <Row Name="ATLAS_ICON_UNIT_NW_COSPLAY_MIMIC" IconSize="256" Filename="ICON_UNIT_NW_COSPLAY_MIMIC_256"/>
+        <Row Name="ATLAS_ICON_UNIT_NW_JUAN" IconSize="22" Filename="ICON_UNIT_NW_JUAN_22"/>
+        <Row Name="ATLAS_ICON_UNIT_NW_JUAN" IconSize="32" Filename="ICON_UNIT_NW_JUAN_32"/>
+        <Row Name="ATLAS_ICON_UNIT_NW_JUAN" IconSize="38" Filename="ICON_UNIT_NW_JUAN_38"/>
+        <Row Name="ATLAS_ICON_UNIT_NW_JUAN" IconSize="50" Filename="ICON_UNIT_NW_JUAN_50"/>
+        <Row Name="ATLAS_ICON_UNIT_NW_JUAN" IconSize="80" Filename="ICON_UNIT_NW_JUAN_80"/>
+        <Row Name="ATLAS_ICON_UNIT_NW_JUAN" IconSize="256" Filename="ICON_UNIT_NW_JUAN_256"/>
     </IconTextureAtlases>
     <IconDefinitions>
         <Row Name="ICON_UNIT_NW_COSPLAY_MIMIC" Atlas="ATLAS_ICON_UNIT_NW_COSPLAY_MIMIC" Index="0"/>
+        <Row Name="ICON_UNIT_NW_JUAN" Atlas="ATLAS_ICON_UNIT_NW_JUAN" Index="0"/>
     </IconDefinitions>
 
     <IconAliases>
@@ -233,5 +240,11 @@
         <Row Name="ICON_UNIT_NW_ETERNAL_ROCK_BAND_PORTRAIT" OtherName="ICON_UNIT_ROCK_BAND_PORTRAIT"/>
         <Row Name="ICON_UNIT_NW_FARM_IMMORTAL" OtherName="ICON_UNIT_BUILDER"/>
         <Row Name="ICON_UNIT_NW_FARM_IMMORTAL_PORTRAIT" OtherName="ICON_UNIT_BUILDER_PORTRAIT"/>
+        <Row Name="ICON_UNIT_NW_JUAN_PORTRAIT" OtherName="ICON_UNIT_NW_JUAN"/>
+        <!-- Dev 新卡：只借占位海克斯图标，不改写占位 RelicType；单位猪鼻图仍挂 ICON_UNIT_NW_JUAN -->
+        <Row Name="ICON_HAIKESI_RELIC_PEARLPIGRUNE" OtherName="ICON_HAIKESI_RELIC_OTTERANDFRIENDSRUNE"/>
+        <Row Name="ICON_HAIKESI_RELIC_FARMIMMORTALRUNE" OtherName="ICON_HAIKESI_RELIC_WATCHOUTGRAPEFRUITRUNE"/>
+        <Row Name="ICON_HAIKESI_RELIC_DRACULARUNE" OtherName="ICON_HAIKESI_RELIC_OMINOUSPACTRUNE"/>
+        <Row Name="ICON_HAIKESI_RELIC_ETERNALBANDRUNE" OtherName="ICON_HAIKESI_RELIC_SYMPHONYOFWARRUNE"/>
     </IconAliases>
 </GameData>

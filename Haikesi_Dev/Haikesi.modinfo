@@ -101,6 +101,12 @@
       </Properties>
       <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
     </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_PlanterGamePlay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_Planter_GamePlay.lua</File>
+    </AddGameplayScripts>
     <AddGameplayScripts id="Haikesi_Trigger">
       <Properties>
         <LoadOrder>16797</LoadOrder>
@@ -132,9 +138,11 @@
     <File>Data/Haikesi_Relic_Prerequisites.sql</File>
     <File>Data/ModCore.sql</File>
     <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
+    <File>GamePlay/Haikesi_Planter_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Trigger.lua</File>
     <File>Haikesi.dep</File>
     <File>Platforms/Windows/BLPs/UI/Icons.blp</File>
+    <File>Platforms/Windows/BLPs/UI/HaikesiExtraIcons.blp</File>
     <File>Text/Haikesi_Text.xml</File>
     <File>UI/Haikesi_Ability_Panel.lua</File>
     <File>UI/Haikesi_Ability_Panel.xml</File>

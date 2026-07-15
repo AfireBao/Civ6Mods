@@ -648,12 +648,22 @@
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_OMINOUSPACTRUNE_NAME" Language="zh_Hans_CN">
-            <Text>德古拉</Text>
+            <Text>不祥契约</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_OMINOUSPACTRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>立即在[ICON_Capital]首都获得 3 个吸血鬼单位。[NEWLINE]（仅秘密结社模式可选）</Text>
+            <Text>效果待填充</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_OMINOUSPACTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>灾劫一至，券书自添一行。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_DRACULARUNE_NAME" Language="zh_Hans_CN">
+            <Text>德古拉</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DRACULARUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立即在[ICON_Capital]首都获得 3 个吸血鬼单位。[NEWLINE]（仅秘密结社模式可选）</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DRACULARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>夜色一启，三影叩宫门。</Text>
         </Replace>
 
@@ -695,6 +705,32 @@
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_OTTERANDFRIENDSRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>獭祭之时，鱼陈如礼，依次奉于阶下。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_PEARLPIGRUNE_NAME" Language="zh_Hans_CN">
+            <Text>掌上明猪</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PEARLPIGRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>获得一只娟</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PEARLPIGRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>工头喊了一嗓子</Text>
+        </Replace>
+
+        <Replace Tag="LOC_UNIT_NW_JUAN_NAME" Language="zh_Hans_CN">
+            <Text>娟</Text>
+        </Replace>
+        <Replace Tag="LOC_UNIT_NW_JUAN_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>特殊支援单位。周围 3 个单元格内的己方单位 +1 [ICON_Movement] 移动力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_JUAN_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>周围 3 个单元格内的己方单位 +1 [ICON_Movement] 移动力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_JUAN_MOVEMENT_NAME" Language="zh_Hans_CN">
+            <Text>娟的鼓舞</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_JUAN_MOVEMENT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>+1 [ICON_Movement] 移动力（来自附近的娟）。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_PANDORASBOXRUNE_NAME" Language="zh_Hans_CN">
@@ -868,12 +904,22 @@
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_SYMPHONYOFWARRUNE_NAME" Language="zh_Hans_CN">
-            <Text>能陪我组一辈子的乐队吗？</Text>
+            <Text>战争交响乐</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SYMPHONYOFWARRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>获得一只场地加成极高的乐队</Text>
+            <Text>效果待填充</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SYMPHONYOFWARRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>战鼓既擂，百军万兽合鸣为一律。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_ETERNALBANDRUNE_NAME" Language="zh_Hans_CN">
+            <Text>能陪我组一辈子的乐队吗？</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ETERNALBANDRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>获得一只场地加成极高的乐队</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ETERNALBANDRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>一曲既成，至死不散。</Text>
         </Replace>
 
@@ -888,26 +934,13 @@
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_TAPDANCERUNE_NAME" Language="zh_Hans_CN">
-            <Text>联合作战</Text>
+            <Text>踢踏舞</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_TAPDANCERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>你的单位二环内每有一个同盟或旗下城邦的战斗单位，则 +1 [ICON_Strength] 战斗力。</Text>
+            <Text>效果待填充</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_TAPDANCERUNE_FLAVOR" Language="zh_Hans_CN">
-            <Text>友军并肩，锋刃同向。</Text>
-        </Replace>
-
-        <Replace Tag="LOC_ABILITY_NW_JOINT_OPS_MARKER_NAME" Language="zh_Hans_CN">
-            <Text>联合作战</Text>
-        </Replace>
-        <Replace Tag="LOC_ABILITY_NW_JOINT_OPS_MARKER_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>可受同盟与旗下城邦部队的协同加成。</Text>
-        </Replace>
-        <Replace Tag="LOC_ABILITY_NW_JOINT_OPS_AURA_NAME" Language="zh_Hans_CN">
-            <Text>联合作战协同</Text>
-        </Replace>
-        <Replace Tag="LOC_ABILITY_NW_JOINT_OPS_AURA_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>二环内的联合作战友军单位 +1 [ICON_Strength] 战斗力（可叠加）。</Text>
+            <Text>履声合于鼓节，敌阵自乱其行。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_TEZCATARASMERCYRUNE_NAME" Language="zh_Hans_CN">
@@ -1020,12 +1053,22 @@
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_WATCHOUTGRAPEFRUITRUNE_NAME" Language="zh_Hans_CN">
-            <Text>种地仙人</Text>
+            <Text>当心葡萄柚</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_WATCHOUTGRAPEFRUITRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>立即在[ICON_Capital]首都获得 1 名「种地仙人」。该单位为特殊建造者，可正常改良地块，也可在合法地形上种植加成与奢侈资源（消耗建造次数；受金字塔等对建造者次数的加成影响）。</Text>
+            <Text>效果待填充</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_WATCHOUTGRAPEFRUITRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>甘味乃饵，盘底所藏方为真锋。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_FARMIMMORTALRUNE_NAME" Language="zh_Hans_CN">
+            <Text>种地仙人</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FARMIMMORTALRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立即在[ICON_Capital]首都获得 1 名「种地仙人」。该单位为特殊建造者，可正常改良地块，也可在合法地形上种植加成与奢侈资源（消耗建造次数；受金字塔等对建造者次数的加成影响）。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FARMIMMORTALRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>一锄落处，五谷自生。</Text>
         </Replace>
 

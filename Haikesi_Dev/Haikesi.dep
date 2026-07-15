@@ -575,6 +575,7 @@
 			<LibraryName text="UITexture"/>
 			<PackageDependencies>
 				<Element text="UI/Icons.blp"/>
+				<Element text="UI/HaikesiExtraIcons.blp"/>
 				<Element text="UI/Shell_Loading.blp"/>
 				<Element text="UI_LeaderScenes.blp"/>
 				<Element text="UILeaders.blp"/>
