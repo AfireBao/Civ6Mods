@@ -1,12 +1,13 @@
 # Civ6Mods — 海克斯大乱斗 Dev
 
-基于工坊原版「海克斯大乱斗」的开发分支，叠加 **FireTuner / civ6-mcp**，让外部大模型在人类确认海克斯后，为各 AI 从候选卡中择一并写下决策理由。
+基于工坊原版「海克斯大乱斗」的开发分支，拓展新的海克斯因子，叠加 **FireTuner / civ6-mcp**，让外部大模型在人类确认海克斯后，为各 AI 从候选卡中择一并写下决策理由。
+本项目纯AI生成。
 
 本仓库包含：
 
 | 目录 | 内容 |
 |------|------|
-| [`Haikesi_Dev/`](Haikesi_Dev/) | 海克斯大乱斗 Dev 模组（替换/并行于工坊原版使用） |
+| [`Haikesi_Dev/`](Haikesi_Dev/) | 海克斯大乱斗 Dev 模组（不与工坊原版同时启用）。将本目录整体复制到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\Haikesi_Dev\` |
 | [`civ6-mcp-haikesi/`](civ6-mcp-haikesi/) | 基于 [civ6-mcp](https://github.com/lmwilki/civ6-mcp) 的本地副本，含海克斯 AI 决策扩展（不向 upstream 推送） |
 
 ---
@@ -27,7 +28,7 @@
 
 ## 前置
 
-使用本项目前请先准备：
+本项目基于以下前置代码开发，已包含在仓库中：
 
 1. **civ6-mcp（上游 MCP 仓库）**  
    https://github.com/lmwilki/civ6-mcp  
