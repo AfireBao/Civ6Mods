@@ -1,0 +1,1356 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+    <LocalizedText>
+        <Replace Tag="LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_NAME" Language="zh_Hans_CN">
+            <Text>秘术冲拳</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每相邻一个单位，武僧就+2 [ICON_Strength] 战斗力。购买武僧的费用-25%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>咒经千卷收于一拳，未及念诵，敌已倾。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_ARCANE_PUNCH_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>秘术冲拳：每相邻一个单位+2 [ICON_Strength] 战斗力</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_BACKTOBASICSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>回归基本功</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BACKTOBASICSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>除 [ICON_FOOD] 食物外的所有产出+6%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BACKTOBASICSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>巧术尽褪，唯握中之器不离掌。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_BIGKNIFERUNE_NAME" Language="zh_Hans_CN">
+            <Text>将军金印</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BIGKNIFERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>单位从附近的大将军处获得的 [ICON_Strength] 战斗力增益+60%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BIGKNIFERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>印重三斤，号令所及，纲常退让。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_BIGKNIFE_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>将军金印：大将军增益额外 +3 [ICON_Strength] 战斗力</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_BLADEWALTZRUNE_NAME" Language="zh_Hans_CN">
+            <Text>利刃华尔兹</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BLADEWALTZRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>位于敌方的单位+1 [ICON_MOVEMENT] 移动力，+3 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BLADEWALTZRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>旋身三匝，刃落处便是终章。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_BREADSANDWICHRUNE_NAME" Language="zh_Hans_CN">
+            <Text>太仓有粟</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BREADSANDWICHRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市+1 [ICON_AMENITIES] 宜居度。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BREADSANDWICHRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>仓廪既实，民乃知止；耳畔喧嚣，主上无言。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_CERBERUSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>三犬司门</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CERBERUSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市获得3个侦察兵。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CERBERUSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>三首同吠，关门内事；代价立于门外，未敢轻入。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_CIRCLEOFDEATHRUNE_NAME" Language="zh_Hans_CN">
+            <Text>死亡之环</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CIRCLEOFDEATHRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>删除首都7环及以内的全部非己方单位；删除首都9环以外的全部己方单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CIRCLEOFDEATHRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>以王城为心，画一环为界，环内皆殁。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_CLOWNCOLLEGERUNE_NAME" Language="zh_Hans_CN">
+            <Text>小丑学院</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CLOWNCOLLEGERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>学院 +2 科技值、图书馆 +1 科技值。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CLOWNCOLLEGERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>笑声入册为典，戏言登堂作经。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_COMPENSATIONRUNE_NAME" Language="zh_Hans_CN">
+            <Text>代偿</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COMPENSATIONRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每个当前城市立刻获得300 [ICON_GOLD] 金币（标准速度下），并永久减少3% [ICON_GOLD] 金币产出。后续新建或占领的城市不受影响。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COMPENSATIONRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>痛未尝消，唯易其名而已。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_COREOVERLOADRUNE_NAME" Language="zh_Hans_CN">
+            <Text>超负荷</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COREOVERLOADRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市+15清洁 [ICON_POWER] 电力。将工业区的前置科技降至采矿业。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COREOVERLOADRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>鼎中烈火过沸，史官犹书曰：常。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_CORRUPTEDBRANCHRUNE_NAME" Language="zh_Hans_CN">
+            <Text>朽枝复花</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CORRUPTEDBRANCHRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>移除地貌获得的收益+50%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CORRUPTEDBRANCHRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>枯枝犹自抽芽，花色已染玄霜。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_COSPLAYRUNE_NAME" Language="zh_Hans_CN">
+            <Text>裂变</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COSPLAYRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立刻在首都获得一个仿生战士。[ICON_Strength] 战斗力等于你曾训练过的最强近战单位。获得最终升级时，在该单位最近的己方城市再获得三个仿生战士。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COSPLAYRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>把别人的招式穿在身上，命运也认不出你。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MIMICRUNE_NAME" Language="zh_Hans_CN">
+            <Text>COSPLAY</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MIMICRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>从10项随机的文明/领袖能力中选择一项获得。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MIMICRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>见贤思齐，择一而化。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_ABILITY_PANEL_TITLE" Language="zh_Hans_CN">
+            <Text>您现在可以选择一个文明能力</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_ABILITY_CONFIRM" Language="zh_Hans_CN">
+            <Text>确认获得</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_COURAGEOFCOLOSSUSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>巨像的勇气</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COURAGEOFCOLOSSUSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>建造奇观+45% [ICON_PRODUCTION] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COURAGEOFCOLOSSUSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>胆魄沉如铜柱，遂可披之以为甲。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_DICEMANIACRUNE_NAME" Language="zh_Hans_CN">
+            <Text>掷骰狂人</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DICEMANIACRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>本轮获得一个随机海克斯。后续海克斯可额外刷新1次。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DICEMANIACRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>骰未坠地，命数已三易其辞。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_DOUBLEEXISTENCERUNE_NAME" Language="zh_Hans_CN">
+            <Text>手快全选</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DOUBLEEXISTENCERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>获得当前界面的其他两个海克斯效果。你之后无法再刷新海克斯，本队队友也不会再刷出此海克斯。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DOUBLEEXISTENCERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>既入我袖，便是我物；此后再无他赐。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_DIEFORYOURUNE_NAME" Language="zh_Hans_CN">
+            <Text>为你而死</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DIEFORYOURUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DIEFORYOURUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>末一矢非以全身，乃以代主受戈。</Text>
+        </Replace>
+
+
+        <Replace Tag="LOC_HAIKESI_RELIC_DRAWYOURSWORDRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：皇家海军船坞</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DRAWYOURSWORDRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>皇家海军船坞可建在礁石上。每建成1个皇家海军船坞，额外获得1个+1 [ICON_Movement] 移动力的四段帆船。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DRAWYOURSWORDRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>礁石为基，船坞枕海而眠，帆影出港即领先半程。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_DUALWIELDRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：U型港</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DUALWIELDRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每个U型港提供1个 [ICON_Envoy] 使者（包括已建成的U型港）。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DUALWIELDRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>港埠通商，使节络绎，城邦闻风而附。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_DUFFSVINTAGERUNE_NAME" Language="zh_Hans_CN">
+            <Text>窖藏旧酎</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DUFFSVINTAGERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>商业中心、市场和银行依次+3、+4、+5 [ICON_Gold] 金币。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DUFFSVINTAGERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>酒愈陈则价愈廉，岁久封泥，自有金来。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_EARTHAWAKENSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>大地苏醒</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EARTHAWAKENSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>矿山+1 [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EARTHAWAKENSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>岩脉久寐，今日翻身，万矿应之。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_EIGHTPENNYGATERUNE_NAME" Language="zh_Hans_CN">
+            <Text>航海七分仪</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EIGHTPENNYGATERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>港口+4 [ICON_Gold] 金币、灯塔+3 [ICON_Gold] 金币。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EIGHTPENNYGATERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>噢...新大陆！</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_EUREKARUNE_NAME" Language="zh_Hans_CN">
+            <Text>尤里卡</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EUREKARUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>未处于黄金时代时，尤里卡额外提供10%的 [ICON_Science] 科技进度。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EUREKARUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>神思不自天垂，乃自残瓦碎铁中起。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_EXPLOSIONARTRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：商业同业公会</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EXPLOSIONARTRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>商业同业公会的前置科技降至写作。其相邻加成额外提供等额 [ICON_Gold] 金币。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EXPLOSIONARTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>行会旧规重订，毗邻之利既生锤声，亦落金响。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_EXTREMESPEEDRUNE_NAME" Language="zh_Hans_CN">
+            <Text>风驰</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EXTREMESPEEDRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>未处于黑暗时代时，所有军事单位+1 [ICON_MOVEMENT] 移动力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EXTREMESPEEDRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>心至马前，足追不及。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_FANTHEHAMMERRUNE_NAME" Language="zh_Hans_CN">
+            <Text>连拨击锤</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FANTHEHAMMERRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>远程单位每回合+1次攻击，但进攻时-5 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FANTHEHAMMERRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一矢之发，回响连环，惟准头让于势。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_FEELTHEBURNRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：曼丁哥市场</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FEELTHEBURNRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每个曼丁哥市场+2 [ICON_Amenities] 宜居度、+1 [ICON_Housing] 住房、+2 [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FEELTHEBURNRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>市井繁盛，居者益安，匠作愈精。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_FEYMAGICRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：卫城</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FEYMAGICRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每建成1个卫城，获得1个重装步兵。卫城驻扎抗骑兵单位时，其文化相邻加成额外提供等额 [ICON_Science] 科技值。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FEYMAGICRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>高城之上矛戟森列，学士因武人之守而得闲著书。</Text>
+        </Replace>
+
+        <!-- LOC_HAIKESI_RELIC_FINALFORMRUNE_* (园丁天文台) 已删除：Lua 副作用在客户端事件里改地图 + 消费 Game.GetRandNum 会联机 desync。 -->
+
+        <Replace Tag="LOC_HAIKESI_RELIC_FLYINGKICKRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：书院</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FLYINGKICKRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>相邻其他书院时，书院获得免费的图书馆；若已解锁科学理论，还将获得免费的大学。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FLYINGKICKRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>书院比邻，典籍互通，一院之藏惠及邻壁。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_FORBIDDENGRIMOIRERUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：姆班赞</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FORBIDDENGRIMOIRERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>拥有姆班赞的城市每 [ICON_Citizen] 人口+1 [ICON_Gold] 金币。敌方间谍将此区域及相邻区域作为目标时，其效果将降低1级。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FORBIDDENGRIMOIRERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>禁卷藏于市井，万家烟火皆成其屏障。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_FORGOTTENSOULRUNE_NAME" Language="zh_Hans_CN">
+            <Text>忘川</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FORGOTTENSOULRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FORGOTTENSOULRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>当渡之魂，反被符印钉于此岸。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GENESISRUNE_NAME" Language="zh_Hans_CN">
+            <Text>创世纪</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GENESISRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市获得免费的[ICON_Housing] 粮仓（包含之后建立的城市）。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GENESISRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>既归于虚，则万象皆可重纪。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GHOSTFORMRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：街头狂欢节</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GHOSTFORMRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>拥有街头狂欢节的城市-4 [ICON_Gold] 金币，但可以额外建造一个区域。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GHOSTFORMRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>纵歌纵舞，库银流散，城垣却悄然多生一隅。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GIANTSLAYERRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：伊坎达</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GIANTSLAYERRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>拥有伊坎达的城市+18% [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GIANTSLAYERRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>军鼓彻夜不息，炉火亦随之昼夜不熄。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GLASSCANNONRUNE_NAME" Language="zh_Hans_CN">
+            <Text>玻璃大炮</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GLASSCANNONRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>攻击时+7 [ICON_Strength] 战斗力，但防御时-7 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GLASSCANNONRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一击之后碎为齑粉，其声足以裂帛。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GOLDENSPATULARUNE_NAME" Language="zh_Hans_CN">
+            <Text>金铲铲</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GOLDENSPATULARUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>建造者+1 [ICON_MOVEMENT] 移动力，且+1使用次数。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GOLDENSPATULARUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>铲所至处，土皆生金，无所不能为。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GOLDRENDRUNE_NAME" Language="zh_Hans_CN">
+            <Text>夺金</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GOLDRENDRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>国际 [ICON_TradeRoute] 贸易路线+50% [ICON_Gold] 金币。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GOLDRENDRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>商旅一往一返，皆当铿然有声。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GOLIATHRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：跑马场</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GOLIATHRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>拥有跑马场的城市训练出来的骑兵单位+1 [ICON_Movement] 移动力。处于黄金时代时，额外+2 [ICON_Strength] 攻击力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GOLIATHRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>蹄声起于赛场，盛世一至，铁骑便踏碎天际。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_ABILITY_NW_HIPPODROME_CAVALRY_MOVEMENT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>跑马场训练的骑兵单位+1 [ICON_Movement] 移动力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_HIPPODROME_CAVALRY_GOLDEN_COMBAT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>处于黄金时代时，跑马场训练的骑兵单位+2 [ICON_Strength] 攻击力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_HIPPODROME_GOLDEN_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>跑马场：黄金时代骑兵+2 [ICON_Strength] 战斗力</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GRANDFINALEUPGRADERUNE_NAME" Language="zh_Hans_CN">
+            <Text>终章</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GRANDFINALEUPGRADERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GRANDFINALEUPGRADERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>大幕将合，众声自肃。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GROUNDEDRUNE_NAME" Language="zh_Hans_CN">
+            <Text>坚壁清野</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GROUNDEDRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>位于己方领土的非队友单位 -1 移动力、-1 射程。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GROUNDEDRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>焦土何堪再耕，来犯者步履自沉。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_GROWINGSTRONGERRUNE_NAME" Language="zh_Hans_CN">
+            <Text>滋长</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GROWINGSTRONGERRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市的[ICON_Food] 食物增长率+30%，每[ICON_Citizen] 人口+0.3 [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_GROWINGSTRONGERRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>民力既厚，仓廪自盈。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_HAILTOTHEKINGRUNE_NAME" Language="zh_Hans_CN">
+            <Text>尊我为王</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HAILTOTHEKINGRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立即获得3个 [ICON_Governor] 总督头衔。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HAILTOTHEKINGRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>冕未及顶，阶下先列三牲。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_HANDOFBARONRUNE_NAME" Language="zh_Hans_CN">
+            <Text>男爵之手</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HANDOFBARONRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HANDOFBARONRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>赐物未及阶，群膝已先于唇。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_HAPPYACCIDENTRUNE_NAME" Language="zh_Hans_CN">
+            <Text>误中副车</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HAPPYACCIDENTRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>不处于黄金时代时，鼓舞额外提供10%的市政进度。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HAPPYACCIDENTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>失之东隅，反成大业。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_HASTYSCRIBBLERUNE_NAME" Language="zh_Hans_CN">
+            <Text>急就章</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HASTYSCRIBBLERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立刻获得当前争夺的大将军，但清空当前所有 [ICON_Gold] 金币。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HASTYSCRIBBLERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>笔走匆匆，囊中尽空，将星已落帐前。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_INFERNALCONDUITRUNE_NAME" Language="zh_Hans_CN">
+            <Text>炼狱导管</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_INFERNALCONDUITRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>工业区提供的[ICON_Production] 生产力+4。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_INFERNALCONDUITRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>引九幽之火入鼎，铸器之利倍于昔。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_INFINITELOOPRUNE_NAME" Language="zh_Hans_CN">
+            <Text>无限循环往复</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_INFINITELOOPRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市每[ICON_Citizen] 人口+1 [ICON_Gold] 金币；10人口以上的大型城市翻倍。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_INFINITELOOPRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>循而又循，奇迹遂化为常仪。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_JEWELEDGAUNTLETRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：奥皮杜姆</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_JEWELEDGAUNTLETRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>奥皮杜姆从相邻的丘陵单元格获得标准 [ICON_Production] 生产力相邻加成。将奥皮杜姆的前置科技降至采矿业。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_JEWELEDGAUNTLETRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>据丘而立，山势入垒，矿脉皆为吾用。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_OPPIDUM_HILLS_ADJACENCY" Language="zh_Hans_CN">
+            <Text>相邻丘陵</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_KILLERHUNTERRUNE_NAME" Language="zh_Hans_CN">
+            <Text>猎首</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_KILLERHUNTERRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>击杀敌军单位后，获得等同于其战斗力150%的 [ICON_Science] 科技值（标准速度下）。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_KILLERHUNTERRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>善猎者使其猎忘其爪，首级既悬，典籍乃生。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MADSCIENTISTRUNE_NAME" Language="zh_Hans_CN">
+            <Text>科学狂人</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MADSCIENTISTRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每回合+2 [ICON_GreatScientist] 大科学家点数。招募大科学家时，解锁一项随机科技。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MADSCIENTISTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>究理者不问祭祀，先成其器而后辩之。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MASTEROFDUALITYRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：城池</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MASTEROFDUALITYRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>城池每与1个区域相邻，则额外+2 [ICON_Culture] 文化值。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MASTEROFDUALITYRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>城垣紧邻百业，砖石之间自有文脉流转。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_THANH_DISTRICT_ADJACENCY" Language="zh_Hans_CN">
+            <Text>相邻区域</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MIKAELSBLESSINGRUNE_NAME" Language="zh_Hans_CN">
+            <Text>米凯尔的祝福</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MIKAELSBLESSINGRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>圣地的信仰值相邻加成提供两遍信仰值。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MIKAELSBLESSINGRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>真福所及，连根之苦亦化为甘。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MINDOVERMATTERRUNE_NAME" Language="zh_Hans_CN">
+            <Text>心胜于物</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MINDOVERMATTERRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每回合获得+2 [ICON_GreatScientist] 大科学家、[ICON_GreatMerchant] 大商人、[ICON_GreatEngineer] 大工程师、[ICON_GreatWriter] 大作家、[ICON_GreatArtist] 大艺术家、[ICON_GreatMusician] 大音乐家点数。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MINDOVERMATTERRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一念既锐如戟，山河自避其锋。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MISERABLEFATERUNE_NAME" Language="zh_Hans_CN">
+            <Text>厄运</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MISERABLEFATERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MISERABLEFATERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>他人之命既沉，吾前阴翳乃厚。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MISERYRUNE_NAME" Language="zh_Hans_CN">
+            <Text>噬骨</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MISERYRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MISERYRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>痛极无声，伤入骨髓。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_LAVRAUPGRADERUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：拉夫拉修道院</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_LAVRAUPGRADERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>拥有寺庙的拉夫拉修道院，其信仰值相邻加成也提供生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_LAVRAUPGRADERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>钟磬声彻山林，俗务亦蒙圣化。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MOBILEHOMERUNE_NAME" Language="zh_Hans_CN">
+            <Text>行幄初张</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MOBILEHOMERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>没有专业化区域的城市，建造专业化区域时+120% [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MOBILEHOMERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>营帐初立，钉桩深入旧土三尺。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MOSTUNIVERSALSCOPERUNE_NAME" Language="zh_Hans_CN">
+            <Text>最万用的瞄准镜</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MOSTUNIVERSALSCOPERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>站于丘陵上的远程单位 +1 射程。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MOSTUNIVERSALSCOPERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>镜中之的，先于发矢者拔弦。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_MYSTERYRUNE_NAME" Language="zh_Hans_CN">
+            <Text>玄牝</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MYSTERYRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MYSTERYRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>问之无名，叩之无应，唯余下一阵风。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NEARDEATHFEASTRUNE_NAME" Language="zh_Hans_CN">
+            <Text>临渊设宴</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NEARDEATHFEASTRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NEARDEATHFEASTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>死神坐于席侧，膏火反愈炽。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NINEDRAGONPOWERRUNE_NAME" Language="zh_Hans_CN">
+            <Text>九龙之御</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NINEDRAGONPOWERRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NINEDRAGONPOWERRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一觞一龙，九觞而九龙俱起。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_OMINOUSPACTRUNE_NAME" Language="zh_Hans_CN">
+            <Text>不祥契约</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_OMINOUSPACTRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_OMINOUSPACTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>灾劫一至，券书自添一行。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_OMNIDRAGONSOULRUNE_NAME" Language="zh_Hans_CN">
+            <Text>全能龙魂</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_OMNIDRAGONSOULRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_OMNIDRAGONSOULRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>六龙同吟于胸，唯一啸定其归。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_ONELANEBRIDGERUNE_NAME" Language="zh_Hans_CN">
+            <Text>一线桥</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ONELANEBRIDGERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ONELANEBRIDGERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>桥仅容一人立，余者悬于深渊。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_ORBSYMBIOSISRUNE_NAME" Language="zh_Hans_CN">
+            <Text>相生</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ORBSYMBIOSISRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>招募伟人时，返还所花费的35%伟人点数。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ORBSYMBIOSISRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一火既燃，他薪自暖。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_OTTERANDFRIENDSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>群獭献礼</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_OTTERANDFRIENDSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_OTTERANDFRIENDSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>獭祭之时，鱼陈如礼，依次奉于阶下。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_PANDORASBOXRUNE_NAME" Language="zh_Hans_CN">
+            <Text>潘朵拉的盒子</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PANDORASBOXRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PANDORASBOXRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>匣既启封，旧名旧序皆作云烟。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_PRECISIONCOGNITIONRUNE_NAME" Language="zh_Hans_CN">
+            <Text>析微</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PRECISIONCOGNITIONRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PRECISIONCOGNITIONRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>析其毫厘，天下乃可量。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_PRIMITIVEMADNESSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>返朴</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PRIMITIVEMADNESSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有带有纪念碑的市中心+1全部产出（[ICON_Food] 食物、[ICON_Production] 生产力、[ICON_Gold] 金币、[ICON_Science] 科技、[ICON_Culture] 文化、[ICON_Faith] 信仰）。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PRIMITIVEMADNESSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>礼乐既退，顽石自循其道。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_PROTEINSHAKERUNE_NAME" Language="zh_Hans_CN">
+            <Text>蛋白粉奶昔</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PROTEINSHAKERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有单位获得的经验值+100%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_PROTEINSHAKERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>入口若尘屑，立身则为城垒。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_QUANTUMCOMPUTINGRUNE_NAME" Language="zh_Hans_CN">
+            <Text>卜算</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_QUANTUMCOMPUTINGRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_QUANTUMCOMPUTINGRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>卦未成而局已定，敌之命数先自溃。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_QUEENRUNE_NAME" Language="zh_Hans_CN">
+            <Text>后令</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_QUEENRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_QUEENRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>后命既出，迟疑者即为叛逆。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_REFORGEDHELMETRUNE_NAME" Language="zh_Hans_CN">
+            <Text>鏖战之冕</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_REFORGEDHELMETRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_REFORGEDHELMETRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>旧冕重淬，怒喝之声多一重铮鸣。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_REGRETRUNE_NAME" Language="zh_Hans_CN">
+            <Text>悔咎</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_REGRETRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_REGRETRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>命数偶有回首，咎簿从不阖卷。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SELLOFFRUNE_NAME" Language="zh_Hans_CN">
+            <Text>鬻贾</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SELLOFFRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>+4 [ICON_TradeRoute] 贸易路线容量。但商人的购买花费+80%、训练商人时-10% [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SELLOFFRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>弃物之先，必尽其利；商旅虽贵，库帑乃丰。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SERPENTFORMUPGRADERUNE_NAME" Language="zh_Hans_CN">
+            <Text>蛇蜕</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SERPENTFORMUPGRADERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SERPENTFORMUPGRADERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>翻卷之间，蛇影隐没其中。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SERPENTSFANGRUNE_NAME" Language="zh_Hans_CN">
+            <Text>蛇之牙</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SERPENTSFANGRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SERPENTSFANGRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>涎先穿其甲，齿乃合其骨。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SHOULDERVAKURUNE_NAME" Language="zh_Hans_CN">
+            <Text>肩鸮</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SHOULDERVAKURUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SHOULDERVAKURUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>鸮立肩头，语轻而令重。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SINGULARITYAIRUNE_NAME" Language="zh_Hans_CN">
+            <Text>鬼斧</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SINGULARITYAIRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>获得当前正在争夺的大工程师，后续所有城市[ICON_Production] 生产力-2%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SINGULARITYAIRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>鬼斧不卜来日，径以来日授君之手。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SLOWCOOKRUNE_NAME" Language="zh_Hans_CN">
+            <Text>文火</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SLOWCOOKRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有农场+1 [ICON_Food] 食物；粮仓建造速度+100%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SLOWCOOKRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>文火不疾，鼎中之物，已无他途。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SOLIDTIMERUNE_NAME" Language="zh_Hans_CN">
+            <Text>凝时</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SOLIDTIMERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SOLIDTIMERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>时刻既凝，旧咒于每战回响不绝。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_STARLIGHTSPLENDORRUNE_NAME" Language="zh_Hans_CN">
+            <Text>星光璀璨</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_STARLIGHTSPLENDORRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>招募每个伟人时，立即完成一项随机市政；但所有城市[ICON_Culture] 文化产出-15%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_STARLIGHTSPLENDORRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>时序愈深，群星愈灼，贤者继至。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>属性叠属性叠属性！</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一锤又一锤，数尽形消，唯余其势。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SYMPHONYOFWARRUNE_NAME" Language="zh_Hans_CN">
+            <Text>能陪我组一辈子的乐队吗？</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SYMPHONYOFWARRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>获得一只场地加成极高的乐队</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SYMPHONYOFWARRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一曲既成，至死不散。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_UNIT_NW_ETERNAL_ROCK_BAND_NAME" Language="zh_Hans_CN">
+            <Text>终身乐队</Text>
+        </Replace>
+        <Replace Tag="LOC_UNIT_NW_ETERNAL_ROCK_BAND_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>特殊摇滚乐队。在奇观、剧院广场、娱乐中心、水上乐园、学院、港口、航天港、海滩度假村、国家公园与自然奇观演出时视为极高等级，几乎不会因演出失败而解散。可在国家公园、自然奇观、航天港与海滩度假村演出。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ETERNAL_ROCK_BAND_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>在各类可演出场地获得 +8 摇滚乐队等级；可在国家公园、自然奇观、航天港与海滩度假村演出。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_TAPDANCERUNE_NAME" Language="zh_Hans_CN">
+            <Text>踢踏舞</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TAPDANCERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TAPDANCERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>履声合于鼓节，敌阵自乱其行。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_TEZCATARASMERCYRUNE_NAME" Language="zh_Hans_CN">
+            <Text>神泪</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TEZCATARASMERCYRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TEZCATARASMERCYRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>神祇垂怜，泪亦灼石。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_THOUGHTOVERWRITERUNE_NAME" Language="zh_Hans_CN">
+            <Text>易念</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_THOUGHTOVERWRITERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_THOUGHTOVERWRITERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一念既改，余响代行其事。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_TRANSMUTECHAOSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>质变：混沌</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TRANSMUTECHAOSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TRANSMUTECHAOSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>收混沌入器，方可命之曰序。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_TRIANGULARTRADERUNE_NAME" Language="zh_Hans_CN">
+            <Text>三角贸易</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TRIANGULARTRADERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>通往同盟或你为宗主的城邦的 [ICON_TradeRoute] 商路：出发城 +2 [ICON_Production]，到达城 +4 [ICON_Gold]。你的出发城每完成一条国际海洋商路，从到达城转移若干 [ICON_Citizen] 人口至出发城（标准速度为 1，随游戏速度缩放）。到达城人口低于 4 时不触发；单次转移后到达城至少保留 4 人口。若到达方为城邦、或其科技总值不足你的 50%、或你为美国，则转移人口翻倍；上述条件不叠加，最多翻倍一次。完成后有 33% 概率因疾病路途使出发城再失去 1 人口。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TRIANGULARTRADERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>洋面三角，货去人随，彼城空而此城盈。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_TRI_TRADE_NOTIFY_TITLE" Language="zh_Hans_CN">
+            <Text>三角贸易</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_TRI_TRADE_NOTIFY_BODY" Language="zh_Hans_CN">
+            <Text>因人口贸易，{1_DestCity}失去{2_Amount}人口，{3_OriginCity}获得{4_Amount}人口</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_TRI_TRADE_NOTIFY_DISEASE" Language="zh_Hans_CN">
+            <Text>；因疾病路途失去1人口</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_TRIPRISMRUNE_NAME" Language="zh_Hans_CN">
+            <Text>三折光</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TRIPRISMRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TRIPRISMRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一光入棱，三折而出，皆为我用。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_ULTIMATEREFRESHRUNE_NAME" Language="zh_Hans_CN">
+            <Text>终极刷新</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ULTIMATEREFRESHRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ULTIMATEREFRESHRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>再来一巡尚迟，再添一巡方称善。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_UNMOVABLEMOUNTAINRUNE_NAME" Language="zh_Hans_CN">
+            <Text>不动如山</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_UNMOVABLEMOUNTAINRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_UNMOVABLEMOUNTAINRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>山不求胜，胜者自折戟于其下。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_UNSEALEDTHRONERUNE_NAME" Language="zh_Hans_CN">
+            <Text>启座</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_UNSEALEDTHRONERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_UNSEALEDTHRONERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>御座启封，星河自其下奔涌。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_UPGRADERUNE_NAME" Language="zh_Hans_CN">
+            <Text>羽化</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_UPGRADERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_UPGRADERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>炉火不择柴薪，化形不待时辰。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_VENERATEUPGRADERUNE_NAME" Language="zh_Hans_CN">
+            <Text>奉光</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_VENERATEUPGRADERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_VENERATEUPGRADERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>献光于神，光复归于掌。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_WATCHOUTGRAPEFRUITRUNE_NAME" Language="zh_Hans_CN">
+            <Text>当心葡萄柚</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_WATCHOUTGRAPEFRUITRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>效果待填充</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_WATCHOUTGRAPEFRUITRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>甘味乃饵，盘底所藏方为真锋。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_CANTTOUCHTHISRUNE_NAME" Language="zh_Hans_CN">
+            <Text>升级：浴场</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CANTTOUCHTHISRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>浴场+2 [ICON_Gold] 金币。每回合开始时，位于浴场单元格上的单位完全恢复生命值。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CANTTOUCHTHISRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>汤池一浸，旧伤如雾尽散，敌锋亦无从着身。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_PANEL_TITLE" Language="zh_Hans_CN">
+            <Text>海克斯大乱斗</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_PANEL_CONFIRM" Language="zh_Hans_CN">
+            <Text>确认选择</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_PANEL_HIDE" Language="zh_Hans_CN">
+            <Text>隐藏</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_PANEL_EXTERNAL_AI_HINT" Language="zh_Hans_CN">
+            <Text>确认选卡后，外部大模型将从各 AI 随机抽出的三张候选海克斯中择一，经 FireTuner 下发。</Text>
+        </Replace>
+        <Row Tag="LOC_HAIKESI_TRACKER_TITLE" Language="zh_Hans_CN">
+            <Text>海克斯追踪</Text>
+        </Row>
+        <Row Tag="LOC_HAIKESI_TRACKER_TAB_SELECTED" Language="zh_Hans_CN">
+            <Text>已选海克斯</Text>
+        </Row>
+        <Row Tag="LOC_HAIKESI_TRACKER_TAB_ENCYCLOPEDIA" Language="zh_Hans_CN">
+            <Text>海克斯图鉴</Text>
+        </Row>
+        <Replace Tag="LOC_HAIKESI_TRACKER_AI_DECISION_SUMMARY" Language="zh_Hans_CN">
+            <Text>选定：{1}</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_TRACKER_AI_DECISION_REASON" Language="zh_Hans_CN">
+            <Text>{1}觉得{2}，故选择{3}</Text>
+        </Replace>
+
+        <!-- ===== 海克斯模式 FE 配置文本 ===== -->
+        <Row Tag="LOC_NW_HAIKESI_MODE_NAME" Language="zh_Hans_CN">
+            <Text>海克斯大乱斗模式</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_DESC" Language="zh_Hans_CN">
+            <Text>选择海克斯符文系统的触发模式</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_CLASSIC_NAME" Language="zh_Hans_CN">
+            <Text>经典三板斧</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_CLASSIC_DESC" Language="zh_Hans_CN">
+            <Text>第3、25、45回合各选择一次海克斯</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_HAIKESI_NAME" Language="zh_Hans_CN">
+            <Text>海克斯大乱斗</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_HAIKESI_DESC" Language="zh_Hans_CN">
+            <Text>每10回合解锁一次海克斯选择</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_PVE_NAME" Language="zh_Hans_CN">
+            <Text>PVE经典</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_PVE_DESC" Language="zh_Hans_CN">
+            <Text>PVE经典模式：每个时代选择一次海克斯</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_DEV_NAME" Language="zh_Hans_CN">
+            <Text>开发者模式</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_DEV_DESC" Language="zh_Hans_CN">
+            <Text>每回合解锁一次海克斯选择（调试用）</Text>
+        </Row>
+
+        <Row Tag="LOC_NW_HAIKESI_MODE_MP_NAME" Language="zh_Hans_CN">
+            <Text>海克斯大乱斗（联机）</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_MODE_MP_DESC" Language="zh_Hans_CN">
+            <Text>每5回合选择一次海克斯</Text>
+        </Row>
+
+        <Row Tag="LOC_NW_HAIKESI_AI_RELIC_NAME" Language="zh_Hans_CN">
+            <Text>AI 可选海克斯</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_AI_RELIC_DESC" Language="zh_Hans_CN">
+            <Text>开启后，AI 每次随玩家同步获得一个 AI 专属海克斯</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_EXTERNAL_AI_NAME" Language="zh_Hans_CN">
+            <Text>外部大模型 AI 海克斯</Text>
+        </Row>
+        <Row Tag="LOC_NW_HAIKESI_EXTERNAL_AI_DESC" Language="zh_Hans_CN">
+            <Text>开启后，AI 海克斯由外部大模型经 FireTuner 异步决策；需同时开启「AI 可选海克斯」。超时未提交则使用确定性回退。</Text>
+        </Row>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_1_NAME" Language="zh_Hans_CN">
+            <Text>文化增幅</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_1_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市文化值 +18%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_1_FLAVOR" Language="zh_Hans_CN">
+            <Text>一锤又一锤，数尽形消，唯余其势。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_2_NAME" Language="zh_Hans_CN">
+            <Text>科技增幅</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_2_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市科技值 +18%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_2_FLAVOR" Language="zh_Hans_CN">
+            <Text>一锤又一锤，数尽形消，唯余其势。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_3_NAME" Language="zh_Hans_CN">
+            <Text>金币增幅</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_3_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市金币 +24%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_3_FLAVOR" Language="zh_Hans_CN">
+            <Text>一锤又一锤，数尽形消，唯余其势。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_4_NAME" Language="zh_Hans_CN">
+            <Text>信仰增幅</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_4_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市信仰值 +24%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_4_FLAVOR" Language="zh_Hans_CN">
+            <Text>一锤又一锤，数尽形消，唯余其势。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_5_NAME" Language="zh_Hans_CN">
+            <Text>食物增幅</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_5_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市食物 +12%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_5_FLAVOR" Language="zh_Hans_CN">
+            <Text>一锤又一锤，数尽形消，唯余其势。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_6_NAME" Language="zh_Hans_CN">
+            <Text>生产力增幅</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_6_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市生产力 +18%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_6_FLAVOR" Language="zh_Hans_CN">
+            <Text>一锤又一锤，数尽形消，唯余其势。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_SETTLER_NAME" Language="zh_Hans_CN">
+            <Text>开拓者翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_SETTLER_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个开拓者，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_SETTLER_FLAVOR" Language="zh_Hans_CN">
+            <Text>一音既出，万响自随。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_BUILDER_NAME" Language="zh_Hans_CN">
+            <Text>工人翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_BUILDER_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个建造者，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_BUILDER_FLAVOR" Language="zh_Hans_CN">
+            <Text>一音既出，万响自随。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_MELEE_NAME" Language="zh_Hans_CN">
+            <Text>近战翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_MELEE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个近战单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_MELEE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一音既出，万响自随。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_RANGED_NAME" Language="zh_Hans_CN">
+            <Text>远程翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_RANGED_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个远程单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_RANGED_FLAVOR" Language="zh_Hans_CN">
+            <Text>一音既出，万响自随。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_LIGHT_CAVALRY_NAME" Language="zh_Hans_CN">
+            <Text>轻骑兵翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_LIGHT_CAVALRY_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个轻骑兵单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_LIGHT_CAVALRY_FLAVOR" Language="zh_Hans_CN">
+            <Text>一音既出，万响自随。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_HEAVY_CAVALRY_NAME" Language="zh_Hans_CN">
+            <Text>重骑兵翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_HEAVY_CAVALRY_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个重骑兵单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_HEAVY_CAVALRY_FLAVOR" Language="zh_Hans_CN">
+            <Text>一音既出，万响自随。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_ANTI_CAVALRY_NAME" Language="zh_Hans_CN">
+            <Text>抗骑兵翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_ANTI_CAVALRY_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个抗骑兵单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_ANTI_CAVALRY_FLAVOR" Language="zh_Hans_CN">
+            <Text>一音既出，万响自随。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_SIEGE_NAME" Language="zh_Hans_CN">
+            <Text>攻城翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_SIEGE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个攻城单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_SIEGE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一音既出，万响自随。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_NAME" Language="zh_Hans_CN">
+            <Text>南蛮入侵</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>除触发该海克斯的 AI 外，在其他每位玩家最新建立的城市 5 环尝试生成 3 个遵循原版间距的蛮族营地；每少生成 1 个，则在距离该城市最近的现有蛮族营地处补充 3 个蛮族战士；若全图不存在蛮族营地，则在该文明所有城市的 4 环各生成 3 个蛮族战士。每轮 AI 海克斯选择中，至多 1 个 AI 可抽中此海克斯。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_FLAVOR" Language="zh_Hans_CN">
+            <Text>烟起蛮帐，铁骑叩城，南地风雷一夜至。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_NAME" Language="zh_Hans_CN">
+            <Text>勇敢的木</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个棉花奢侈品资源。棉花地块+3金币，并提供奢侈品宜居。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_FLAVOR" Language="zh_Hans_CN">
+            <Text>丁丁给我GoWork</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_NAME" Language="zh_Hans_CN">
+            <Text>妈妈生的</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个烟草奢侈品资源。烟草地块+1信仰，并提供奢侈品宜居。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_FLAVOR" Language="zh_Hans_CN">
+            <Text>这可是妈妈生的。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_NAME" Language="zh_Hans_CN">
+            <Text>我是奶龙</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个糖奢侈品资源。糖地块+2食物，并提供奢侈品宜居。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_FLAVOR" Language="zh_Hans_CN">
+            <Text>我是奶龙，我才是奶龙。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_NAME" Language="zh_Hans_CN">
+            <Text>丝绸之乡</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个丝绸奢侈品资源。丝绸地块+1文化，并提供奢侈品宜居。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_FLAVOR" Language="zh_Hans_CN">
+            <Text>一匹绸缎，万里商路。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_NAME" Language="zh_Hans_CN">
+            <Text>饮茶先啦</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个茶奢侈品资源。茶地块+1科技，并提供奢侈品宜居。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_FLAVOR" Language="zh_Hans_CN">
+            <Text>三点几咯，饮茶先啦。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_BARB_INVASION_ASSAULT_TITLE" Language="zh_Hans_CN">
+            <Text>南蛮入侵</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_BARB_INVASION_ASSAULT_SUMMARY" Language="zh_Hans_CN">
+            <Text>{1_LeaderName}发动了南蛮入侵，{2_ClanName}正在猛攻{3_CityName}</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_BARB_INVASION_ASSAULT_SUMMARY_XY" Language="zh_Hans_CN">
+            <Text>{1_LeaderName}发动了南蛮入侵，{2_ClanName}（营地位于{3_X},{4_Y}）正在猛攻{5_CityName}</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_BARB_INVASION_CLAN_FALLBACK" Language="zh_Hans_CN">
+            <Text>蛮族氏族</Text>
+        </Replace>
+
+        <!-- ============================== -->
+        <!-- COSPLAY: 仿生战士 单位/能力/晋升 -->
+        <!-- ============================== -->
+        <Replace Tag="LOC_UNIT_NW_COSPLAY_MIMIC_NAME" Language="zh_Hans_CN">
+            <Text>仿生战士</Text>
+        </Replace>
+        <Replace Tag="LOC_UNIT_NW_COSPLAY_MIMIC_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>cosplay 历代最强近战士兵的赝品。穿戴正确，灵魂稀薄——进攻乏力，防守更脆。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_COSPLAY_MIMIC_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>[ICON_Strength] 战斗力等于该玩家曾训练过的最强近战单位。进攻时-5 [ICON_Strength] 战斗力，防御时-10 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_COSPLAY_MIMIC_C1_NAME" Language="zh_Hans_CN">
+            <Text>形似</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_COSPLAY_MIMIC_C1_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立刻获得50 [ICON_Gold] 金币（标准速度下）。防御时+5 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_COSPLAY_MIMIC_C2_NAME" Language="zh_Hans_CN">
+            <Text>神似</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_COSPLAY_MIMIC_C2_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>在该单位最近的己方城市再获得一个仿生战士。</Text>
+        </Replace>
+
+        <!-- 利刃华尔兹海克斯：敌方境内战斗力 Ability 文本（战斗预览面板会读 Description） -->
+        <Replace Tag="LOC_ABILITY_NW_BLADEWALTZ_ENEMY_COMBAT_NAME" Language="zh_Hans_CN">
+            <Text>利刃华尔兹</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_BLADEWALTZ_ENEMY_COMBAT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>位于敌方境内时+2 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+
+    </LocalizedText>
+</GameData>

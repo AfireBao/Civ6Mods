@@ -1,0 +1,48 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Claude Code user settings
+.claude/
+
+# OS files
+.DS_Store
+**/.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Next.js web viewer
+web/node_modules/
+web/.next/
+web/.env.local
+web/.env.dev
+web/.env.prod
+evals/.env
+.env
+civbench_sas_token.txt
+notebooks/.env
+
+# Paper (LaTeX source, figures, build artifacts — kept locally)
+docs/paper/
+
+# Save files
+/saves/
+
+# CivBench eval artifacts
+evals/saves/*.Civ6Save  # benchmark saves are tracked
+evals/.resume_context.md
+eval-logs/
+.vercel
+scripts/mission_control.sh
+docs/agent-essays/
+mission-control/
+docs/analysis/

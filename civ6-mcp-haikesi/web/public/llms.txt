@@ -1,0 +1,31 @@
+# civ6-mcp
+
+> An MCP server that connects LLM agents to Civilization VI for strategic reasoning evaluation.
+
+## About
+
+civ6-mcp is an open-source environment that enables language model agents to play full games of Civilization VI through the Model Context Protocol (MCP). A single episode spans 330 turns across seven concurrent strategic domains, producing thousands of tool invocations.
+
+## Key Pages
+
+- [Documentation](/docs): Technical documentation, architecture, and API reference
+- [CivBench](/civbench): Benchmark scenarios for evaluating strategic reasoning
+- [Games](/games): Browse game sessions with per-turn telemetry
+- [About](/about): Project overview and methodology
+
+## Tools
+
+The environment exposes 77 MCP tools covering units, cities, diplomacy, research, governance, religion, espionage, trade, World Congress, and game lifecycle.
+
+- [Tool Reference: Queries](/docs/tools/query): State observation tools
+- [Tool Reference: Actions](/docs/tools/actions): Game action tools
+- [Tool Reference: System](/docs/tools/system): Lifecycle and management tools
+
+## Research
+
+The environment identifies the *sensorium effect*: agents receive the same facts a human sees, but cannot replicate passive peripheral attention. Information not explicitly queried does not enter the agent's world model.
+
+## Source Code
+
+- GitHub: https://github.com/lmwilki/civ6-mcp
+- License: MIT

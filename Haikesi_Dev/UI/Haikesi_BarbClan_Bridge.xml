@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 隐藏桥接：GetTribeNameType / GetTribeIndexAtLocation 仅 UI 可靠 -->
+<Context xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="..\..\..\..\..\CivTech\Libs\ForgeUI\ForgeUI_Assets\Controls.xsd"
+         Name="Haikesi_BarbClan_Bridge" Hidden="1">
+</Context>

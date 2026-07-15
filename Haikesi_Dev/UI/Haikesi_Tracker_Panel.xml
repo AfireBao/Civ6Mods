@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Context Name="HaikesiTrackerPanel">
+    <Container ID="Vignette" Style="FullScreenVignetteConsumer"/>
+
+    <Container ID="PopupContainer" Anchor="C,C" Size="768,768">
+
+        <!-- ===== Area 1：已选海克斯（追踪） ===== -->
+        <Box ID="TrackerArea" Size="parent,parent" Color="11,27,40,255">
+            <ScrollPanel ID="PlayerScroller" Anchor="C,C" Offset="0,40" Size="parent-20,parent-100" Vertical="1" AutoScrollBar="1">
+                <Stack ID="PlayerStack" StackGrowth="Down" StackPadding="6"/>
+                <ScrollBar Anchor="R,T" Offset="-8,0" Size="8,parent-40" Style="ScrollVerticalBackingAlt">
+                    <Thumb Style="ScrollThumbHAlt"/>
+                </ScrollBar>
+            </ScrollPanel>
+        </Box>
+
+        <!-- ===== Area 2：海克斯图鉴 ===== -->
+        <Box ID="EncyclopediaArea" Size="parent,parent" Color="11,27,40,255">
+            <ScrollPanel ID="EncyclopediaScroller" Anchor="C,C" Offset="0,40" Size="parent-20,parent-100" Vertical="1" AutoScrollBar="1">
+                <Stack ID="EncyclopediaStack" StackGrowth="Down" StackPadding="4"/>
+                <ScrollBar Anchor="R,T" Offset="-8,0" Size="8,parent-40" Style="ScrollVerticalBackingAlt">
+                    <Thumb Style="ScrollThumbHAlt"/>
+                </ScrollBar>
+            </ScrollPanel>
+        </Box>
+
+        <!-- ===== TAB 栏（搬运 GME 结构） ===== -->
+        <Container Anchor="C,T" Offset="0,48" Size="auto,61">
+            <Image Anchor="C,T" Size="auto,27" AutoSizePadding="-100,0" Texture="Controls_TabLedge2_Fill" StretchMode="Tile">
+                <Grid Anchor="C,T" Offset="0,-17" Size="auto,61" AutoSizePadding="100,0" Texture="Controls_TabLedge2" SliceCorner="194,18" SliceSize="52,26" SliceTextureSize="438,61">
+                    <Container ID="TabContainer" Anchor="C,T" Offset="0,13" Size="0,34"/>
+                </Grid>
+            </Image>
+        </Container>
+
+        <Container ID="ModalFrame" Style="ModalScreenWide"/>
+    </Container>
+
+    <!-- ===== Instance：玩家行（边框 + 网格布局） ===== -->
+    <Instance Name="HaikesiPlayerRow">
+        <Grid ID="Content" Size="parent-10,auto" Anchor="C,T" Color="40,60,90,255" Style="SubContainer2">
+            <Container Anchor="L,T" Offset="5,5" Size="710,auto" Color="18,28,42,255">
+                <Image Anchor="L,T" Offset="6,6" Size="44,44" Color="20,30,50,255" Texture="Circle44"/>
+                <Image ID="CivIcon" Anchor="L,T" Offset="6,6" Size="44,44"/>
+                <Label ID="PlayerName" Anchor="L,T" Offset="58,18" Style="FontNormal16" SmallCaps="22" SmallCapsType="Every"/>
+                <Stack ID="RelicGrid" Anchor="L,T" Offset="6,58" StackGrowth="Down" StackPadding="4"/>
+                <!-- 底部5px间距 -->
+                <Container Anchor="L,B" Size="710,5" />
+            </Container>
+        </Grid>
+    </Instance>
+
+    <!-- ===== Instance：海克斯图鉴条目 ===== -->
+    <Instance Name="HaikesiEncyclopediaEntry">
+        <Grid ID="Content" Size="parent-10,auto" Anchor="C,T" Color="40,60,90,255" Style="SubContainer2">
+            <Image Anchor="L,T" Offset="8,8" Size="64,64" Color="20,30,50,255" Texture="Controls_CircleBacking68"/>
+            <Image ID="RelicIcon" Anchor="L,T" Offset="10,10" Size="60,60"/>
+            <Stack Anchor="L,T" Offset="82,8" StackGrowth="Down" StackPadding="2">
+                <Label ID="RelicName" Style="FontNormal16" SmallCaps="22" SmallCapsType="Every"/>
+                <Label ID="RelicDesc" Style="FontNormal14" WrapWidth="620"/>
+                <Label ID="RelicFlavor" Style="FontNormal12" Color="160,160,160,255" WrapWidth="620"/>
+            </Stack>
+        </Grid>
+    </Instance>
+
+    <!-- ===== Instance：海克斯卡片行（水平Stack） ===== -->
+    <Instance Name="HaikesiRelicRow">
+        <Stack ID="Content" StackGrowth="Right" StackPadding="4"/>
+    </Instance>
+
+    <!-- ===== Instance：海克斯卡片（网格中的单个） ===== -->
+    <Instance Name="HaikesiRelicCard">
+        <Grid ID="Content" Size="124,auto" Anchor="C,T">
+            <!-- 圆形图标背景（同步图鉴样式） -->
+            <Image Anchor="C,T" Offset="0,6" Size="64,64" Color="20,30,50,255" Texture="Controls_CircleBacking68"/>
+            <Image ID="CardIcon" Anchor="C,T" Offset="0,8" Size="60,60"/>
+            <Label ID="CardName" Anchor="C,T" Offset="0,74" Style="FontNormal12" Alignment="Center" WrapWidth="120"/>
+        </Grid>
+    </Instance>
+
+    <!-- ===== Instance：Tab 按钮（搬运 GME TabButtonInstance） ===== -->
+    <Instance Name="TabButtonInstance">
+        <GridButton ID="Button" Anchor="L,T" Size="170,34" Style="TabButton" FontSize="14" TextOffset="0,2">
+            <GridButton ID="SelectButton" Size="parent,parent" Style="TabButtonSelected" ConsumeMouseButton="0" ConsumeMouseOver="1" Hidden="1"/>
+        </GridButton>
+    </Instance>
+
+
+
+
+</Context>

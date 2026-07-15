@@ -1,0 +1,258 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  // One doc per game session — used for listing and lifecycle
+  games: defineTable({
+    gameId: v.string(),
+    civ: v.string(),
+    leader: v.string(),
+    seed: v.string(),
+    status: v.union(v.literal("live"), v.literal("completed")),
+    lastTurn: v.number(),
+    lastUpdated: v.number(),
+    turnCount: v.number(),
+    hasCities: v.boolean(),
+    hasSpatial: v.optional(v.boolean()),
+    hasMap: v.optional(v.boolean()),
+    agentModelOverride: v.optional(v.string()),
+    // Denormalized from playerRows (set at ingest time)
+    agentModel: v.optional(v.string()),
+    agentScore: v.optional(v.number()),
+    eloPlayers: v.optional(
+      v.array(
+        v.object({
+          pid: v.number(),
+          civ: v.string(),
+          leader: v.string(),
+          is_agent: v.boolean(),
+          agent_model: v.union(v.string(), v.null()),
+        }),
+      ),
+    ),
+    // Precomputed sparkline time-series (set at ingest time)
+    turnSeries: v.optional(
+      v.object({
+        turns: v.array(v.number()),
+        players: v.any(), // { [pid]: { civ, leader, is_agent, metrics: { score: number[], ... } } }
+      }),
+    ),
+    // Run ID for constructing Azure blob download URLs
+    runId: v.optional(v.string()),
+    // .eval filenames stored under runs/{runId}/ in cloud storage
+    evalFiles: v.optional(v.array(v.string())),
+    // Eval metadata (set at ingest time from diary/log entries)
+    mcpVersion: v.optional(v.string()),
+    mcpGitSha: v.optional(v.string()),
+    scenarioId: v.optional(v.string()),
+    difficulty: v.optional(v.string()),
+    mapType: v.optional(v.string()),
+    mapSize: v.optional(v.string()),
+    gameSpeed: v.optional(v.string()),
+    evalTrack: v.optional(v.string()),
+    // Data quality / provenance
+    admissible: v.optional(v.boolean()), // single source of truth for ELO eligibility
+    excludeReason: v.optional(v.string()), // "micro_run", "wrong_save", "failed_launch", null = valid
+    gitDescribe: v.optional(v.string()), // e.g. "v1.0.4-3-g2630adb"
+    outcome: v.optional(
+      v.object({
+        result: v.union(v.literal("victory"), v.literal("defeat")),
+        winnerCiv: v.string(),
+        winnerLeader: v.string(),
+        victoryType: v.string(),
+        turn: v.number(),
+        playerAlive: v.boolean(),
+      }),
+    ),
+    // 8-dimension scoring (computed by sync pipeline from diary+log)
+    dimensionScores: v.optional(
+      v.object({
+        overall: v.float64(),
+        economic: v.float64(),
+        military: v.float64(),
+        scientific: v.float64(),
+        diplomatic: v.float64(),
+        spatial: v.float64(),
+        toolFluency: v.float64(),
+        coherence: v.float64(),
+      }),
+    ),
+  })
+    .index("by_gameId", ["gameId"])
+    .index("by_status", ["status", "lastUpdated"]),
+
+  // One doc per player per turn — mirrors PlayerRow from diary JSONL
+  playerRows: defineTable({
+    gameId: v.string(),
+    // Identity
+    turn: v.number(),
+    pid: v.number(),
+    civ: v.string(),
+    leader: v.string(),
+    is_agent: v.boolean(),
+    timestamp: v.string(),
+    game: v.string(),
+    v: v.number(),
+    // Score & yields
+    score: v.number(),
+    cities: v.number(),
+    pop: v.number(),
+    science: v.number(),
+    culture: v.number(),
+    gold: v.number(),
+    gold_per_turn: v.number(),
+    faith: v.number(),
+    faith_per_turn: v.number(),
+    favor: v.number(),
+    favor_per_turn: v.number(),
+    // Military
+    military: v.number(),
+    units_total: v.number(),
+    units_military: v.number(),
+    units_civilian: v.number(),
+    units_support: v.number(),
+    unit_composition: v.any(),
+    // Progress
+    techs_completed: v.number(),
+    civics_completed: v.number(),
+    techs: v.optional(v.array(v.string())),
+    civics: v.optional(v.array(v.string())),
+    current_research: v.string(),
+    current_civic: v.string(),
+    // Infrastructure
+    districts: v.number(),
+    wonders: v.number(),
+    great_works: v.number(),
+    territory: v.number(),
+    improvements: v.number(),
+    exploration_pct: v.number(),
+    // Governance
+    era: v.string(),
+    era_score: v.number(),
+    age: v.string(),
+    government: v.string(),
+    policies: v.array(v.string()),
+    pantheon: v.string(),
+    religion: v.string(),
+    religion_beliefs: v.array(v.string()),
+    // Victory
+    sci_vp: v.number(),
+    diplo_vp: v.number(),
+    tourism: v.number(),
+    staycationers: v.number(),
+    religion_cities: v.number(),
+    // Resources
+    stockpiles: v.any(),
+    luxuries: v.any(),
+    // Agent-only fields (optional)
+    diplo_states: v.optional(v.any()),
+    suzerainties: v.optional(v.number()),
+    envoys_available: v.optional(v.number()),
+    envoys_sent: v.optional(v.any()),
+    gp_points: v.optional(v.any()),
+    governors: v.optional(v.any()),
+    trade_routes: v.optional(v.any()),
+    reflections: v.optional(v.any()),
+    agent_client: v.optional(v.string()),
+    agent_client_ver: v.optional(v.string()),
+    agent_model: v.optional(v.string()),
+    // Eval metadata
+    mcp_version: v.optional(v.string()),
+    mcp_git_sha: v.optional(v.string()),
+    scenario_id: v.optional(v.string()),
+    difficulty: v.optional(v.string()),
+    map_type: v.optional(v.string()),
+    map_size: v.optional(v.string()),
+    game_speed: v.optional(v.string()),
+    eval_track: v.optional(v.string()),
+    model_id: v.optional(v.string()),
+    mcp_git_describe: v.optional(v.string()),
+  })
+    .index("by_game_turn", ["gameId", "turn"])
+    .index("by_game_turn_pid", ["gameId", "turn", "pid"]),
+
+  // One doc per city per turn — mirrors CityRow from diary JSONL
+  cityRows: defineTable({
+    gameId: v.string(),
+    turn: v.number(),
+    game: v.string(),
+    v: v.number(),
+    pid: v.number(),
+    city_id: v.number(),
+    city: v.string(),
+    pop: v.number(),
+    food: v.number(),
+    production: v.number(),
+    gold: v.number(),
+    science: v.number(),
+    culture: v.number(),
+    faith: v.number(),
+    housing: v.number(),
+    amenities: v.number(),
+    amenities_needed: v.number(),
+    districts: v.string(),
+    producing: v.string(),
+    loyalty: v.number(),
+    loyalty_per_turn: v.number(),
+  }).index("by_game_turn", ["gameId", "turn"]),
+
+  // One doc per turn — pre-aggregated spatial attention data
+  spatialTurns: defineTable({
+    gameId: v.string(),
+    turn: v.number(),
+    tiles_observed: v.number(),
+    tool_calls: v.number(),
+    cumulative_tiles: v.number(),
+    total_ms: v.number(),
+    by_type: v.object({
+      deliberate_scan: v.number(),
+      deliberate_action: v.number(),
+      survey: v.number(),
+      peripheral: v.number(),
+      reactive: v.number(),
+    }),
+  }).index("by_game_turn", ["gameId", "turn"]),
+
+  // One doc per game — strategic map static data + terrain
+  // Replay frames stored in mapFrames table (chunked for large games)
+  mapData: defineTable({
+    gameId: v.string(),
+    gridW: v.number(),
+    gridH: v.number(),
+    // Large numeric arrays stored as JSON strings — Convex caps arrays at 8192 elements
+    terrain: v.string(),       // stride-6, row-major [terrain, feature, hills, river, coastal, resource]
+    initialOwners: v.string(), // one owner per tile (-1 = unowned), row-major
+    initialRoutes: v.optional(v.string()), // one route type per tile (-1 = none), row-major
+    initialTurn: v.number(),
+    // Legacy: frames inline (old games). New games use mapFrames table.
+    ownerFrames: v.optional(v.string()),
+    cityFrames: v.optional(v.string()),
+    roadFrames: v.optional(v.string()),
+    cityNames: v.optional(v.string()), // JSON object {"x,y": "CityName"}
+    // Player→civ mapping for territory coloring
+    players: v.array(v.object({ pid: v.number(), civ: v.string(), csType: v.optional(v.string()) })),
+    maxTurn: v.number(),
+    frameChunks: v.optional(v.number()), // number of mapFrames docs for this game
+  }).index("by_gameId", ["gameId"]),
+
+  // Chunked replay frames — multiple docs per game for large replays
+  mapFrames: defineTable({
+    gameId: v.string(),
+    chunk: v.number(),
+    ownerFrames: v.string(),   // packed [turn, count, tileIdx, owner, ...]
+    cityFrames: v.string(),    // packed [turn, count, x, y, pid, pop, ...]
+    roadFrames: v.string(),    // packed [turn, count, tileIdx, routeType, ...]
+  }).index("by_gameId_chunk", ["gameId", "chunk"]),
+
+  // One doc per game — pre-aggregated per-tile spatial attention map for hex heatmap
+  spatialMaps: defineTable({
+    gameId: v.string(),
+    minX: v.number(),
+    maxX: v.number(),
+    minY: v.number(),
+    maxY: v.number(),
+    tileCount: v.number(),
+    // Flat packed: [x, y, total, ds, da, sv, pe, re, firstTurn, lastTurn] × N
+    tiles: v.array(v.number()),
+  }).index("by_gameId", ["gameId"]),
+});

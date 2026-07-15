@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Haikesi_Ability_Panel - 仿生模仿(MIMICRUNE) 能力选择弹窗 -->
+<!-- 外层用图鉴同款 Modal 结构（ModalScreenWide Style），Instance 复用炎 mod TraitInstance -->
+<Context Name="HaikesiAbilityPanel">
+    <Container Style="FullScreenVignetteConsumer"/>
+
+    <Container ID="PopupContainer" Anchor="C,C" Size="768,768">
+        <Container ID="ModalFrame" Style="ModalScreenWide"/>
+
+        <!-- 能力选择主体（无实色底，透明，仅放控件） -->
+        <Container ID="AbilityArea" Size="parent,parent">
+            <!-- 标题 -->
+            <Label ID="ChooserStatusMessage" Anchor="C,T" Offset="0,14" Style="FontNormal18" String="LOC_HAIKESI_ABILITY_PANEL_TITLE"/>
+
+            <!-- 列表区（左右各留 10px 边距） -->
+            <ScrollPanel ID="ChooserScroll" Anchor="C,T" Offset="0,50" Size="parent-20,parent-120" Vertical="1" AutoScrollBar="1">
+                <Stack ID="ChooserTraitItem" Anchor="C,T" Offset="0,0" StackGrowth="Down" Padding="8"/>
+                <ScrollBar Anchor="R,T" Offset="-8,0" Size="8,parent-40" Style="ScrollVerticalBackingAlt">
+                    <Thumb Style="ScrollThumbHAlt"/>
+                </ScrollBar>
+            </ScrollPanel>
+
+            <!-- 确认按钮 -->
+            <GridButton ID="ConfirmButton" Anchor="C,B" Offset="0,16" Size="240,41" Style="MainButton">
+                <Label ID="BeginLabel" Anchor="C,C" String="LOC_HAIKESI_ABILITY_CONFIRM" Style="FontFlair14" FontStyle="Shadows" SmallCaps="18" SmallCapsType="EveryWord"/>
+            </GridButton>
+        </Box>
+    </Container>
+
+    <!-- ===== Instance：能力条目（复刻炎 mod TraitInstance） ===== -->
+    <Instance Name="HaikesiAbilityEntry">
+        <Container ID="Top" Size="parent,auto" Offset="0,0" Anchor="C,T">
+            <GridButton ID="Button" Size="parent,auto" AutoSizePadding="0,-5" Anchor="C,T">
+                <GridData Texture="Controls_ItemContainer" SliceCorner="8,8" SliceSize="1,1" SliceTextureSize="16,16"/>
+
+                <Grid ID="SelectorBrace" Size="parent,auto" AutoSizePadding="0,5" Anchor="C,C" Texture="Controls_SelectorBrace" SliceCorner="29,29" SliceSize="2,2" SliceTextureSize="64,64">
+                    <!-- 标题：纯文本，颜色用 ResScienceLabelCS（无横幅背景） -->
+                    <Label ID="Name" Anchor="C,T" Offset="0,10" Style="FontFlair16" FontStyle="Stroke" EffectColor="0,0,0,25" SmallCaps="20" SmallCapsType="EveryWord" ColorSet="ResScienceLabelCS"/>
+                    <Grid ID="InfoGrid" Size="parent-16,auto" AutoSizePadding="0,8" MinSize="0,40" Anchor="C,T" Offset="0,30" Texture="Controls_ItemContainer" SliceCorner="8,8" SliceTextureSize="16,16">
+                        <Stack ID="InfoList" Anchor="L,C" Offset="10,8" StackGrowth="Right" WrapWidth="700" WrapGrowth="Bottom">
+                            <Label ID="Info" String="LOC_HAIKESI_ABILITY_CONFIRM" Anchor="L,C" Style="FontNormal14" WrapWidth="700"/>
+                        </Stack>
+                    </Grid>
+                </Grid>
+            </GridButton>
+        </Container>
+    </Instance>
+</Context>

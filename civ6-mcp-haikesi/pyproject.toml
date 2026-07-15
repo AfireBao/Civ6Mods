@@ -1,0 +1,89 @@
+[project]
+name = "civ6-mcp"
+version = "1.1.11"
+description = "MCP server for Civilization VI — lets LLM agents read game state and play"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Liam Wilkinson", email = "liam.m.wilkinson@gmail.com" }
+]
+requires-python = ">=3.12"
+keywords = ["civ6", "civilization", "mcp", "llm", "agent", "game-ai", "benchmark"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment :: Turn Based Strategy",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "mcp>=1.20",
+    "fastapi[standard]>=0.128",
+    "anthropic>=0.84.0",
+    "openai>=1.0",
+]
+
+[project.optional-dependencies]
+evals = [
+    "inspect-ai>=0.3.203",
+    "openai>=1.0",
+    "google-cloud-aiplatform>=1.38",
+    "google-genai>=1.69",
+]
+scout = [
+    "inspect-scout>=0.4",
+    "inspect-ai>=0.3.203",
+]
+cloud = [
+    "fsspec>=2024.6",
+    "adlfs>=2024.7",
+]
+launcher-macos = [
+    "pyobjc-framework-Quartz>=11.0",
+    "pyobjc-framework-Vision>=11.0",
+]
+launcher-windows = [
+    "winrt-Windows.Media.Ocr>=2.1",
+    "winrt-Windows.Graphics.Imaging>=2.1",
+    "winrt-Windows.Storage.Streams>=2.1",
+    "winrt-Windows.Foundation>=2.1",
+    "winrt-Windows.Foundation.Collections>=2.1",
+]
+launcher-linux = [
+    "mss>=9.0",
+    "pytesseract>=0.3.10",
+    "Pillow>=10.0",
+]
+launcher = ["civ6-mcp[launcher-macos]"]  # backward compat alias
+analysis = [
+    "matplotlib>=3.10.8",
+    "pandas>=2.3.3",
+]
+publish = [
+    "fsspec>=2024.6",
+    "adlfs>=2024.7",
+    "pyarrow>=18.0",
+    "huggingface-hub>=1.13",
+    "mlcroissant>=1.1",
+    "httpx>=0.28",
+]
+
+[project.urls]
+Homepage = "https://github.com/lmwilki/civ6-mcp"
+Repository = "https://github.com/lmwilki/civ6-mcp"
+
+[project.scripts]
+civ-mcp = "civ_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/civ_mcp"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.10.8",
+    "pytest>=8.0",
+]

@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="7c4e8a2b-9d1f-4e6a-b3c5-8f2d1e0a9b7c" version="2">
+  <Properties>
+    <Name>[COLOR:ResScienceLabelCS]海克斯大乱斗[ENDCOLOR] V0.9 Dev</Name>
+    <Description>[COLOR:ResScienceLabelCS]海克斯大乱斗[ENDCOLOR]</Description>
+    <Created>1783603456</Created>
+    <Teaser>[COLOR:ResScienceLabelCS]海克斯大乱斗[ENDCOLOR]</Teaser>
+    <Authors>帅翔翔</Authors>
+    <CompatibleVersions>2.0</CompatibleVersions>
+  </Properties>
+  <References>
+    <Mod id="1B28771A-C749-434B-9053-D1380C553DE9" title="Expansion: Rise and Fall" />
+    <Mod id="4873eb62-8ccc-4574-b784-dda455e74e68" title="Expansion: Gathering Storm" />
+  </References>
+  <ActionCriteria>
+    <Criteria id="NW_HAIKESI_AI_RELIC">
+      <ConfigurationValueMatches>
+        <Group>Game</Group>
+        <ConfigurationId>NW_HAIKESI_AI_RELIC</ConfigurationId>
+        <Value>1</Value>
+      </ConfigurationValueMatches>
+    </Criteria>
+  </ActionCriteria>
+  <FrontEndActions>
+    <UpdateDatabase id="HaikesiSettings">
+      <File>Data/Haikesi_Config_FE.sql</File>
+    </UpdateDatabase>
+    <UpdateArt id="HaikesiSettingsArt">
+      <File>Haikesi.dep</File>
+    </UpdateArt>
+    <UpdateText id="HaikesiSettingsText">
+      <File>Text/Haikesi_Text.xml</File>
+    </UpdateText>
+    <UpdateIcons id="HaikesiSettingsIcons">
+      <File>Data/Haikesi_Icons.xml</File>
+    </UpdateIcons>
+  </FrontEndActions>
+  <InGameActions>
+    <UpdateArt id="HaikesiArt">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>Haikesi.dep</File>
+    </UpdateArt>
+    <UpdateDatabase id="HaikesiGameplay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>Data/Haikesi_Relics.sql</File>
+      <File>Data/ModCore.sql</File>
+      <File>Data/Haikesi_BarbarianSpawn.sql</File>
+    </UpdateDatabase>
+    <UpdateDatabase id="HaikesiRelicPrerequisites">
+      <Properties>
+        <LoadOrder>16797</LoadOrder>
+      </Properties>
+      <File>Data/Haikesi_Relic_Prerequisites.sql</File>
+    </UpdateDatabase>
+    <UpdateDatabase id="HaikesiRelicModifiers">
+      <Properties>
+        <LoadOrder>16798</LoadOrder>
+      </Properties>
+      <File>Data/Haikesi_Modifier.sql</File>
+    </UpdateDatabase>
+    <UpdateDatabase id="HaikesiAIRelics">
+      <Properties>
+        <LoadOrder>16799</LoadOrder>
+      </Properties>
+      <File>Data/Haikesi_AI_Relics.sql</File>
+      <File>Data/Haikesi_Relic_ResourceSpawns.sql</File>
+    </UpdateDatabase>
+    <UpdateText id="Haikesi_Text">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>Text/Haikesi_Text.xml</File>
+    </UpdateText>
+    <UpdateIcons id="Haikesi_Icons">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>Data/Haikesi_Icons.xml</File>
+    </UpdateIcons>
+    <AddUserInterfaces id="Haikesi_UI">
+      <Properties>
+        <Context>InGame</Context>
+        <LoadOrder>10</LoadOrder>
+      </Properties>
+      <File>UI/Haikesi_Panel.xml</File>
+      <File>UI/Haikesi_Tracker_EntryButton.xml</File>
+      <File>UI/Haikesi_Tracker_Panel.xml</File>
+      <File>UI/Haikesi_Ability_Panel.xml</File>
+      <File>UI/Haikesi_TriTrade_Bridge.xml</File>
+    </AddUserInterfaces>
+    <AddGameplayScripts id="Haikesi_GamePlay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
+    </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_Trigger">
+      <Properties>
+        <LoadOrder>16797</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_Trigger.lua</File>
+    </AddGameplayScripts>
+    <ImportFiles id="Haikesi_RockBandUI">
+      <Properties>
+        <LoadOrder>16800</LoadOrder>
+      </Properties>
+      <File>UI/Replacements/SelectedUnit_Expansion2.lua</File>
+      <File>UI/Replacements/UnitPanel_Expansion2.lua</File>
+    </ImportFiles>
+  </InGameActions>
+  <Files>
+    <File>ArtDefs/Buildings.artdef</File>
+    <File>ArtDefs/Districts.artdef</File>
+    <File>ArtDefs/Improvements.artdef</File>
+    <File>ArtDefs/Units.artdef</File>
+    <File>Data/Haikesi_AI_Relics.sql</File>
+    <File>Data/Haikesi_BarbarianSpawn.sql</File>
+    <File>Data/Haikesi_Relic_ResourceSpawns.sql</File>
+    <File>Data/Haikesi_Config.sql</File>
+    <File>Data/Haikesi_Config_FE.sql</File>
+    <File>Data/Haikesi_Icons.xml</File>
+    <File>Data/Haikesi_Modifier.sql</File>
+    <File>Data/Haikesi_Relics.sql</File>
+    <File>Data/Haikesi_Relic_Prerequisites.sql</File>
+    <File>Data/ModCore.sql</File>
+    <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
+    <File>GamePlay/Haikesi_Trigger.lua</File>
+    <File>Haikesi.dep</File>
+    <File>Platforms/Windows/BLPs/UI/Icons.blp</File>
+    <File>Text/Haikesi_Text.xml</File>
+    <File>UI/Haikesi_Ability_Panel.lua</File>
+    <File>UI/Haikesi_Ability_Panel.xml</File>
+    <File>UI/Haikesi_BarbClan_Bridge.lua</File>
+    <File>UI/Haikesi_BarbClan_Bridge.xml</File>
+    <File>UI/Haikesi_ExtAI_Bridge.lua</File>
+    <File>UI/Haikesi_ExtAI_Bridge.xml</File>
+    <File>UI/Haikesi_Panel.lua</File>
+    <File>UI/Haikesi_Panel.xml</File>
+    <File>UI/Haikesi_Tracker_EntryButton.lua</File>
+    <File>UI/Haikesi_Tracker_EntryButton.xml</File>
+    <File>UI/Haikesi_Tracker_Panel.lua</File>
+    <File>UI/Haikesi_Tracker_Panel.xml</File>
+    <File>UI/Haikesi_TriTrade_Bridge.lua</File>
+    <File>UI/Haikesi_TriTrade_Bridge.xml</File>
+    <File>UI/Replacements/SelectedUnit_Expansion2.lua</File>
+    <File>UI/Replacements/UnitPanel_Expansion2.lua</File>
+  </Files>
+</Mod>

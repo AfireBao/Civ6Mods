@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Haikesi_Tracker_EntryButton -->
+<GameData>
+	<Instance Name="HaikesiTracker_Info">
+		<Button ID="HaikesiTracker_InfoButton" Anchor="L,C" Size="49,49" Texture="LaunchBar_Hook_GreatPeopleButton" Style="ButtonNormalText" TextureOffset="0,-1" StateOffsetIncrement="0,49" ToolTip="LOC_HAIKESI_PANEL_TITLE">
+			<Image ID="HaikesiTracker_InfoIcon" Texture="Placeholder" Size="35,35" Anchor="C,C" Offset="0,1" Hidden="0"/>
+			<Label ID="AlertIndicator" String="[ICON_New]" Anchor="R,T" AnchorSide="O,O" Offset="-18,-18" Hidden="1"/>
+		</Button>
+	</Instance>
+
+	<Instance Name="HaikesiTracker_PinInstance">
+		<Image ID="Pin" Anchor="L,C" Offset="0,-2" Size="7,7" Texture="LaunchBar_TrackPip" Color="255,255,255,200"/>
+	</Instance>
+</GameData>

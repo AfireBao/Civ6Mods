@@ -1,0 +1,1625 @@
+"""End-turn state machine — snapshot, blocker resolution, turn advancement."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import TYPE_CHECKING
+
+import civ_mcp.narrate as nr
+from civ_mcp import lua as lq
+from civ_mcp.connection import LuaError
+from civ_mcp.game_lifecycle import cleanup_old_autosaves, save_game
+
+if TYPE_CHECKING:
+    from civ_mcp.game_state import GameState
+
+log = logging.getLogger(__name__)
+
+
+async def _check_mid_turn_diplomacy(
+    gs: GameState,
+    lua: str,
+    turn_before: int | None,
+) -> tuple[str | None, bool]:
+    """Probe for AI diplomatic proposals during end_turn polling.
+
+    Returns (message, advanced) where message is a string to return to the
+    agent if diplomacy was found, or None if no diplomacy detected.
+    ``advanced`` is True if the turn advanced during war-declaration handling.
+
+    Handles war auto-dismiss, deal formatting, and session info.  Extracted
+    from the Phase 3 inline logic so both the early probe (Phase 2, ~45s)
+    and the full-timeout fallback (Phase 3) can share the same code.
+    """
+    try:
+        mid_sessions = await gs.get_diplomacy_sessions()
+        if not mid_sessions:
+            return None, False
+
+        # DiplomacyActionView text can take 1-2s to populate after session
+        # opens during AI processing. If text is empty, retry once.
+        if any(not s.dialogue_text for s in mid_sessions):
+            await asyncio.sleep(2.0)
+            mid_sessions = await gs.get_diplomacy_sessions()
+
+        # Auto-dismiss war declarations — these are informational only
+        # (you can't decline a war). Dismiss and report to the agent.
+        war_sessions = [s for s in mid_sessions if s.is_at_war]
+        if war_sessions:
+            war_names = []
+            for ws in war_sessions:
+                close_lua = lq.build_diplomacy_respond(ws.other_player_id, "EXIT")
+                await gs.conn.execute_write(close_lua)
+                war_names.append(f"{ws.other_civ_name} ({ws.other_leader_name})")
+                log.info(
+                    "Auto-dismissed war declaration from %s",
+                    ws.other_civ_name,
+                )
+            # Remove war sessions from the list
+            mid_sessions = [s for s in mid_sessions if not s.is_at_war]
+            # If only war sessions, resume polling (original ACTION_ENDTURN
+            # is still in flight — do NOT re-send or turns will skip)
+            if not mid_sessions:
+                war_msg = ", ".join(war_names)
+                advanced = False
+                for _ in range(10):
+                    await asyncio.sleep(2.0)
+                    turn_after = await _get_turn_number(gs)
+                    if (
+                        turn_after is not None
+                        and turn_before is not None
+                        and turn_after > turn_before
+                    ):
+                        advanced = True
+                        break
+                if advanced:
+                    return None, True  # turn advanced, caller handles snapshot
+                # Original ACTION_ENDTURN was consumed — next call must re-send
+                gs._pending_end_turn = False
+                gs._pending_end_turn_from = None
+                return (
+                    f"WAR DECLARED by {war_msg}! Session dismissed.\n"
+                    f"Turn did not advance — call end_turn again.\n"
+                    f"Reassess: check unit positions, city defenses, and military strength."
+                ), False
+
+        if not mid_sessions:
+            # All sessions were war declarations and turn advanced
+            return None, True if war_sessions else False
+
+        # Non-war sessions: format for agent
+        session_info = []
+        for s in mid_sessions:
+            phase = (
+                "deal"
+                if s.deal_summary
+                else ("goodbye" if s.buttons == "GOODBYE" else "active")
+            )
+            session_info.append(f"{s.other_civ_name} ({s.other_leader_name}) [{phase}]")
+        has_deal = any(s.deal_summary for s in mid_sessions)
+        lines: list[str] = []
+        if war_sessions:
+            war_names_str = ", ".join(f"{ws.other_civ_name}" for ws in war_sessions)
+            lines.append(f"WAR DECLARED by {war_names_str}! (auto-dismissed)")
+        lines.append(
+            f"Turn paused — AI diplomatic proposal from {', '.join(session_info)}.",
+        )
+        for s in mid_sessions:
+            if s.dialogue_text:
+                lines.append(f'{s.other_civ_name} says: "{s.dialogue_text}"')
+            if s.reason_text:
+                lines.append(f"Reason: {s.reason_text}")
+            if s.deal_summary:
+                lines.append(f"Deal from {s.other_civ_name}: {s.deal_summary}")
+        if has_deal:
+            lines.append(
+                "Use respond_to_trade(other_player_id=X, accept=True/False) to handle it, then end_turn again."
+            )
+        else:
+            lines.append("Use respond_to_diplomacy to handle it, then end_turn again.")
+        return "\n".join(lines), False
+    except Exception:
+        log.debug("Mid-turn diplomacy check failed", exc_info=True)
+        return None, False
+
+
+async def _get_turn_number(gs: GameState) -> int | None:
+    """Read the current game turn number."""
+    try:
+        lines = await gs.conn.execute_read(
+            'print(Game.GetCurrentGameTurn()); print("---END---")'
+        )
+        if lines:
+            return int(lines[0])
+    except (LuaError, ValueError, IndexError):
+        pass
+    return None
+
+
+async def _check_victory_proximity(gs: GameState) -> list[lq.TurnEvent]:
+    """Lightweight per-turn check for foreign victory threats."""
+    events: list[lq.TurnEvent] = []
+    lines = await gs.conn.execute_write(lq.build_victory_proximity_query())
+    enabled: set[str] = set()
+    for line in lines:
+        if line.startswith("VENABLED|"):
+            enabled.add(line.split("|", 1)[1])
+    for line in lines:
+        if line.startswith("REL_THREAT|"):
+            if enabled and "VICTORY_RELIGIOUS" not in enabled:
+                continue
+            parts = line.split("|")
+            if len(parts) >= 4:
+                civ_name, rel_name = parts[1], parts[2]
+                count, total = int(parts[3]), int(parts[4])
+                if count >= total:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=1,
+                            category="victory",
+                            message=f"!!! RELIGIOUS VICTORY IMMINENT: {civ_name}'s {rel_name} is majority in ALL {total} civilizations!",
+                        )
+                    )
+                elif count >= total - 1:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=1,
+                            category="victory",
+                            message=f"!! RELIGIOUS VICTORY THREAT: {civ_name}'s {rel_name} is majority in {count}/{total} civilizations!",
+                        )
+                    )
+        elif line.startswith("DIPLO_THREAT|"):
+            if enabled and "VICTORY_DIPLOMATIC" not in enabled:
+                continue
+            parts = line.split("|")
+            if len(parts) >= 3:
+                dvp = int(parts[2])
+                if dvp >= 20:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=1,
+                            category="victory",
+                            message=f"!!! DIPLOMATIC VICTORY IMMINENT: {parts[1]} has {dvp}/20 DVP — wins immediately, does NOT wait for World Congress!",
+                        )
+                    )
+                elif dvp >= 18:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=1,
+                            category="victory",
+                            message=f"!! DIPLOMATIC VICTORY THREAT: {parts[1]} has {dvp}/20 DVP — wins IMMEDIATELY at 20, does not wait for WC. Must strip DVP at next World Congress BEFORE they reach 20.",
+                        )
+                    )
+                elif dvp >= 15:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=1,
+                            category="victory",
+                            message=f"!! DIPLOMATIC VICTORY THREAT: {parts[1]} has {dvp}/20 DVP!",
+                        )
+                    )
+                else:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=2,
+                            category="victory",
+                            message=f"Diplomatic race: {parts[1]} has {dvp}/20 DVP.",
+                        )
+                    )
+        elif line.startswith("SCI_THREAT|"):
+            if enabled and "VICTORY_TECHNOLOGY" not in enabled:
+                continue
+            parts = line.split("|")
+            if len(parts) >= 4:
+                vp, needed = int(parts[2]), int(parts[3])
+                if vp >= needed - 1:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=1,
+                            category="victory",
+                            message=f"!! SCIENCE VICTORY IMMINENT: {parts[1]} has {vp}/{needed} space race projects!",
+                        )
+                    )
+                elif vp >= 1:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=2,
+                            category="victory",
+                            message=f"Science race: {parts[1]} has {vp}/{needed} space race projects.",
+                        )
+                    )
+    return events
+
+
+async def _check_empire_warnings(
+    gs: GameState,
+    snap: lq.TurnSnapshot | None,
+) -> tuple[list[lq.TurnEvent], int | None]:
+    """Lightweight alerts that compensate for the Sensorium Effect.
+
+    Surfaces information a human player would notice via passive visual cues:
+    scoreboard position, idle trade routes, resource caps, loyalty crises,
+    military imbalance, and gold deficits.
+
+    Returns (events, score) where score is the current game score if available.
+    """
+    events: list[lq.TurnEvent] = []
+    game_score: int | None = None
+
+    # --- Loyalty crisis (from snapshot cities) ---
+    if snap:
+        for cs in snap.cities.values():
+            if cs.loyalty_per_turn < -5:
+                turns_left = (
+                    int(cs.loyalty / abs(cs.loyalty_per_turn))
+                    if cs.loyalty_per_turn < 0
+                    else 99
+                )
+                events.append(
+                    lq.TurnEvent(
+                        priority=1,
+                        category="city",
+                        message=(
+                            f"LOYALTY CRISIS: {cs.name} losing {cs.loyalty_per_turn:+.1f}/t "
+                            f"(loyalty {cs.loyalty:.0f}) — will rebel in ~{turns_left} turns!"
+                        ),
+                    )
+                )
+            elif cs.loyalty < 30 and cs.loyalty_per_turn < 0:
+                events.append(
+                    lq.TurnEvent(
+                        priority=2,
+                        category="city",
+                        message=f"LOYALTY WARNING: {cs.name} at {cs.loyalty:.0f} loyalty ({cs.loyalty_per_turn:+.1f}/t)",
+                    )
+                )
+
+    # --- Resource cap (from snapshot stockpiles) ---
+    if snap:
+        for s in snap.stockpiles:
+            net = s.per_turn - s.demand + s.imported
+            if s.cap > 0 and s.amount >= s.cap and net > 0:
+                events.append(
+                    lq.TurnEvent(
+                        priority=3,
+                        category="economy",
+                        message=(
+                            f"RESOURCE CAP: {s.name} {s.amount}/{s.cap} ({net:+d}/t) "
+                            f"— excess is wasted. Trade surplus or spend it."
+                        ),
+                    )
+                )
+
+    # --- Gold deficit (quick overview query) ---
+    try:
+        ov_lines = await gs.conn.execute_write(lq.build_overview_query())
+        overview = lq.parse_overview_response(ov_lines)
+    except Exception:
+        log.debug("Overview query for warnings failed", exc_info=True)
+        overview = None
+
+    if overview:
+        game_score = overview.score
+        if (
+            overview.gold_per_turn < 0
+            and overview.gold < abs(overview.gold_per_turn) * 20
+        ):
+            turns_to_zero = (
+                int(overview.gold / abs(overview.gold_per_turn))
+                if overview.gold_per_turn < 0
+                else 99
+            )
+            events.append(
+                lq.TurnEvent(
+                    priority=2,
+                    category="economy",
+                    message=(
+                        f"DEFICIT: Gold {overview.gold_per_turn:+.0f}/t with {overview.gold:.0f} in treasury "
+                        f"— bankrupt in ~{turns_to_zero} turns."
+                    ),
+                )
+            )
+
+    # --- Idle trade routes (lightweight Lua query) ---
+    try:
+        tr_lines = await gs.conn.execute_write(lq.build_trade_capacity_check())
+        for line in tr_lines:
+            if line.startswith("TRCAP|"):
+                parts = line.split("|")
+                cap, active = int(parts[1]), int(parts[2])
+                idle = cap - active
+                if idle > 0:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=2,
+                            category="economy",
+                            message=(
+                                f"IDLE TRADE ROUTE: {idle} unused route "
+                                f"{'capacity' if idle == 1 else 'capacities'} "
+                                f"({active}/{cap} active). Build a Trader or assign an idle one."
+                            ),
+                        )
+                    )
+                break
+    except Exception:
+        log.debug("Trade capacity check failed", exc_info=True)
+
+    # --- Scoreboard + military disparity (rival snapshot, every 5 turns) ---
+    turn = snap.turn if snap else 0
+    if turn > 0 and turn % 5 == 0:
+        try:
+            rival_lines = await gs.conn.execute_write(lq.build_rival_snapshot_query())
+            rivals = lq.parse_rival_snapshot_response(rival_lines)
+            if rivals and overview:
+                our_sci = overview.science_yield
+                # Compute science rankings
+                all_sci = [(r.name, r.sci) for r in rivals] + [("You", our_sci)]
+                all_sci.sort(key=lambda x: x[1], reverse=True)
+                our_rank = next(i + 1 for i, (n, _) in enumerate(all_sci) if n == "You")
+                leader_name, leader_sci = all_sci[0]
+                if our_rank > 1 and len(all_sci) > 2:
+                    events.append(
+                        lq.TurnEvent(
+                            priority=2,
+                            category="scoreboard",
+                            message=(
+                                f"SCOREBOARD: Your science ({our_sci:.1f}/t) ranks "
+                                f"{our_rank} of {len(all_sci)}. "
+                                f"Leader: {leader_name} at {leader_sci:.1f}/t."
+                            ),
+                        )
+                    )
+
+                # Military disparity
+                our_mil_lines = await gs.conn.execute_read(
+                    "local me = Game.GetLocalPlayer(); "
+                    "print(Players[me]:GetStats():GetMilitaryStrength()); "
+                    'print("---END---")'
+                )
+                our_mil = 0
+                if our_mil_lines:
+                    try:
+                        our_mil = int(float(our_mil_lines[0]))
+                    except (ValueError, IndexError):
+                        pass
+                if our_mil > 0:
+                    for r in rivals:
+                        if r.mil >= our_mil * 2:
+                            events.append(
+                                lq.TurnEvent(
+                                    priority=2,
+                                    category="military",
+                                    message=(
+                                        f"MILITARY WARNING: {r.name} has {r.mil} military "
+                                        f"({r.mil / our_mil:.1f}x ours at {our_mil})."
+                                    ),
+                                )
+                            )
+        except Exception:
+            log.debug("Rival snapshot for warnings failed", exc_info=True)
+
+    return events, game_score
+
+
+def _check_save_scumming(gs: GameState) -> tuple[list[lq.TurnEvent], bool]:
+    """Detect save-scumming patterns from recent save load history.
+
+    Benchmark runs should play forward — save loads are only legitimate for
+    recovering from engine hangs or loading the initial scenario. Repeated
+    loads across different turns indicate the agent is rolling back to retry
+    unfavorable outcomes.
+
+    Thresholds (tuned against Opus T326 legitimate deadlock debugging and
+    Gemini's 19-load scumming run):
+      - MINOR warn: 3+ loads across 3+ distinct turns (span >= 10)
+      - STRONG warn: 5+ loads across 5+ distinct turns (span >= 20)
+      - HARD STOP: 8+ loads across 8+ distinct turns (span >= 30)
+
+    The "distinct turns" signal is critical — 25 loads all at T326 is a
+    deadlock, 25 loads spread across T100-T300 is scumming.
+
+    Returns (events, hard_stop).
+    """
+    events: list[lq.TurnEvent] = []
+    history = gs._save_load_history
+
+    if len(history) < 3:
+        return events, False
+
+    # Only consider in-play loads (high water turn > 0)
+    play_loads = [(ts, turn, name) for ts, turn, name in history if turn > 0]
+    if len(play_loads) < 3:
+        return events, False
+
+    n_loads = len(play_loads)
+    distinct_turns = sorted({turn for _, turn, _ in play_loads})
+    n_distinct = len(distinct_turns)
+    span = distinct_turns[-1] - distinct_turns[0] if distinct_turns else 0
+
+    # Hard stop — abort the run
+    if n_loads >= 8 and n_distinct >= 8 and span >= 30:
+        events.append(
+            lq.TurnEvent(
+                priority=1,
+                category="abuse",
+                message=(
+                    f"!!! RUN ABORTED — save scumming threshold exceeded. "
+                    f"{n_loads} save loads across {n_distinct} distinct turns "
+                    f"(span {span}). Benchmark runs must play forward from a "
+                    f"single starting save. Repeated save loads to retry "
+                    f"turns are considered cheating and invalidate the run. "
+                    f"No further actions will be processed."
+                ),
+            )
+        )
+        return events, True
+
+    # Strong warning
+    if n_loads >= 5 and n_distinct >= 5 and span >= 20:
+        events.append(
+            lq.TurnEvent(
+                priority=1,
+                category="abuse",
+                message=(
+                    f"SAVE SCUMMING CRITICAL: {n_loads} save loads across "
+                    f"{n_distinct} distinct turns (span {span}). STOP loading "
+                    f"saves — this is a benchmark run. Play forward from the "
+                    f"current state. The next load will abort the run."
+                ),
+            )
+        )
+        return events, False
+
+    # Soft warning
+    if n_loads >= 3 and n_distinct >= 3 and span >= 10:
+        events.append(
+            lq.TurnEvent(
+                priority=2,
+                category="abuse",
+                message=(
+                    f"SAVE SCUMMING WARNING: {n_loads} save loads across "
+                    f"{n_distinct} different turns. Benchmark runs must play "
+                    f"forward — save loads are only for recovering from engine "
+                    f"hangs. Continuing to reload will result in disqualification."
+                ),
+            )
+        )
+
+    return events, False
+
+
+async def execute_end_turn(gs: GameState) -> str:
+    """End the turn with snapshot-diff event detection."""
+    # 0a. Run aborted due to save scumming — refuse to advance
+    if gs._run_aborted:
+        return (
+            "RUN ABORTED — save scumming threshold exceeded. "
+            "This benchmark run has been invalidated because the agent "
+            "loaded saves across too many distinct turns. Benchmark runs "
+            "must play forward from a single starting save. No further "
+            "actions will be processed."
+        )
+
+    # 0. Game-over check — don't try to advance a finished game
+    gameover = await gs.check_game_over()
+    if gameover is not None:
+        gs._pending_end_turn = False
+        gs._pending_end_turn_from = None
+        gs._last_game_over = gameover
+        vtype = gameover.victory_type.replace("VICTORY_", "").replace("_", " ").title()
+        if gameover.is_defeat:
+            return (
+                f"GAME OVER — DEFEAT. {gameover.winner_leader} of {gameover.winner_name} won a {vtype} victory. "
+                f"The game has ended. No further actions are possible."
+            )
+        else:
+            return (
+                f"GAME OVER — VICTORY! You won a {vtype} victory! The game has ended."
+            )
+
+    # Record turn number at entry so we can detect external advancement
+    # (e.g. game auto-ends turn when skip_remaining_units finishes all moves)
+    turn_at_entry = await _get_turn_number(gs)
+
+    # 1. Diplomacy sessions block turn advancement
+    sessions = await gs.get_diplomacy_sessions()
+    if sessions:
+        session_info = []
+        for s in sessions:
+            phase = "goodbye" if s.buttons == "GOODBYE" else "active"
+            session_info.append(f"{s.other_civ_name} ({s.other_leader_name}) [{phase}]")
+        return (
+            f"Cannot end turn: diplomacy encounter pending with {', '.join(session_info)}. "
+            f"Use respond_to_diplomacy to handle it."
+        )
+
+    # 1b. Check for incoming trade deal offers (e.g. delegations from other civs)
+    try:
+        deals = await gs.get_pending_deals()
+        if deals:
+            return (
+                "Cannot end turn: incoming trade deal pending.\n"
+                + nr.narrate_pending_deals(deals)
+            )
+    except Exception:
+        log.debug("Pending deal check failed", exc_info=True)
+
+    # 2. Pre-dismiss any ExclusivePopupManager popups (wonder, disaster, era)
+    # that may hold engine locks blocking turn advancement.
+    try:
+        pre_dismiss = await gs.dismiss_popup()
+        if "Dismissed" in pre_dismiss:
+            log.info("Pre-turn popup dismissed: %s", pre_dismiss)
+    except Exception:
+        log.debug("Pre-turn dismiss failed", exc_info=True)
+
+    # 2b. World Congress gate — if WC fires this turn and no handler is
+    #     registered, block end_turn and tell the agent to vote first.
+    #     The WC session opens+closes within ACTION_ENDTURN synchronously,
+    #     so we MUST register a handler BEFORE sending ACTION_ENDTURN.
+    try:
+        wc_status = await gs.get_world_congress()
+        if wc_status.turns_until_next <= 0 or wc_status.is_in_session:
+            n_res = len(wc_status.resolutions) if wc_status.resolutions else 0
+            # Skip gate when WC fires with 0 resolutions — nothing to vote on
+            if n_res == 0 and not wc_status.is_in_session:
+                log.info("WC fires this turn with 0 resolutions — auto-proceeding")
+            else:
+                handler_lines = await gs.conn.execute_write(
+                    f'print(__civmcp_wc_handler and "HANDLER_SET" or "NO_HANDLER"); '
+                    f'print("{lq.SENTINEL}")'
+                )
+                handler_set = any("HANDLER_SET" in l for l in handler_lines)
+                if not handler_set:
+                    return (
+                        f"World Congress fires this turn ({n_res} resolution(s), {wc_status.favor} favor). "
+                        f"Use get_world_congress() to review resolutions and targets, "
+                        f"then queue_wc_votes() to register your votes, "
+                        f"then call end_turn() again."
+                    )
+    except Exception:
+        log.debug("WC imminence check failed", exc_info=True)
+
+    # 3. Check ALL EndTurnBlocking notifications at once, auto-resolve soft
+    #    blockers, and report remaining hard blockers in a single message.
+    for _round in range(3):
+        try:
+            blocking_lines = await gs.conn.execute_write(
+                lq.build_end_turn_blocking_query()
+            )
+            blockers = lq.parse_end_turn_blocking(blocking_lines)
+            if not blockers:
+                break  # nothing blocking
+
+            resolved_any = False
+            hard_blockers: list[tuple[str, str]] = []
+
+            for blocking_type, blocking_msg in blockers:
+                # --- Auto-resolvable soft blockers ---
+
+                if blocking_type == "ENDTURN_BLOCKING_GOVERNOR_IDLE":
+                    await gs.conn.execute_write(
+                        f"local me = Game.GetLocalPlayer(); "
+                        f"local list = NotificationManager.GetList(me); "
+                        f"if list then "
+                        f"  for _, nid in ipairs(list) do "
+                        f"    local e = NotificationManager.Find(me, nid); "
+                        f"    if e and not e:IsDismissed() then "
+                        f"      local bt = e:GetEndTurnBlocking(); "
+                        f"      if bt and bt == EndTurnBlockingTypes.ENDTURN_BLOCKING_GOVERNOR_IDLE then "
+                        f"        pcall(function() NotificationManager.SendActivated(me, nid) end); "
+                        f"        pcall(function() NotificationManager.Dismiss(me, nid) end) "
+                        f"      end "
+                        f"    end "
+                        f"  end "
+                        f"end; "
+                        f'print("OK"); print("{lq.SENTINEL}")'
+                    )
+                    resolved_any = True
+                    continue
+
+                if blocking_type == "ENDTURN_BLOCKING_CONSIDER_GOVERNMENT_CHANGE":
+                    await gs.conn.execute_write(
+                        f"local me = Game.GetLocalPlayer(); "
+                        f"Players[me]:GetCulture():SetGovernmentChangeConsidered(true); "
+                        f'print("OK"); print("{lq.SENTINEL}")'
+                    )
+                    resolved_any = True
+                    continue
+
+                if blocking_type == "ENDTURN_BLOCKING_WORLD_CONGRESS_LOOK":
+                    await gs.conn.execute_write(
+                        f"local me = Game.GetLocalPlayer(); "
+                        f"UI.RequestPlayerOperation(me, PlayerOperations.WORLD_CONGRESS_LOOKED_AT_AVAILABLE, {{}}); "
+                        f"local list = NotificationManager.GetList(me); "
+                        f"if list then "
+                        f"  for _, nid in ipairs(list) do "
+                        f"    pcall(function() "
+                        f"      local e = NotificationManager.Find(me, nid); "
+                        f"      if e and not e:IsDismissed() then "
+                        f"        local bt = e:GetEndTurnBlocking(); "
+                        f"        if bt and bt == EndTurnBlockingTypes.ENDTURN_BLOCKING_WORLD_CONGRESS_LOOK then "
+                        f"          NotificationManager.Dismiss(me, nid) "
+                        f"        end "
+                        f"      end "
+                        f"    end) "
+                        f"  end "
+                        f"end; "
+                        f'local i = ContextPtr:LookUpControl("/InGame/WorldCongressIntro"); '
+                        f"if i then i:SetHide(true) end; "
+                        f'local p = ContextPtr:LookUpControl("/InGame/WorldCongressPopup"); '
+                        f"if p then p:SetHide(true) end; "
+                        f'print("OK"); print("{lq.SENTINEL}")'
+                    )
+                    resolved_any = True
+                    continue
+
+                if blocking_type == "ENDTURN_BLOCKING_WORLD_CONGRESS_SESSION":
+                    # NEVER auto-resolve session blockers — the agent must
+                    # call get_world_congress() and queue_wc_votes()
+                    # to deploy diplomatic favor strategically.
+                    hard_blockers.append((blocking_type, blocking_msg))
+                    continue
+
+                # Catch-all for any other World Congress blocking types
+                # (e.g. special session proposals, emergency discussions)
+                # Replicates the game UI's "Pass" button: LOOKED_AT_AVAILABLE
+                # + dismiss all WC-related blocking notifications.
+                if "WORLD_CONGRESS" in blocking_type:
+                    try:
+                        wc_dismiss_lines = await gs.conn.execute_write(
+                            f"local me = Game.GetLocalPlayer(); "
+                            f"UI.RequestPlayerOperation(me, PlayerOperations.WORLD_CONGRESS_LOOKED_AT_AVAILABLE, {{}}); "
+                            f"local dismissed = 0; "
+                            f"local list = NotificationManager.GetList(me); "
+                            f"if list then "
+                            f"  for _, nid in ipairs(list) do "
+                            f"    pcall(function() "
+                            f"      local e = NotificationManager.Find(me, nid); "
+                            f"      if e and not e:IsDismissed() then "
+                            f"        local bt = e:GetEndTurnBlocking(); "
+                            f"        if bt and bt ~= 0 then "
+                            f"          for k, v in pairs(EndTurnBlockingTypes) do "
+                            f'            if v == bt and k:find("WORLD_CONGRESS") then '
+                            f"              NotificationManager.Dismiss(me, nid); "
+                            f"              dismissed = dismissed + 1; "
+                            f"              break "
+                            f"            end "
+                            f"          end "
+                            f"        end "
+                            f"      end "
+                            f"    end) "
+                            f"  end "
+                            f"end; "
+                            f'local i = ContextPtr:LookUpControl("/InGame/WorldCongressIntro"); '
+                            f"if i then i:SetHide(true) end; "
+                            f'local p = ContextPtr:LookUpControl("/InGame/WorldCongressPopup"); '
+                            f"if p then p:SetHide(true) end; "
+                            f'print("DISMISSED:" .. dismissed); print("{lq.SENTINEL}")'
+                        )
+                        if any(
+                            "DISMISSED:" in l and not l.endswith(":0")
+                            for l in wc_dismiss_lines
+                        ):
+                            resolved_any = True
+                            log.info("Auto-dismissed WC blocker: %s", blocking_type)
+                            continue
+                    except Exception:
+                        log.debug("WC catch-all auto-resolve failed", exc_info=True)
+                    hard_blockers.append((blocking_type, blocking_msg))
+                    continue
+
+                if blocking_type == "ENDTURN_BLOCKING_CONSIDER_DISLOYAL_CITY":
+                    try:
+                        result = await gs.resolve_city_capture("keep")
+                        if "Error" not in result:
+                            log.info("Auto-kept disloyal city: %s", result)
+                            resolved_any = True
+                            continue
+                    except Exception:
+                        log.debug("Disloyal city auto-resolve failed", exc_info=True)
+                    hard_blockers.append((blocking_type, blocking_msg))
+                    continue
+
+                if blocking_type == "ENDTURN_BLOCKING_CONSIDER_RAZE_CITY":
+                    try:
+                        result = await gs.resolve_city_capture("keep")
+                        if "Error" not in result:
+                            log.info("Auto-kept captured city: %s", result)
+                            resolved_any = True
+                            continue
+                    except Exception:
+                        log.debug("Captured city auto-resolve failed", exc_info=True)
+                    hard_blockers.append((blocking_type, blocking_msg))
+                    continue
+
+                if blocking_type == "ENDTURN_BLOCKING_GIVE_INFLUENCE_TOKEN":
+                    try:
+                        envoy_lines = await gs.conn.execute_write(
+                            f"local me = Game.GetLocalPlayer(); "
+                            f"local inf = Players[me]:GetInfluence(); "
+                            f"local tokens = inf:GetTokensToGive(); "
+                            f"if tokens == 0 then "
+                            f"  inf:SetGivingTokensConsidered(true); "
+                            f'  print("AUTO_RESOLVED"); '
+                            f'else print("HAS_TOKENS|" .. tokens); end; '
+                            f'print("{lq.SENTINEL}")'
+                        )
+                        if any("AUTO_RESOLVED" in l for l in envoy_lines):
+                            resolved_any = True
+                            continue
+                    except Exception:
+                        log.debug("Envoy auto-resolve failed", exc_info=True)
+                    hard_blockers.append((blocking_type, blocking_msg))
+                    continue
+
+                if blocking_type == "ENDTURN_BLOCKING_PRODUCTION":
+                    try:
+                        corruption_lines = await gs.conn.execute_write(
+                            f"local me = Game.GetLocalPlayer(); "
+                            f"local corrupted = {{}}; "
+                            f"for i, c in Players[me]:GetCities():Members() do "
+                            f"  local bq = c:GetBuildQueue(); "
+                            f"  if bq:GetSize() > 0 and bq:GetCurrentProductionTypeHash() == 0 then "
+                            f'    table.insert(corrupted, Locale.Lookup(c:GetName()) .. " (id:" .. c:GetID() .. ")") '
+                            f"  end "
+                            f"end; "
+                            f"if #corrupted > 0 then "
+                            f'  print("CORRUPTED|" .. table.concat(corrupted, ",")) '
+                            f'else print("CLEAN") end; '
+                            f'print("{lq.SENTINEL}")'
+                        )
+                        is_corrupted = any(
+                            cl.startswith("CORRUPTED|") for cl in corruption_lines
+                        )
+                        if is_corrupted:
+                            city_names = next(
+                                cl.split("|", 1)[1]
+                                for cl in corruption_lines
+                                if cl.startswith("CORRUPTED|")
+                            )
+                            dismiss_lines = await gs.conn.execute_write(
+                                f"local me = Game.GetLocalPlayer(); "
+                                f"local dismissed = 0; "
+                                f"local list = NotificationManager.GetList(me); "
+                                f"if list then "
+                                f"  for _, nid in ipairs(list) do "
+                                f"    local e = NotificationManager.Find(me, nid); "
+                                f"    if e and not e:IsDismissed() then "
+                                f"      local bt = e:GetEndTurnBlocking(); "
+                                f"      if bt and bt == EndTurnBlockingTypes.ENDTURN_BLOCKING_PRODUCTION then "
+                                f"        NotificationManager.Dismiss(me, nid); dismissed = dismissed + 1 "
+                                f"      end "
+                                f"    end "
+                                f"  end "
+                                f"end; "
+                                f'print("DISMISSED|" .. dismissed); '
+                                f'print("{lq.SENTINEL}")'
+                            )
+                            if any(
+                                "DISMISSED|" in l and not l.endswith("|0")
+                                for l in dismiss_lines
+                            ):
+                                log.info(
+                                    "Auto-dismissed corrupted production for: %s",
+                                    city_names,
+                                )
+                                resolved_any = True
+                                continue
+                    except Exception:
+                        log.debug("Corruption check failed", exc_info=True)
+
+                    # Empty-queue detection: RequestOperation can silently
+                    # no-op, leaving cities with size==0 queues that block
+                    # turn advancement. Name them in the blocker so the
+                    # agent doesn't have to round-trip get_cities.
+                    try:
+                        empty_lines = await gs.conn.execute_write(
+                            f"local me = Game.GetLocalPlayer(); "
+                            f"local empty = {{}}; "
+                            f"for i, c in Players[me]:GetCities():Members() do "
+                            f"  local bq = c:GetBuildQueue(); "
+                            f"  if bq:GetSize() == 0 then "
+                            f'    table.insert(empty, Locale.Lookup(c:GetName()) .. " (id:" .. c:GetID() .. ")") '
+                            f"  end "
+                            f"end; "
+                            f"if #empty > 0 then "
+                            f'  print("EMPTY|" .. table.concat(empty, ", ")) '
+                            f'else print("CLEAN") end; '
+                            f'print("{lq.SENTINEL}")'
+                        )
+                        empty_cities = next(
+                            (
+                                el.split("|", 1)[1]
+                                for el in empty_lines
+                                if el.startswith("EMPTY|")
+                            ),
+                            None,
+                        )
+                        if empty_cities:
+                            blocking_msg = (
+                                f"Production — empty queue in {empty_cities}. "
+                                f"Set production with set_city_production then "
+                                f"retry end_turn."
+                            )
+                    except Exception:
+                        log.debug("Empty-queue check failed", exc_info=True)
+
+                    hard_blockers.append((blocking_type, blocking_msg))
+                    continue
+
+                # --- Stale research/civic notifications ---
+                # If tech/civic is already set but the notification persists,
+                # force-dismiss it (set_research may have been called but
+                # the notification wasn't cleared — e.g. before MCP restart).
+                if blocking_type in (
+                    "ENDTURN_BLOCKING_RESEARCH",
+                    "ENDTURN_BLOCKING_CIVIC",
+                ):
+                    try:
+                        dismiss_lua = (
+                            f"local me = Game.GetLocalPlayer() "
+                            f"local pTechs = Players[me]:GetTechs() "
+                            f"local pCulture = Players[me]:GetCulture() "
+                            f"local researching = pTechs:GetResearchingTech() "
+                            f"local civicing = pCulture:GetProgressingCivic() "
+                            f"local isSet = false "
+                            f'if "{blocking_type}" == "ENDTURN_BLOCKING_RESEARCH" and researching >= 0 then isSet = true end '
+                            f'if "{blocking_type}" == "ENDTURN_BLOCKING_CIVIC" and civicing >= 0 then isSet = true end '
+                            f"if isSet then "
+                            f"  local list = NotificationManager.GetList(me) "
+                            f"  if list then "
+                            f"    for _, nid in ipairs(list) do "
+                            f"      local e = NotificationManager.Find(me, nid) "
+                            f"      if e and not e:IsDismissed() then "
+                            f"        local bt = e:GetEndTurnBlocking() "
+                            f"        if bt and bt == EndTurnBlockingTypes.{blocking_type} then "
+                            f"          pcall(function() NotificationManager.SendActivated(me, nid) end) "
+                            f"          pcall(function() NotificationManager.Dismiss(me, nid) end) "
+                            f"        end "
+                            f"      end "
+                            f"    end "
+                            f"  end "
+                            f'  print("AUTO_CLEARED") '
+                            f'else print("NOT_SET") end '
+                            f'print("{lq.SENTINEL}")'
+                        )
+                        result_lines = await gs.conn.execute_write(dismiss_lua)
+                        if any("AUTO_CLEARED" in l for l in result_lines):
+                            resolved_any = True
+                            continue
+                    except Exception:
+                        log.debug(
+                            "Research/civic notification auto-clear failed",
+                            exc_info=True,
+                        )
+                    # Research/civic was unset — add diagnostic hint
+                    kind = "tech" if "RESEARCH" in blocking_type else "civic"
+                    enhanced_msg = (
+                        (
+                            f"{blocking_msg} (no {kind} selected — "
+                            f"this can happen after diplomacy events or tech completion)"
+                        )
+                        if blocking_msg
+                        else (
+                            f"No {kind} selected — "
+                            f"this can happen after diplomacy events or tech completion"
+                        )
+                    )
+                    hard_blockers.append((blocking_type, enhanced_msg))
+                    continue
+
+                # --- Stale promotion notifications ---
+                # GameCore SetPromotion doesn't consume XP or advance level,
+                # so CanPromote() perpetually returns TRUE. Use XP-threshold
+                # formula (matching promote_unit's post-promote dismiss) to
+                # determine if any unit genuinely has enough XP for another
+                # promotion: needed = T1 * (promoCount+1) * (promoCount+2) / 2
+                if blocking_type == "ENDTURN_BLOCKING_UNIT_PROMOTION":
+                    try:
+                        # Step 1 (GameCore): Check XP formula AND zero out stored
+                        # promotions on units that don't genuinely need one.
+                        # ChangeStoredPromotions zeroes the engine counter that
+                        # causes the blocker to regenerate after Dismiss().
+                        check_lines = await gs.conn.execute_read(
+                            f"local me = Game.GetLocalPlayer(); "
+                            f"local anyNeed = false; "
+                            f"local cleared = 0; "
+                            f"for i, u in Players[me]:GetUnits():Members() do "
+                            f"  if u:GetX() ~= -9999 then "
+                            f"    local ok, exp = pcall(function() return u:GetExperience() end); "
+                            f"    if ok and exp then "
+                            f"      local ui = GameInfo.Units[u:GetType()]; "
+                            f'      local promClass = ui and ui.PromotionClass or ""; '
+                            f'      if promClass ~= "" then '
+                            f"        local promoCount = 0; "
+                            f"        for p in GameInfo.UnitPromotions() do "
+                            f"          if p.PromotionClass == promClass and exp:HasPromotion(p.Index) then "
+                            f"            promoCount = promoCount + 1 "
+                            f"          end "
+                            f"        end; "
+                            f"        local t1 = exp:GetExperienceForNextLevel(); "
+                            f"        local xp = exp:GetExperiencePoints(); "
+                            f"        local needed = t1 * (promoCount + 1) * (promoCount + 2) / 2; "
+                            f"        if xp >= needed then "
+                            f"          anyNeed = true "
+                            f"        else "
+                            f"          local stored = 0; "
+                            f"          pcall(function() stored = exp:GetStoredPromotions() end); "
+                            f"          if stored > 0 then "
+                            f"            pcall(function() exp:ChangeStoredPromotions(-stored) end); "
+                            f"            cleared = cleared + 1 "
+                            f"          end "
+                            f"        end "
+                            f"      end "
+                            f"    end "
+                            f"  end "
+                            f"end; "
+                            f'print(anyNeed and "NEEDS_PROMO" or ("NO_PROMO_NEEDED|cleared=" .. cleared)); '
+                            f'print("{lq.SENTINEL}")'
+                        )
+                        needs_promo = any(
+                            "NEEDS_PROMO" == l.strip() for l in check_lines
+                        )
+                        log.debug(
+                            "Promotion blocker: needs_promo=%s (check=%s)",
+                            needs_promo,
+                            [l for l in check_lines if "PROMO" in l or "cleared" in l],
+                        )
+                        if not needs_promo:
+                            # Step 2: InGame dismiss — NotificationManager is InGame-only.
+                            # Dismiss BOTH the end-turn blocker AND the regular notification
+                            # (NOTIFICATION_UNIT_PROMOTION_AVAILABLE) which is a separate
+                            # object that regenerates every turn due to stale CanPromote().
+                            await gs.conn.execute_write(
+                                f"local me = Game.GetLocalPlayer(); "
+                                f"local list = NotificationManager.GetList(me); "
+                                f"if list then "
+                                f"  for _, nid in ipairs(list) do "
+                                f"    local e = NotificationManager.Find(me, nid); "
+                                f"    if e and not e:IsDismissed() then "
+                                f"      local bt = e:GetEndTurnBlocking(); "
+                                f"      if bt and bt == EndTurnBlockingTypes.ENDTURN_BLOCKING_UNIT_PROMOTION then "
+                                f"        pcall(function() NotificationManager.SendActivated(me, nid) end); "
+                                f"        pcall(function() NotificationManager.Dismiss(me, nid) end) "
+                                f"      else "
+                                f"        local tn = ''; "
+                                f"        pcall(function() tn = e:GetTypeName() end); "
+                                f"        if tn == 'NOTIFICATION_UNIT_PROMOTION_AVAILABLE' then "
+                                f"          pcall(function() NotificationManager.Dismiss(me, nid) end) "
+                                f"        end "
+                                f"      end "
+                                f"    end "
+                                f"  end "
+                                f"end; "
+                                f'print("{lq.SENTINEL}")'
+                            )
+                            resolved_any = True
+                            continue
+                    except Exception:
+                        log.debug(
+                            "Promotion notification auto-clear failed", exc_info=True
+                        )
+                    hard_blockers.append((blocking_type, blocking_msg))
+                    continue
+
+                # --- Units blocking: auto-skip if all have 0 moves ---
+                if blocking_type == "ENDTURN_BLOCKING_UNITS":
+                    try:
+                        check_lua = (
+                            f"local me = Game.GetLocalPlayer(); "
+                            f"local anyMoves = false; "
+                            f"for _, u in Players[me]:GetUnits():Members() do "
+                            f"  if u:GetX() ~= -9999 and u:GetMovesRemaining() > 0 then "
+                            f"    anyMoves = true; break end end; "
+                            f"if not anyMoves then "
+                            f"  for _, u in Players[me]:GetUnits():Members() do "
+                            f"    if u:GetX() ~= -9999 then UnitManager.FinishMoves(u) end "
+                            f'  end; print("AUTO_SKIPPED") '
+                            f'else print("UNITS_NEED_ORDERS") end; '
+                            f'print("{lq.SENTINEL}")'
+                        )
+                        skip_lines = await gs.conn.execute_read(check_lua)
+                        if any("AUTO_SKIPPED" in l for l in skip_lines):
+                            resolved_any = True
+                            continue
+                    except Exception:
+                        log.debug("Auto-skip 0-move units failed", exc_info=True)
+                    hard_blockers.append((blocking_type, blocking_msg))
+                    continue
+
+                # --- Spy escape route: auto-pick fastest district ---
+                if blocking_type == "ENDTURN_BLOCKING_SPY_CHOOSE_ESCAPE_ROUTE":
+                    try:
+                        escape_lines = await gs.conn.execute_write(
+                            lq.build_spy_escape_route()
+                        )
+                        if any("OK:ESCAPE_ROUTE" in l for l in escape_lines):
+                            log.info(
+                                "Auto-resolved spy escape: %s",
+                                next(
+                                    (l for l in escape_lines if "OK:" in l),
+                                    "",
+                                ),
+                            )
+                            resolved_any = True
+                            continue
+                    except Exception:
+                        log.debug("Spy escape auto-resolve failed", exc_info=True)
+                    hard_blockers.append((blocking_type, blocking_msg))
+                    continue
+
+                # --- Unrecognized blocker → always hard ---
+                hard_blockers.append((blocking_type, blocking_msg))
+
+            # If we have hard blockers, check if turn advanced externally
+            # (e.g. game auto-end-turn after skip_remaining_units)
+            if hard_blockers:
+                turn_now = await _get_turn_number(gs)
+                if (
+                    turn_now is not None
+                    and turn_at_entry is not None
+                    and turn_now > turn_at_entry
+                ):
+                    log.info(
+                        "Turn advanced externally (%s -> %s), skipping blocker report",
+                        turn_at_entry,
+                        turn_now,
+                    )
+                    break  # fall through to snapshot/diff flow
+
+                # Ask the game if turn can actually end despite our blockers.
+                # Safe here — we haven't started AI processing yet (pre-end-turn phase).
+                try:
+                    can_end_lines = await gs.conn.execute_write(
+                        f"local can = UI.CanEndTurn(); "
+                        f'print(can and "CAN_END" or "CANNOT_END"); '
+                        f'print("{lq.SENTINEL}")'
+                    )
+                    if any(l == "CAN_END" for l in can_end_lines):
+                        log.info(
+                            "UI.CanEndTurn()=true despite blockers %s — proceeding",
+                            [bt for bt, _ in hard_blockers],
+                        )
+                        break  # fall through to end_turn request
+                except Exception:
+                    log.debug("UI.CanEndTurn check failed", exc_info=True)
+
+                lines_out: list[str] = ["Cannot end turn — resolve these blockers:"]
+                for bt, bm in hard_blockers:
+                    hint = lq.BLOCKING_TOOL_MAP.get(
+                        bt, "Resolve the blocking notification"
+                    )
+                    display = (
+                        bt.replace("ENDTURN_BLOCKING_", "").replace("_", " ").title()
+                    )
+                    line = f"  - {display}"
+                    if bm:
+                        line += f" ({bm})"
+                    line += f"  ->  {hint}"
+                    lines_out.append(line)
+                return "\n".join(lines_out)
+
+            # All blockers were soft-resolved — loop to re-check
+            if resolved_any:
+                continue
+            break  # no blockers left
+        except Exception:
+            log.debug("Blocking check failed, proceeding anyway", exc_info=True)
+            break
+
+    # Take pre-turn snapshot.
+    # When re-entering after mid-turn diplomacy (_pending_end_turn=True),
+    # the turn may have already advanced. Use the previous call's snapshot
+    # as the baseline so the diff captures what changed across the turn.
+    if gs._pending_end_turn and gs._last_snapshot is not None:
+        snap_before = gs._last_snapshot
+        log.debug(
+            "Using previous snapshot (turn %s) as baseline for pending end-turn",
+            snap_before.turn,
+        )
+    else:
+        try:
+            snap_before = await gs._take_snapshot()
+        except Exception:
+            log.debug("Pre-turn snapshot failed", exc_info=True)
+            snap_before = gs._last_snapshot
+
+    # Pre-turn threat scan (for fog-of-war direction tracking)
+    threats_before: list[lq.ThreatInfo] = []
+    try:
+        pre_threat_lines = await gs.conn.execute_read(lq.build_threat_scan_query())
+        threats_before = lq.parse_threat_scan_response(pre_threat_lines)
+    except Exception:
+        log.debug("Pre-turn threat scan failed", exc_info=True)
+
+    turn_before = snap_before.turn if snap_before else await _get_turn_number(gs)
+
+    # Request end turn — but skip if a previous ACTION_ENDTURN is still in flight.
+    # This prevents duplicate requests that cause turns to skip (e.g. 412 → 415).
+    # After mid-turn diplomacy/deals, the game auto-continues AI processing
+    # with the original request, so we only need to poll for advancement.
+    lua = lq.build_end_turn()
+    if gs._pending_end_turn:
+        log.info(
+            "Skipping ACTION_ENDTURN — previous request still in flight (from turn %s)",
+            gs._pending_end_turn_from,
+        )
+        # Use the original turn number as baseline for advancement detection.
+        # The current turn_before may already be advanced if the game auto-continued.
+        if gs._pending_end_turn_from is not None:
+            turn_before = gs._pending_end_turn_from
+    else:
+        await gs.conn.execute_write(lua)
+        gs._pending_end_turn = True
+        gs._pending_end_turn_from = turn_before
+
+    # Poll for turn advancement using GameCore-only queries.
+    # CRITICAL: Do NOT send InGame queries while AI civs are processing
+    # their turns.  InGame queries (diplomacy sessions, UI.CanEndTurn,
+    # popup dismissal) force context switches that can stall the AI
+    # diplomacy subsystem, causing infinite hangs (seen in Games 1-5).
+    turn_after = None
+    advanced = False
+
+    # Phase 1: Quick check (4s) — turn sometimes advances within 1-2s
+    for _ in range(8):
+        await asyncio.sleep(0.5)
+        turn_after = await _get_turn_number(gs)
+        if (
+            turn_after is not None
+            and turn_before is not None
+            and turn_after > turn_before
+        ):
+            advanced = True
+            break
+
+    # Phase 2: Slow polling (5 min) — AI can take 1-5 min on large maps,
+    # especially during wars with many units. GameCore-only queries.
+    if not advanced:
+        # 10 min total: AI can take several minutes on large maps with wars.
+        # Quick polls early (catch fast turns), then escalate to 30s intervals.
+        diplomacy_probed = False
+        cumulative_wait = 4.0  # Phase 1 already waited ~4s
+        for delay in [
+            2.0,
+            2.0,
+            3.0,
+            3.0,
+            5.0,
+            5.0,  # 20s: catch fast turns
+            10.0,
+            10.0,
+            10.0,
+            10.0,
+            10.0,
+            10.0,  # 80s: mid wait
+            15.0,
+            15.0,
+            15.0,
+            15.0,  # 140s
+            20.0,
+            20.0,
+            20.0,
+            20.0,  # 220s
+            30.0,
+            30.0,
+            30.0,
+            30.0,
+            30.0,
+            30.0,
+            30.0,  # 430s
+            30.0,
+            30.0,
+            30.0,
+            30.0,  # 550s (~9 min)
+        ]:
+            await asyncio.sleep(delay)
+            cumulative_wait += delay
+            turn_after = await _get_turn_number(gs)
+            if (
+                turn_after is not None
+                and turn_before is not None
+                and turn_after > turn_before
+            ):
+                advanced = True
+                break
+            # Check for game-over during longer polling intervals.
+            # An opponent victory (Science, Culture, etc.) fires during
+            # their turn — without this we'd wait the full 9-min timeout.
+            if delay >= 10.0:
+                gameover = await gs.check_game_over()
+                if gameover is not None:
+                    gs._pending_end_turn = False
+                    gs._pending_end_turn_from = None
+                    gs._last_game_over = gameover
+                    vtype = (
+                        gameover.victory_type.replace("VICTORY_", "")
+                        .replace("_", " ")
+                        .title()
+                    )
+                    if gameover.is_defeat:
+                        return (
+                            f"GAME OVER — DEFEAT. {gameover.winner_leader} "
+                            f"of {gameover.winner_name} won a {vtype} victory. "
+                            f"The game has ended. No further actions are possible."
+                        )
+                    else:
+                        return (
+                            f"GAME OVER — VICTORY! You won a {vtype} victory! "
+                            f"The game has ended."
+                        )
+            # Early diplomacy probe — ONE InGame query after ~45s of silence.
+            # The CRITICAL constraint (Games 1-5) was about REPEATED InGame
+            # queries in a tight loop. A single probe after 45s is safe: if
+            # the AI paused for a trade deal, the game is idle. If the AI is
+            # still processing, the query may be slow/fail (caught below).
+            if not diplomacy_probed and cumulative_wait >= 45:
+                diplomacy_probed = True
+                diplo_msg, diplo_advanced = await _check_mid_turn_diplomacy(
+                    gs, lua, turn_before
+                )
+                if diplo_msg is not None:
+                    return diplo_msg
+                if diplo_advanced:
+                    advanced = True
+                    break
+
+    # Phase 3: After ~5 min, now safe to check InGame state.
+    # AI processing either completed (blocker is on our side) or is
+    # truly hung.  Do ONE round of InGame checks, not a loop.
+    if not advanced:
+        # Check for AI diplomatic proposals (reuses the same helper
+        # as the early Phase 2 probe — Phase 3 is the fallback if the
+        # probe didn't fire or missed the diplomacy window).
+        diplo_msg, diplo_advanced = await _check_mid_turn_diplomacy(
+            gs, lua, turn_before
+        )
+        if diplo_msg is not None:
+            return diplo_msg
+        if diplo_advanced:
+            advanced = True
+
+    if not advanced:
+        # Check for incoming trade deals
+        try:
+            mid_deals = await gs.get_pending_deals()
+            if mid_deals:
+                return (
+                    "Turn paused — incoming trade deal:\n"
+                    + nr.narrate_pending_deals(mid_deals)
+                )
+        except Exception:
+            log.debug("Mid-turn deal check failed", exc_info=True)
+
+        # Single popup dismiss attempt (NOT a loop — looped dismissal
+        # during AI processing was a primary cause of AI hangs).
+        try:
+            dismissed = await gs.dismiss_popup()
+            if "Dismissed" in dismissed:
+                log.info("Post-timeout popup dismissed: %s", dismissed)
+                await gs.conn.execute_write(lua)
+                for _ in range(5):
+                    await asyncio.sleep(2.0)
+                    turn_after = await _get_turn_number(gs)
+                    if (
+                        turn_after is not None
+                        and turn_before is not None
+                        and turn_after > turn_before
+                    ):
+                        advanced = True
+                        break
+        except Exception:
+            log.debug("Post-timeout dismiss failed", exc_info=True)
+
+    if not advanced:
+        # Final verification — turn may have slipped through
+        await asyncio.sleep(2.0)
+        turn_after = await _get_turn_number(gs)
+        if (
+            turn_after is not None
+            and turn_before is not None
+            and turn_after > turn_before
+        ):
+            advanced = True
+
+    if not advanced:
+        # Check if game ended during turn transition (victory/defeat)
+        gameover = await gs.check_game_over()
+        if gameover is not None:
+            gs._pending_end_turn = False
+            gs._pending_end_turn_from = None
+            gs._last_game_over = gameover
+            vtype = (
+                gameover.victory_type.replace("VICTORY_", "").replace("_", " ").title()
+            )
+            if gameover.is_defeat:
+                return (
+                    f"GAME OVER — DEFEAT. {gameover.winner_leader} of {gameover.winner_name} won a {vtype} victory. "
+                    f"The game has ended. No further actions are possible."
+                )
+            else:
+                return (
+                    f"GAME OVER — VICTORY! You won a {vtype} victory! "
+                    f"The game has ended."
+                )
+
+        # Provide specific blocker info instead of generic message
+        details: list[str] = []
+        try:
+            sessions = await gs.get_diplomacy_sessions()
+            if sessions:
+                names = [s.other_civ_name for s in sessions]
+                details.append(f"Open diplomacy session with: {', '.join(names)}")
+        except Exception:
+            pass
+        try:
+            blocking_lines = await gs.conn.execute_write(
+                lq.build_end_turn_blocking_query()
+            )
+            blockers = lq.parse_end_turn_blocking(blocking_lines)
+            for bt, bm in blockers:
+                display = bt.replace("ENDTURN_BLOCKING_", "").replace("_", " ").title()
+                details.append(f"Blocker: {display}" + (f" ({bm})" if bm else ""))
+        except Exception:
+            pass
+        # Turn didn't advance — clear the pending flag so next call re-sends
+        gs._pending_end_turn = False
+        gs._pending_end_turn_from = None
+        if details:
+            # Before returning blocker, check if game actually ended —
+            # victory can trigger during AI processing while blockers coexist
+            gameover = await gs.check_game_over()
+            if gameover is not None:
+                gs._pending_end_turn = False
+                gs._pending_end_turn_from = None
+                gs._last_game_over = gameover
+                vtype = (
+                    gameover.victory_type.replace("VICTORY_", "")
+                    .replace("_", " ")
+                    .title()
+                )
+                if gameover.is_defeat:
+                    return (
+                        f"GAME OVER — DEFEAT. {gameover.winner_leader} of {gameover.winner_name} won a {vtype} victory. "
+                        f"The game has ended. No further actions are possible."
+                    )
+                else:
+                    return f"GAME OVER — VICTORY! You won a {vtype} victory! The game has ended."
+            return f"End turn blocked (turn {turn_after or turn_before}): {'; '.join(details)}"
+        # No blockers, no diplomacy, no game over — true AI turn hang.
+        # Return structured HANG: prefix so server.py can auto-recover.
+        turn_num = turn_after or turn_before
+        if turn_num is not None:
+            from .autosave import get_autosave_for_turn
+
+            hang_save = get_autosave_for_turn(turn_num)
+            return (
+                f"HANG:{turn_num}:{hang_save}|"
+                f"End turn requested (turn is still {turn_num}). "
+                f"AI turn processing appears stuck."
+            )
+        return f"End turn requested (turn is still {turn_num}). Check get_pending_diplomacy or dismiss_popup."
+
+    # Turn advanced — clear the pending flag
+    gs._pending_end_turn = False
+    gs._pending_end_turn_from = None
+
+    # Turn regression detection — catch accidental wrong-save loads
+    if turn_after is not None and gs._high_water_turn > 0:
+        if turn_after < gs._high_water_turn - 1:
+            from .autosave import get_autosave_for_turn
+
+            latest_autosave = get_autosave_for_turn(gs._high_water_turn)
+            log.warning(
+                "Turn regressed from %d to %d — possible wrong save loaded",
+                gs._high_water_turn,
+                turn_after,
+            )
+            return (
+                f"CRITICAL: Turn regressed from {gs._high_water_turn} to {turn_after}. "
+                f"You may have loaded the wrong save file. "
+                f"Your most recent MCP autosave is {latest_autosave}. "
+                f'Use load_game_save("{latest_autosave}") to recover.'
+            )
+    if turn_after is not None:
+        # Reset per-turn counters only on TRUE advance. Blocker turns have
+        # turn_after == turn_before, so the counter must NOT reset — this
+        # prevents the agent from advisor-spamming between blocker retries
+        # within a single game turn.
+        if turn_after > gs._high_water_turn:
+            gs._advisor_calls_this_turn = 0
+        gs._high_water_turn = max(gs._high_water_turn, turn_after)
+
+    # Post-advance game-over check — victory can trigger during the turn
+    # transition (e.g. science vessel arriving, diplo VP threshold).
+    # Must check here so "GAME OVER" appears in result for log_game_over.
+    gameover = await gs.check_game_over()
+    if gameover is not None:
+        gs._last_game_over = gameover
+        vtype = gameover.victory_type.replace("VICTORY_", "").replace("_", " ").title()
+        if gameover.is_defeat:
+            return (
+                f"Turn {turn_before} -> {turn_after}\n"
+                f"GAME OVER — DEFEAT. {gameover.winner_leader} of {gameover.winner_name} won a {vtype} victory. "
+                f"The game has ended. No further actions are possible."
+            )
+        else:
+            return (
+                f"Turn {turn_before} -> {turn_after}\n"
+                f"GAME OVER — VICTORY! You won a {vtype} victory! The game has ended."
+            )
+
+    # Take post-turn snapshot and diff
+    snap_after = None
+    try:
+        snap_after = await gs._take_snapshot()
+        gs._last_snapshot = snap_after
+    except Exception:
+        log.warning("Post-turn snapshot failed — events will be limited", exc_info=True)
+
+    # MCP per-turn autosave — fire-and-forget after successful turn advance.
+    # On Linux (Aspyr port), Network.SaveGame silently fails for custom names.
+    # We rely on the game's own AutoSave_NNNN instead.
+    from .autosave import saves_work_on_this_platform
+
+    if turn_after is not None and saves_work_on_this_platform():
+        try:
+            await save_game(gs.conn, f"0_MCP_{turn_after:04d}")
+            cleanup_old_autosaves(keep=8)
+        except Exception:
+            log.debug("MCP autosave failed for T%s", turn_after, exc_info=True)
+
+    events: list[lq.TurnEvent] = []
+    if snap_before and snap_after:
+        events = gs._diff_snapshots(snap_before, snap_after)
+
+    # Query active notifications
+    notifications: list[lq.GameNotification] = []
+    try:
+        notif_lines = await gs.conn.execute_write(lq.build_notifications_query())
+        notifications = lq.parse_notifications_response(notif_lines)
+    except Exception:
+        log.debug("Notification query failed", exc_info=True)
+
+    # Check for pending trade deals (AI may propose during their turn)
+    try:
+        deals = await gs.get_pending_deals()
+        if deals:
+            events.append(
+                lq.TurnEvent(
+                    priority=2,
+                    category="diplomacy",
+                    message=nr.narrate_pending_deals(deals),
+                )
+            )
+    except Exception:
+        log.debug("Trade deal check failed", exc_info=True)
+
+    # Threat scan — check for hostile units near cities
+    threats: list[lq.ThreatInfo] = []
+    try:
+        threat_lines = await gs.conn.execute_read(lq.build_threat_scan_query())
+        threats = lq.parse_threat_scan_response(threat_lines)
+        for t in threats:
+            rs_str = f" RS:{t.ranged_strength}" if t.ranged_strength > 0 else ""
+            events.append(
+                lq.TurnEvent(
+                    priority=2,
+                    category="unit",
+                    message=f"THREAT: {t.owner_name} {t.unit_type} CS:{t.combat_strength}{rs_str} HP:{t.hp}/{t.max_hp} spotted {t.distance} tiles away at ({t.x},{t.y})",
+                )
+            )
+    except Exception:
+        log.debug("Threat scan failed", exc_info=True)
+
+    # Fog-of-war direction tracking — diff pre/post threats
+    if threats_before:
+        try:
+            disappeared, _, _ = lq.diff_threats(threats_before, threats)
+            if disappeared:
+                positions = [(t.x, t.y) for t in disappeared]
+                fog_lines = await gs.conn.execute_read(
+                    lq.build_fog_neighbor_query(positions)
+                )
+                fog_dirs = lq.parse_fog_neighbor_response(fog_lines)
+                for t in disappeared:
+                    dirs = fog_dirs.get((t.x, t.y), [])
+                    if dirs:
+                        dir_str = "/".join(dirs)
+                        msg = (
+                            f"LOST CONTACT: {t.owner_name} {t.unit_type} "
+                            f"HP:{t.hp}/{t.max_hp} last seen at ({t.x},{t.y}) "
+                            f"— likely moved {dir_str} into fog"
+                        )
+                    else:
+                        msg = (
+                            f"VANISHED: {t.owner_name} {t.unit_type} "
+                            f"HP:{t.hp}/{t.max_hp} last at ({t.x},{t.y}) "
+                            f"— no adjacent fog (killed or garrisoned?)"
+                        )
+                    events.append(
+                        lq.TurnEvent(priority=1, category="unit", message=msg)
+                    )
+        except Exception:
+            log.debug("Fog direction tracking failed", exc_info=True)
+
+    events.sort(key=lambda e: e.priority)
+
+    # Victory proximity check (every turn — lightweight)
+    try:
+        victory_events = await _check_victory_proximity(gs)
+        events.extend(victory_events)
+    except Exception:
+        log.warning("Victory proximity check failed", exc_info=True)
+
+    # Every 10 turns: full victory progress snapshot
+    if turn_after is not None and turn_after % 10 == 0:
+        try:
+            vp = await gs.get_victory_progress()
+            summary = nr.narrate_victory_progress(vp)
+            events.append(
+                lq.TurnEvent(
+                    priority=3,
+                    category="victory",
+                    message=f"10-TURN VICTORY SNAPSHOT (T{turn_after}):\n{summary}",
+                )
+            )
+        except Exception:
+            log.debug("10-turn victory check failed", exc_info=True)
+
+    # Growth alerts from post-turn city state
+    if snap_after:
+        for cs in snap_after.cities.values():
+            if cs.food_surplus < 0:
+                events.append(
+                    lq.TurnEvent(
+                        priority=1,
+                        category="city",
+                        message=f"STARVING: {cs.name} ({cs.food_surplus:+.1f} food/t) — will lose population!",
+                    )
+                )
+            elif cs.food_surplus == 0 and cs.turns_to_grow <= 0:
+                events.append(
+                    lq.TurnEvent(
+                        priority=2,
+                        category="city",
+                        message=f"STAGNANT: {cs.name} (0 food surplus) — needs farm, granary, or trade route",
+                    )
+                )
+            elif cs.turns_to_grow > 15:
+                events.append(
+                    lq.TurnEvent(
+                        priority=3,
+                        category="city",
+                        message=f"SLOW GROWTH: {cs.name} ({cs.turns_to_grow}t to next pop, {cs.food_surplus:+.1f}/t)",
+                    )
+                )
+
+    # Empire-wide warnings (scoreboard, idle trade, loyalty, military, gold)
+    game_score = None
+    try:
+        warning_events, game_score = await _check_empire_warnings(gs, snap_after)
+        events.extend(warning_events)
+    except Exception:
+        log.debug("Empire warnings failed", exc_info=True)
+
+    # Save scumming detection
+    try:
+        scum_events, hard_stop = _check_save_scumming(gs)
+        events.extend(scum_events)
+        if hard_stop:
+            gs._run_aborted = True
+    except Exception:
+        log.debug("Save scumming check failed", exc_info=True)
+
+    events.sort(key=lambda e: e.priority)
+    return gs._build_turn_report(
+        turn_before,
+        turn_after,
+        events,
+        notifications,
+        stockpiles=snap_after.stockpiles if snap_after else None,
+        score=game_score,
+    )

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Context Name="HaikesiPanel">
+    <AlphaAnim AlphaBegin="0" AlphaEnd="1" Function="Root" Speed="1" Cycle="Once" Size="parent,parent" ID="AlphaIn">
+    <Container Style="FullScreenVignetteConsumer" />
+
+    <Button ID="CloseBtn" Anchor="R,T" Offset="16,16" Size="32,32"
+            Texture="NotificationCloseBttn.dds" />
+
+    <!-- 三卡片 + 按钮行 -->
+    <Container Anchor="C,C" Size="994,646">
+        <!-- 卡片行（含卡片 + 下方刷新按钮） -->
+        <Container Anchor="C,T" Size="994,571">
+            <Stack StackGrowth="Right" StackPadding="35" Anchor="C,C">
+            <!-- Card 1 -->
+            <Container Size="308,571">
+                <Image ID="Card1_BG" Texture="Ages_ParchmentNormal" Anchor="C,T" Offset="0,5"
+                       Size="298,495" Color="16,21,30,255" StretchMode="Tile" />
+                <Image ID="Card1_Frame" Texture="augmentcard_frame_prismatic.dds"
+                       Anchor="C,T" Size="308,505" StretchMode="UniformToFill" />
+                <Button ID="Card1" Anchor="C,T" Size="308,505" ConsumeMouse="1">
+                    <Image ID="Card1_Icon" Anchor="C,T" Offset="0,55" Size="120,120" Icon="" IconSize="120" />
+                    <Label ID="Card1_Title" Anchor="C,T" Offset="0,195" Style="FontNormal16"
+                           Alignment="Center" WrapWidth="270" />
+                    <Label ID="Card1_Desc" Anchor="C,T" Offset="0,235" Style="FontNormal16"
+                           Alignment="Center" WrapWidth="270" />
+                    <Label ID="Card1_Flavor" Anchor="C,B" Offset="0,50" Style="FontNormal14"
+                           Color="160,160,160,255" Alignment="Center" WrapWidth="250" />
+                </Button>
+                <Button ID="Card1_Refresh" Anchor="C,B" Offset="0,6" Size="76,46"
+                        Texture="hextechRerollButton.dds" NoStateChange="1" ConsumeMouse="1" />
+            </Container>
+            <!-- Card 2 -->
+            <Container Size="308,571">
+                <Image ID="Card2_BG" Texture="Ages_ParchmentNormal" Anchor="C,T" Offset="0,5"
+                       Size="298,495" Color="16,21,30,255" StretchMode="Tile" />
+                <Image ID="Card2_Frame" Texture="augmentcard_frame_prismatic.dds"
+                       Anchor="C,T" Size="308,505" StretchMode="UniformToFill" />
+                <Button ID="Card2" Anchor="C,T" Size="308,505" ConsumeMouse="1">
+                    <Image ID="Card2_Icon" Anchor="C,T" Offset="0,55" Size="120,120" Icon="" IconSize="120" />
+                    <Label ID="Card2_Title" Anchor="C,T" Offset="0,195" Style="FontNormal16"
+                           Alignment="Center" WrapWidth="270" />
+                    <Label ID="Card2_Desc" Anchor="C,T" Offset="0,235" Style="FontNormal16"
+                           Alignment="Center" WrapWidth="270" />
+                    <Label ID="Card2_Flavor" Anchor="C,B" Offset="0,50" Style="FontNormal14"
+                           Color="160,160,160,255" Alignment="Center" WrapWidth="250" />
+                </Button>
+                <Button ID="Card2_Refresh" Anchor="C,B" Offset="0,6" Size="76,46"
+                        Texture="hextechRerollButton.dds" NoStateChange="1" ConsumeMouse="1" />
+            </Container>
+            <!-- Card 3 -->
+            <Container Size="308,571">
+                <Image ID="Card3_BG" Texture="Ages_ParchmentNormal" Anchor="C,T" Offset="0,5"
+                       Size="298,495" Color="16,21,30,255" StretchMode="Tile" />
+                <Image ID="Card3_Frame" Texture="augmentcard_frame_prismatic.dds"
+                       Anchor="C,T" Size="308,505" StretchMode="UniformToFill" />
+                <Button ID="Card3" Anchor="C,T" Size="308,505" ConsumeMouse="1">
+                    <Image ID="Card3_Icon" Anchor="C,T" Offset="0,55" Size="120,120" Icon="" IconSize="120" />
+                    <Label ID="Card3_Title" Anchor="C,T" Offset="0,195" Style="FontNormal16"
+                           Alignment="Center" WrapWidth="270" />
+                    <Label ID="Card3_Desc" Anchor="C,T" Offset="0,235" Style="FontNormal16"
+                           Alignment="Center" WrapWidth="270" />
+                    <Label ID="Card3_Flavor" Anchor="C,B" Offset="0,50" Style="FontNormal14"
+                           Color="160,160,160,255" Alignment="Center" WrapWidth="250" />
+                </Button>
+                <Button ID="Card3_Refresh" Anchor="C,B" Offset="0,6" Size="76,46"
+                        Texture="hextechRerollButton.dds" NoStateChange="1" ConsumeMouse="1" />
+            </Container>
+        </Stack>
+        </Container>
+        <!-- 外部大模型 AI 海克斯提示（仅 NW_HAIKESI_EXTERNAL_AI 开启时显示） -->
+        <Label ID="ExternalAIHint" Anchor="C,B" Offset="0,58" Size="900,28"
+               Style="FontNormal14" Color="180,200,220,255"
+               Alignment="Center" WrapWidth="880" Hidden="1" />
+        <!-- 按钮容器：确认+隐藏，水平居中 -->
+        <Container Anchor="C,B" Offset="0,10" Size="410,41">
+            <Stack StackGrowth="Right" StackPadding="10" Anchor="C,C">
+                <GridButton ID="ConfirmBtn" Size="200,41"
+                            Style="MainButton" String="LOC_HAIKESI_PANEL_CONFIRM" Disabled="1" />
+                <GridButton ID="HideBtn" Size="200,41"
+                            Style="MainButton" String="LOC_HAIKESI_PANEL_HIDE" />
+            </Stack>
+        </Container>
+    </Container>
+
+    </AlphaAnim>
+</Context>

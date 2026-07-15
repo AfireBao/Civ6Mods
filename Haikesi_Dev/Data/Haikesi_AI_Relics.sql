@@ -1,0 +1,188 @@
+-- ===========================================================================
+-- Haikesi_AI_Relics.sql — AI 专属海克斯（PVE 模式 + NW_HAIKESI_AI_RELIC 开关开启时加载）
+-- 仅 AI 可获得，不进玩家刷新池（IsActive=0，ApplyRelicToPlayer 不检查 IsActive）
+-- AI 每次随玩家同步触发，从池中随机选 1 个（不可重复，南蛮入侵除外）
+-- 1-6: 产出百分比（MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_MODIFIER）
+-- 7-14: 生产单位赠同单位（MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY[_TAG]）
+--   平民（开拓者/建造者）无 PromotionClass，用 UnitType 版；战斗单位用 _TAG 版
+-- 15: 南蛮入侵（Lua）
+-- 16+: 资源创建类型（见 Haikesi_Relic_ResourceSpawns：棉花/烟草/糖/丝绸/茶）
+-- ===========================================================================
+
+-- ===========================================================================
+-- 一、属性叠属性叠属性系列（6 个，产出百分比）
+-- ===========================================================================
+
+-- 属性叠属性叠属性-1: 文化值 +18%
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_STATS_1', 'LOC_HAIKESI_RELIC_NW_AI_STATS_1_NAME', 'LOC_HAIKESI_RELIC_NW_AI_STATS_1_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_STATS_1_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_STATS_1_CULTURE', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_MODIFIER');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_1_CULTURE', 'Amount', '18');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_1_CULTURE', 'YieldType', 'YIELD_CULTURE');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_STATS_1', 'MODIFIER_NW_AI_STATS_1_CULTURE');
+
+-- 属性叠属性叠属性-2: 科技值 +18%
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_STATS_2', 'LOC_HAIKESI_RELIC_NW_AI_STATS_2_NAME', 'LOC_HAIKESI_RELIC_NW_AI_STATS_2_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_STATS_2_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_STATS_2_SCIENCE', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_MODIFIER');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_2_SCIENCE', 'Amount', '18');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_2_SCIENCE', 'YieldType', 'YIELD_SCIENCE');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_STATS_2', 'MODIFIER_NW_AI_STATS_2_SCIENCE');
+
+-- 属性叠属性叠属性-3: 金币 +24%
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_STATS_3', 'LOC_HAIKESI_RELIC_NW_AI_STATS_3_NAME', 'LOC_HAIKESI_RELIC_NW_AI_STATS_3_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_STATS_3_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_STATS_3_GOLD', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_MODIFIER');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_3_GOLD', 'Amount', '24');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_3_GOLD', 'YieldType', 'YIELD_GOLD');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_STATS_3', 'MODIFIER_NW_AI_STATS_3_GOLD');
+
+-- 属性叠属性叠属性-4: 信仰值 +24%
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_STATS_4', 'LOC_HAIKESI_RELIC_NW_AI_STATS_4_NAME', 'LOC_HAIKESI_RELIC_NW_AI_STATS_4_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_STATS_4_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_STATS_4_FAITH', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_MODIFIER');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_4_FAITH', 'Amount', '24');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_4_FAITH', 'YieldType', 'YIELD_FAITH');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_STATS_4', 'MODIFIER_NW_AI_STATS_4_FAITH');
+
+-- 属性叠属性叠属性-5: 食物 +12%
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_STATS_5', 'LOC_HAIKESI_RELIC_NW_AI_STATS_5_NAME', 'LOC_HAIKESI_RELIC_NW_AI_STATS_5_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_STATS_5_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_STATS_5_FOOD', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_MODIFIER');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_5_FOOD', 'Amount', '12');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_5_FOOD', 'YieldType', 'YIELD_FOOD');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_STATS_5', 'MODIFIER_NW_AI_STATS_5_FOOD');
+
+-- 属性叠属性叠属性-6: 生产力 +18%
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_STATS_6', 'LOC_HAIKESI_RELIC_NW_AI_STATS_6_NAME', 'LOC_HAIKESI_RELIC_NW_AI_STATS_6_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_STATS_6_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_STATS_6_PRODUCTION', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_MODIFIER');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_6_PRODUCTION', 'Amount', '18');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_STATS_6_PRODUCTION', 'YieldType', 'YIELD_PRODUCTION');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_STATS_6', 'MODIFIER_NW_AI_STATS_6_PRODUCTION');
+
+-- ===========================================================================
+-- 二、回响施放系列（8 个，生产单位赠同单位）
+-- 平民（开拓者/建造者）用 EXTRA_UNIT_COPY（UnitType 版，参考斯基泰萨卡弓骑）
+-- 战斗单位用 EXTRA_UNIT_COPY_TAG（Tag 版，参考斯基泰轻骑兵 TRAIT_EXTRALIGHTCAVALRY）
+-- ===========================================================================
+
+-- 回响施放-1: 每生产一个开拓者，获得一个相同单位
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_ECHO_SETTLER', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_SETTLER_NAME', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_SETTLER_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_SETTLER_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_ECHO_SETTLER', 'MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_SETTLER', 'UnitType', 'UNIT_SETTLER');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_SETTLER', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_SETTLER', 'MODIFIER_NW_AI_ECHO_SETTLER');
+
+-- 回响施放-2: 每生产一个建造者，获得一个相同单位
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_ECHO_BUILDER', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_BUILDER_NAME', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_BUILDER_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_BUILDER_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_ECHO_BUILDER', 'MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_BUILDER', 'UnitType', 'UNIT_BUILDER');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_BUILDER', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_BUILDER', 'MODIFIER_NW_AI_ECHO_BUILDER');
+
+-- 回响施放-3: 每生产一个近战单位，获得一个相同单位
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_ECHO_MELEE', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_MELEE_NAME', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_MELEE_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_MELEE_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_ECHO_MELEE', 'MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY_TAG');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_MELEE', 'Tag', 'CLASS_MELEE');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_MELEE', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_MELEE', 'MODIFIER_NW_AI_ECHO_MELEE');
+
+-- 回响施放-4: 每生产一个远程单位，获得一个相同单位
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_ECHO_RANGED', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_RANGED_NAME', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_RANGED_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_RANGED_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_ECHO_RANGED', 'MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY_TAG');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_RANGED', 'Tag', 'CLASS_RANGED');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_RANGED', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_RANGED', 'MODIFIER_NW_AI_ECHO_RANGED');
+
+-- 回响施放-5: 每生产一个轻骑兵单位，获得一个相同单位
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_ECHO_LIGHT_CAVALRY', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_LIGHT_CAVALRY_NAME', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_LIGHT_CAVALRY_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_LIGHT_CAVALRY_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_ECHO_LIGHT_CAVALRY', 'MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY_TAG');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_LIGHT_CAVALRY', 'Tag', 'CLASS_LIGHT_CAVALRY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_LIGHT_CAVALRY', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_LIGHT_CAVALRY', 'MODIFIER_NW_AI_ECHO_LIGHT_CAVALRY');
+
+-- 回响施放-6: 每生产一个重骑兵单位，获得一个相同单位
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_ECHO_HEAVY_CAVALRY', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_HEAVY_CAVALRY_NAME', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_HEAVY_CAVALRY_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_HEAVY_CAVALRY_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_ECHO_HEAVY_CAVALRY', 'MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY_TAG');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_HEAVY_CAVALRY', 'Tag', 'CLASS_HEAVY_CAVALRY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_HEAVY_CAVALRY', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_HEAVY_CAVALRY', 'MODIFIER_NW_AI_ECHO_HEAVY_CAVALRY');
+
+-- 回响施放-8: 每生产一个抗骑兵单位，获得一个相同单位
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_ECHO_ANTI_CAVALRY', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_ANTI_CAVALRY_NAME', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_ANTI_CAVALRY_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_ANTI_CAVALRY_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_ECHO_ANTI_CAVALRY', 'MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY_TAG');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_ANTI_CAVALRY', 'Tag', 'CLASS_ANTI_CAVALRY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_ANTI_CAVALRY', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_ANTI_CAVALRY', 'MODIFIER_NW_AI_ECHO_ANTI_CAVALRY');
+
+-- 回响施放-9: 每生产一个攻城单位，获得一个相同单位
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_ECHO_SIEGE', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_SIEGE_NAME', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_SIEGE_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_ECHO_SIEGE_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_ECHO_SIEGE', 'MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY_TAG');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_SIEGE', 'Tag', 'CLASS_SIEGE');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_ECHO_SIEGE', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_SIEGE', 'MODIFIER_NW_AI_ECHO_SIEGE');
+
+-- ===========================================================================
+-- 三、南蛮入侵（最新城市 5 环尝试生成 3 营地；每缺 1 个在最近营地补 3 战士；无营地则所有城市 4 环各补 3 战士）
+-- ===========================================================================
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_BARBARIAN_INVASION', 'LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_NAME', 'LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 1);
+-- 标记用占位 Modifier（效果由 Lua 实现；避免无 Modifier 映射时走占位金币补偿）
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_BARBARIAN_INVASION_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_BARBARIAN_INVASION_MARKER', 'Key', 'PROP_NW_AI_BARBARIAN_INVASION');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_BARBARIAN_INVASION_MARKER', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_BARBARIAN_INVASION', 'MODIFIER_NW_AI_BARBARIAN_INVASION_MARKER');
+
+-- ===========================================================================
+-- 四、资源创建类型（配置见 Haikesi_Relic_ResourceSpawns.sql）
+-- 勇敢的木 / 妈妈生的 / 我是奶龙 / 丝绸之乡 / 饮茶先啦
+-- ===========================================================================
+
+-- 勇敢的木：4 棉花
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_BRAVE_WOOD', 'LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_NAME', 'LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_FLAVOR', 'ICON_HAIKESI_RELIC_CORRUPTEDBRANCHRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_BRAVE_WOOD_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_BRAVE_WOOD_MARKER', 'Key', 'PROP_NW_AI_BRAVE_WOOD');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_BRAVE_WOOD_MARKER', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_BRAVE_WOOD', 'MODIFIER_NW_AI_BRAVE_WOOD_MARKER');
+
+-- 妈妈生的：4 烟草
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_MAMA_BORN', 'LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_NAME', 'LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_FLAVOR', 'ICON_HAIKESI_RELIC_FEELTHEBURNRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_MAMA_BORN_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_MAMA_BORN_MARKER', 'Key', 'PROP_NW_AI_MAMA_BORN');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_MAMA_BORN_MARKER', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_MAMA_BORN', 'MODIFIER_NW_AI_MAMA_BORN_MARKER');
+
+-- 我是奶龙：4 糖
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_MILK_DRAGON', 'LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_NAME', 'LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_FLAVOR', 'ICON_HAIKESI_RELIC_BREADSANDWICHRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_MILK_DRAGON_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_MILK_DRAGON_MARKER', 'Key', 'PROP_NW_AI_MILK_DRAGON');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_MILK_DRAGON_MARKER', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_MILK_DRAGON', 'MODIFIER_NW_AI_MILK_DRAGON_MARKER');
+
+-- 丝绸之乡：4 丝绸
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_SILK_LAND', 'LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_NAME', 'LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_FLAVOR', 'ICON_HAIKESI_RELIC_STARLIGHTSPLENDORRUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_SILK_LAND_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_SILK_LAND_MARKER', 'Key', 'PROP_NW_AI_SILK_LAND');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_SILK_LAND_MARKER', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_SILK_LAND', 'MODIFIER_NW_AI_SILK_LAND_MARKER');
+
+-- 饮茶先啦：4 茶
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_DRINK_TEA', 'LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_NAME', 'LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_FLAVOR', 'ICON_HAIKESI_RELIC_DUFFSVINTAGERUNE', 'PRISMATIC', 0, 0);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_DRINK_TEA_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_DRINK_TEA_MARKER', 'Key', 'PROP_NW_AI_DRINK_TEA');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_DRINK_TEA_MARKER', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_DRINK_TEA', 'MODIFIER_NW_AI_DRINK_TEA_MARKER');

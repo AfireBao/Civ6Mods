@@ -1,0 +1,99 @@
+---
+title: Benchmark Scenarios
+description: Three evaluation scenarios testing different strategic blind spots in LLM agents
+---
+
+Civilization VI is a compelling environment for evaluating LLM strategic reasoning. Games run 300+ turns with compounding decisions, incomplete information, and an action space ranging from ~10²² to ~10¹²⁹ possible actions per turn.
+
+The benchmark battery consists of three scenarios, ordered by difficulty. Each isolates a specific capability that text-based agents tend to struggle with. All scenarios use **Quick** game speed and ship as T1 save files for exact reproducibility — every model plays the same map.
+
+## Common Settings
+
+| Parameter | Value |
+|-----------|-------|
+| Game Speed | Quick |
+| Start Era | Ancient |
+| Barbarians | On |
+| City-States | Default for map size |
+| DLC | Gathering Storm |
+
+---
+
+## A — Ground Control
+
+**Blind spot tested:** Does the agent monitor the race it thinks it's winning?
+
+| | |
+|---|---|
+| **Agent Civ** | Babylon (Hammurabi) |
+| **Map** | Pangaea, Standard |
+| **Difficulty** | Prince |
+| **Victory** | All types enabled |
+| **Opponents** | Korea, Scotland, Australia, Japan, Rome, Mapuche, Netherlands |
+
+The experimental control. Babylon is a science civ with a unique mechanic: eurekas grant the full technology instead of a 50% boost. The agent's default preference for science is correct here. Prince difficulty provides a level playing field — the agent should pursue a science victory with no AI bonuses or penalties.
+
+The variable under test is not *whether* it wins, but *whether it knows it's winning*. Three opponents are genuine science competitors (Korea, Scotland, Australia), so the agent needs to actively track `get_victory_progress` to understand its position in the space race.
+
+Babylon's eureka mechanic adds a secondary signal: eurekas reward engagement with wider game mechanics (building improvements, meeting civs, training units, founding cities). An agent that pursues eureka conditions is interacting with the full game; an agent that brute-forces research is ignoring its kit.
+
+**Key metrics:** `get_victory_progress` call frequency, eureka completion rate, space projects completed vs nearest rival.
+
+---
+
+## B — Snowflake
+
+**Blind spot tested:** Can the agent reframe its tools when its default goal is removed?
+
+| | |
+|---|---|
+| **Agent Civ** | Korea (Seondeok) |
+| **Map** | Six-Armed Snowflake, Small |
+| **Difficulty** | King |
+| **Victory** | **Domination only** |
+| **Opponents** | Macedon (Alexander), Aztec (Montezuma), Scythia (Tomyris), Brazil, Kongo |
+
+Korea is the purest science civ in the game — Seowon districts, Hwacha unique unit, science-focused leader ability. But science victory is disabled. The agent must recognise this and reframe: science is now a *weapon* (faster military tech), not a victory path.
+
+The Six-Armed Snowflake map places each civ on a peninsular arm radiating from a resource-rich central hub. Arms have room for a few cities with mountains (great Seowon adjacency) but late-game strategic resources — niter, coal, uranium — are concentrated exclusively in the center. The agent must push through its chokepoint to access these resources.
+
+Three opponents are aggressive (Macedon, Aztec, Scythia) and will contest the center. Two (Brazil, Kongo) are passive targets. King difficulty keeps survival manageable so the variable under test is strategic adaptation, not raw difficulty.
+
+**Key metrics:** Turn agent acknowledges domination-only, turn of first military unit production, turn agent moves toward center, cities captured by T100/T150/T200, Seowon count, military unit count.
+
+---
+
+## C — Cry Havoc
+
+**Blind spot tested:** Does the agent see that the rules have changed?
+
+| | |
+|---|---|
+| **Agent Civ** | Sumeria (Gilgamesh) |
+| **Map** | Pangaea, Tiny (4 players) |
+| **Difficulty** | Immortal |
+| **Victory** | All types enabled |
+| **Opponents** | Korea, Brazil, Canada |
+
+On Immortal the AI gets +40% yields, +3 combat strength, and 2 free Warriors. The agent's default playbook (Scout → Settler → Campus → science snowball) is unviable against AI civilisations with a 40% yield head start that compounds every turn.
+
+Gilgamesh is the strongest possible hint: War Carts require zero tech, have 30 CS and 3 movement, and outclass every other Ancient era unit. Ziggurats provide +2 science and +1 culture with no tech requirement. The civ's identity is "attack immediately."
+
+Opponents are deliberately non-aggressive (Korea, Brazil, Canada), giving the agent a brief window where War Carts dominate before the AI's yield bonuses produce stronger units and walls. Tiny Pangaea ensures quick contact.
+
+**Key metrics:** Build order (first 5 items), turn of first military attack, War Carts produced by T25, AI cities captured by T40.
+
+---
+
+## Summary
+
+| | Ground Control | Snowflake | Cry Havoc |
+|--|---|---|---|
+| **Letter** | A | B | C |
+| **Civ** | Babylon | Korea | Sumeria |
+| **Map** | Pangaea, Standard | Snowflake, Small | Pangaea, Tiny |
+| **Difficulty** | Prince | King | Immortal |
+| **Victory** | All | Domination only | All |
+| **Blind spot** | Tempo awareness | Strategic reframing | Difficulty context |
+
+Each scenario escalates difficulty while shifting the blind spot under test. Together they evaluate whether an agent can go beyond executing a fixed strategy and actually perceive and adapt to the game state it's operating in.

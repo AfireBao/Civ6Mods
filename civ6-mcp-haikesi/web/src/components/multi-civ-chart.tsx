@@ -1,0 +1,233 @@
+"use client";
+
+import { useState, useMemo, useEffect, useCallback } from "react";
+import type { TurnSeries, NumericPlayerField } from "@/lib/diary-types";
+import { CIV6_COLORS, getCivColors } from "@/lib/civ-colors";
+import { getCivSymbol } from "@/lib/civ-registry";
+import { CivSymbol } from "./civ-icon";
+import { CivIcon } from "./civ-icon";
+import { BarChart3, Play, Pause } from "lucide-react";
+
+const METRIC_OPTIONS: { value: NumericPlayerField; label: string }[] = [
+  { value: "score", label: "Score" },
+  { value: "science", label: "Science" },
+  { value: "culture", label: "Culture" },
+  { value: "gold", label: "Gold" },
+  { value: "military", label: "Military" },
+  { value: "territory", label: "Territory" },
+  { value: "cities", label: "Cities" },
+  { value: "pop", label: "Population" },
+  { value: "faith", label: "Faith" },
+  { value: "exploration_pct", label: "Explored %" },
+  { value: "tourism", label: "Tourism" },
+];
+
+const W = 300;
+const H = 100;
+const PAD = 4;
+
+interface MultiCivChartProps {
+  turnSeries: TurnSeries;
+  currentIndex: number;
+}
+
+export function MultiCivChart({ turnSeries, currentIndex }: MultiCivChartProps) {
+  const [metric, setMetric] = useState<NumericPlayerField>("score");
+  const [rotating, setRotating] = useState(false);
+
+  const advanceMetric = useCallback(() => {
+    setMetric((prev) => {
+      const idx = METRIC_OPTIONS.findIndex((o) => o.value === prev);
+      return METRIC_OPTIONS[(idx + 1) % METRIC_OPTIONS.length].value;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!rotating) return;
+    const id = setInterval(advanceMetric, 10_000);
+    return () => clearInterval(id);
+  }, [rotating, advanceMetric]);
+
+  const { civMap, agentValues, agentPoints, rivalLines, agentColor, agentCiv } =
+    useMemo(() => {
+      // Find agent player
+      const agentEntry = Object.entries(turnSeries.players).find(
+        ([, p]) => p.is_agent,
+      );
+      const agentPlayer = agentEntry?.[1];
+
+      // Build rival color map
+      const cMap = new Map<string, { name: string; color: string }>();
+      for (const [pid, p] of Object.entries(turnSeries.players)) {
+        if (!p.is_agent) {
+          cMap.set(pid, {
+            name: p.civ,
+            color: getCivColors(p.civ, p.leader).primary,
+          });
+        }
+      }
+
+      const aVals = agentPlayer?.metrics[metric] ?? [];
+      const rSeries = Array.from(cMap.keys()).map((pid) => ({
+        pid,
+        values: turnSeries.players[pid].metrics[metric] ?? [],
+      }));
+
+      // Global min/max
+      const all: number[] = [...aVals];
+      for (const s of rSeries) {
+        for (const v of s.values) {
+          if (v !== null && v !== undefined) all.push(v);
+        }
+      }
+      const min = Math.min(...all);
+      const max = Math.max(...all);
+      const range = max - min || 1;
+
+      function toPoints(values: number[]): string {
+        return values
+          .map((v, i) => {
+            const x = PAD + (i / Math.max(values.length - 1, 1)) * (W - 2 * PAD);
+            const y = H - PAD - ((v - min) / range) * (H - 2 * PAD);
+            return `${x},${y}`;
+          })
+          .join(" ");
+      }
+
+      const aColor = agentPlayer
+        ? getCivColors(agentPlayer.civ, agentPlayer.leader).primary
+        : CIV6_COLORS.goldMetal;
+
+      return {
+        civMap: cMap,
+        agentValues: aVals,
+        agentPoints: toPoints(aVals),
+        rivalLines: rSeries.map((s) => ({
+          pid: s.pid,
+          points: toPoints(s.values),
+        })),
+        agentColor: aColor,
+        agentCiv: agentPlayer?.civ ?? "You",
+      };
+    }, [turnSeries, metric]);
+
+  const legendEntries = useMemo(() => {
+    const agentVal = agentValues[currentIndex] ?? 0;
+    const entries = [
+      { key: "agent", name: agentCiv, color: agentColor, value: agentVal as number | null, isAgent: true },
+      ...Array.from(civMap.entries()).map(([pid, { name, color }]) => ({
+        key: pid,
+        name,
+        color,
+        value: turnSeries.players[pid]?.metrics[metric]?.[currentIndex] ?? null,
+        isAgent: false,
+      })),
+    ];
+    entries.sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity));
+    return entries;
+  }, [agentValues, currentIndex, agentCiv, agentColor, civMap, turnSeries, metric]);
+
+  if (civMap.size === 0) return null;
+
+  const totalPoints = turnSeries.turns.length;
+  const cx =
+    PAD + (currentIndex / Math.max(totalPoints - 1, 1)) * (W - 2 * PAD);
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="flex items-center gap-1.5 font-display text-xs font-bold uppercase tracking-[0.08em] text-marble-500">
+          <CivIcon icon={BarChart3} color={CIV6_COLORS.marine} size="sm" />
+          Comparison
+        </h3>
+        <div className="flex items-center gap-1">
+          <select
+            value={metric}
+            onChange={(e) => {
+              setMetric(e.target.value as NumericPlayerField);
+              setRotating(false);
+            }}
+            aria-label="Select metric"
+            className="rounded-sm border border-marble-300 bg-marble-100 px-1.5 py-0.5 font-mono text-xs text-marble-700"
+          >
+            {METRIC_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setRotating((r) => !r)}
+            className={`rounded-sm p-0.5 transition-colors ${rotating ? "text-patina" : "text-marble-400 hover:text-marble-600"}`}
+            title={rotating ? "Stop auto-rotate" : "Auto-rotate metrics"}
+          >
+            {rotating ? (
+              <Pause className="h-3 w-3" />
+            ) : (
+              <Play className="h-3 w-3" />
+            )}
+          </button>
+        </div>
+      </div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        preserveAspectRatio="none"
+        style={{ height: 100 }}
+      >
+        {rivalLines.map(({ pid, points }) => (
+          <polyline
+            key={pid}
+            points={points}
+            fill="none"
+            stroke={civMap.get(pid)!.color}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            opacity="0.6"
+          />
+        ))}
+        <polyline
+          points={agentPoints}
+          fill="none"
+          stroke={agentColor}
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+          opacity="0.9"
+        />
+        <line
+          x1={cx}
+          y1={PAD}
+          x2={cx}
+          y2={H - PAD}
+          stroke="#5C5549"
+          strokeWidth="1"
+          strokeDasharray="3,3"
+          opacity="0.4"
+          style={{ transition: "x1 400ms ease-out, x2 400ms ease-out" }}
+        />
+      </svg>
+      {/* Legend — sorted by selected metric */}
+      <div className="mt-1.5 space-y-0.5">
+        {legendEntries.map((e) => (
+          <div key={e.key} className="flex items-center gap-1.5">
+            <CivSymbol civ={e.name} className="h-3 w-3" />
+            {!getCivSymbol(e.name) && (
+              <span
+                className="inline-block h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: e.color }}
+              />
+            )}
+            <span
+              className={`flex-1 text-xs ${e.isAgent ? "font-medium text-marble-700" : "text-marble-600"}`}
+            >
+              {e.name}
+            </span>
+            <span className="font-mono text-xs tabular-nums text-marble-700">
+              {e.value ?? "—"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

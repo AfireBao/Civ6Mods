@@ -1,0 +1,31 @@
+import { NavBar } from "./nav-bar";
+
+interface PageShellProps {
+  active: "home" | "about" | "docs" | "games" | "leaderboard";
+  turn?: number | null;
+  footer?: boolean;
+  children: React.ReactNode;
+}
+
+export function PageShell({
+  active,
+  turn,
+  footer = true,
+  children,
+}: PageShellProps) {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <NavBar active={active} turn={turn} />
+      {children}
+      {footer && (
+        <footer className="border-t border-marble-300 px-6 py-4 text-center">
+          <p className="font-mono text-xs text-marble-500">
+            MIT License
+            <span className="mx-1.5 text-marble-400">&middot;</span>
+            <span className="text-marble-400">{process.env.NEXT_PUBLIC_GIT_VERSION}</span>
+          </p>
+        </footer>
+      )}
+    </div>
+  );
+}

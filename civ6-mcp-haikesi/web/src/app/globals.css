@@ -1,0 +1,387 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "fumadocs-ui/css/shadcn.css";
+@import "fumadocs-ui/css/preset.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-cormorant);
+  --font-mono: var(--font-jetbrains);
+  --font-display: var(--font-cinzel);
+
+  /* Marble surface scale — resolved via CSS vars for theme switching */
+  --color-marble-50: var(--marble-50);
+  --color-marble-100: var(--marble-100);
+  --color-marble-200: var(--marble-200);
+  --color-marble-300: var(--marble-300);
+  --color-marble-400: var(--marble-400);
+  --color-marble-500: var(--marble-500);
+  --color-marble-600: var(--marble-600);
+  --color-marble-700: var(--marble-700);
+  --color-marble-800: var(--marble-800);
+  --color-marble-900: var(--marble-900);
+
+  /* Accent colors — resolved via CSS vars for theme switching */
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-dark: var(--gold-dark);
+  --color-patina: var(--patina);
+  --color-terracotta: var(--terracotta);
+  --color-ocean: var(--ocean);
+  --color-vein: var(--vein);
+  --color-vein-dark: var(--vein-dark);
+
+  /* Game status — resolved via CSS vars for theme switching */
+  --color-status-live: var(--status-live);
+  --color-status-victory: var(--status-victory);
+  --color-status-defeat: var(--status-defeat);
+  --color-status-unfinished: var(--status-unfinished);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+/* ── Light theme (marble palace) ── */
+:root {
+  --radius: 0.375rem;
+
+  /* Marble surface scale */
+  --marble-50: #FAFAF8;
+  --marble-100: #F5F3EF;
+  --marble-200: #EBE8E2;
+  --marble-300: #E0DBD3;
+  --marble-400: #C8C1B7;
+  --marble-500: #A39B8F;
+  --marble-600: #7A7269;
+  --marble-700: #5C5549;
+  --marble-800: #3D3832;
+  --marble-900: #2A2521;
+
+  /* Accent colors */
+  --gold: #D4A853;
+  --gold-light: #E8C97A;
+  --gold-dark: #8C6E2C;
+  --patina: #7A9B8A;
+  --terracotta: #C4785C;
+  --ocean: #4A90A4;
+  --vein: #D4CFC8;
+  --vein-dark: #8A8279;
+
+  /* Game status colors */
+  --status-live: #7A9B8A;
+  --status-victory: #3D8B6E;
+  --status-defeat: #C0503A;
+  --status-unfinished: #B0A99F;
+  --status-victory-bg: rgba(61,139,110,0.08);
+  --status-defeat-bg: rgba(192,80,58,0.08);
+  --status-victory-border: rgba(61,139,110,0.25);
+  --status-defeat-border: rgba(192,80,58,0.25);
+
+  /* Shadcn semantic tokens */
+  --background: #FAFAF8;
+  --foreground: #3D3832;
+  --card: #F5F3EF;
+  --card-foreground: #3D3832;
+  --popover: #F5F3EF;
+  --popover-foreground: #3D3832;
+  --primary: #D4A853;
+  --primary-foreground: #FAFAF8;
+  --secondary: #EBE8E2;
+  --secondary-foreground: #3D3832;
+  --muted: #EBE8E2;
+  --muted-foreground: #7A7269;
+  --accent: #EBE8E2;
+  --accent-foreground: #3D3832;
+  --destructive: #C4785C;
+  --border: #E0DBD3;
+  --input: #E0DBD3;
+  --ring: #D4A853;
+  --chart-1: #D4A853;
+  --chart-2: #7A9B8A;
+  --chart-3: #C4785C;
+  --chart-4: #5C5549;
+  --chart-5: #A39B8F;
+  --sidebar: #F5F3EF;
+  --sidebar-foreground: #3D3832;
+  --sidebar-primary: #D4A853;
+  --sidebar-primary-foreground: #FAFAF8;
+  --sidebar-accent: #EBE8E2;
+  --sidebar-accent-foreground: #3D3832;
+  --sidebar-border: #E0DBD3;
+  --sidebar-ring: #D4A853;
+}
+
+/* ── Dark theme (obsidian temple) ── */
+.dark {
+  /* Marble surface scale — inverted semantic: 50=subtlest bg, 900=strongest text */
+  --marble-50: #1C1916;
+  --marble-100: #252220;
+  --marble-200: #332F2B;
+  --marble-300: #443F39;
+  --marble-400: #5C5549;
+  --marble-500: #7A7269;
+  --marble-600: #A39B8F;
+  --marble-700: #C8C1B7;
+  --marble-800: #E0DBD3;
+  --marble-900: #F5F3EF;
+
+  /* Accent colors — brightened for dark bg contrast */
+  --gold: #D4A853;
+  --gold-light: #E8C97A;
+  --gold-dark: #D4A853;
+  --patina: #8FB09E;
+  --terracotta: #D4886C;
+  --ocean: #6DA4B8;
+  --vein: #443F39;
+  --vein-dark: #7A7269;
+
+  /* Game status colors — brightened for dark bg */
+  --status-live: #8FB09E;
+  --status-victory: #5AAF8E;
+  --status-defeat: #D4886C;
+  --status-unfinished: #A39B8F;
+  --status-victory-bg: rgba(90,175,142,0.12);
+  --status-defeat-bg: rgba(212,136,108,0.12);
+  --status-victory-border: rgba(90,175,142,0.3);
+  --status-defeat-border: rgba(212,136,108,0.3);
+
+  /* Shadcn semantic tokens */
+  --background: #1C1916;
+  --foreground: #E0DBD3;
+  --card: #252220;
+  --card-foreground: #E0DBD3;
+  --popover: #252220;
+  --popover-foreground: #E0DBD3;
+  --primary: #D4A853;
+  --primary-foreground: #1C1916;
+  --secondary: #332F2B;
+  --secondary-foreground: #E0DBD3;
+  --muted: #332F2B;
+  --muted-foreground: #A39B8F;
+  --accent: #332F2B;
+  --accent-foreground: #E0DBD3;
+  --destructive: #D4886C;
+  --border: #443F39;
+  --input: #332F2B;
+  --ring: #D4A853;
+  --chart-1: #D4A853;
+  --chart-2: #8FB09E;
+  --chart-3: #D4886C;
+  --chart-4: #A39B8F;
+  --chart-5: #6DA4B8;
+  --sidebar: #252220;
+  --sidebar-foreground: #E0DBD3;
+  --sidebar-primary: #D4A853;
+  --sidebar-primary-foreground: #1C1916;
+  --sidebar-accent: #332F2B;
+  --sidebar-accent-foreground: #E0DBD3;
+  --sidebar-border: #443F39;
+  --sidebar-ring: #D4A853;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Turn navigation slider — gold marble thumb */
+input[type="range"].turn-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"].turn-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--marble-300);
+}
+input[type="range"].turn-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--marble-300);
+}
+input[type="range"].turn-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid var(--marble-50);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+input[type="range"].turn-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid var(--marble-50);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+input[type="range"].turn-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px rgba(212, 168, 83, 0.15);
+}
+input[type="range"].turn-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px rgba(212, 168, 83, 0.15);
+}
+
+/* Brand hover glow */
+.brand-glow:hover {
+  text-shadow: 0 0 12px rgba(212, 168, 83, 0.3);
+}
+
+/* Victory/defeat banner entrance */
+@keyframes banner-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Victory glow pulse */
+@keyframes victory-glow {
+  0%, 100% { box-shadow: 0 0 16px rgba(61, 139, 110, 0.08); }
+  50% { box-shadow: 0 0 24px rgba(61, 139, 110, 0.2); }
+}
+
+/* Skeleton shimmer sweep */
+@keyframes skeleton-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+/* Fade-in utility */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Marble noise texture overlay — applied to body */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dark body::before {
+  opacity: 0.03;
+}
+
+/* ── Fumadocs overrides — match marble/gold design system ── */
+
+/* Sidebar title — use display font with civ6-style tracking */
+#nd-sidebar a[href="/docs"] {
+  font-family: var(--font-cinzel), serif;
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--marble-800);
+}
+
+/* Active sidebar link — gold instead of default primary */
+#nd-sidebar [data-active="true"] {
+  background-color: color-mix(in srgb, var(--gold) 12%, transparent);
+  color: var(--gold-dark);
+}
+#nd-sidebar [data-active="true"]::before {
+  background-color: var(--gold) !important;
+}
+
+/* Sidebar hover — marble accent */
+#nd-sidebar a:hover {
+  background-color: color-mix(in srgb, var(--marble-300) 40%, transparent);
+}
+
+/* Sidebar border — marble */
+#nd-sidebar {
+  border-color: var(--marble-300);
+}
+
+/* Search bar — marble styling */
+#nd-sidebar [data-search-full] {
+  border-color: var(--marble-300);
+  background-color: var(--marble-100);
+}
+
+/* Mobile subnav header — marble bg and border */
+#nd-subnav {
+  background-color: color-mix(in srgb, var(--marble-50) 80%, transparent);
+  border-color: var(--marble-300);
+}
+#nd-subnav a {
+  font-family: var(--font-cinzel), serif;
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--marble-800);
+}
+
+/* TOC popover — marble border */
+[data-toc-popover] header {
+  border-color: var(--marble-300);
+  background-color: color-mix(in srgb, var(--marble-50) 80%, transparent);
+}
+
+/* Search dialog — marble theme */
+[data-search] [role="dialog"] {
+  border-color: var(--marble-300);
+}

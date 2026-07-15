@@ -1,0 +1,469 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useElo, type EloFilter } from "@/lib/use-elo";
+import { getModelMeta, formatModelName } from "@/lib/model-registry";
+import { CivIcon } from "@/components/civ-icon";
+import { CIV6_COLORS } from "@/lib/civ-colors";
+import type { EloEntry, DimensionScores } from "@/lib/elo";
+import { DimensionRadar, DIMENSIONS as SCORE_DIMS } from "@/components/dimension-radar";
+import {
+  Bot,
+  Trophy,
+  Medal,
+  ArrowRight,
+  Swords,
+  TrendingUp,
+} from "lucide-react";
+import { SkeletonBlock, SkeletonLine } from "./skeleton";
+
+// ─── Shared ─────────────────────────────────────────────────────────────────
+
+const MEDAL_COLORS = [CIV6_COLORS.goldMetal, "#C0C0C0", "#CD7F32"] as const;
+
+function ModelAvatar({
+  entry,
+  size = "md",
+}: {
+  entry: EloEntry;
+  size?: "sm" | "md";
+}) {
+  const px = size === "sm" ? "h-6 w-6" : "h-8 w-8";
+  const iconPx = size === "sm" ? "h-3 w-3" : "h-4 w-4";
+  const meta = getModelMeta(entry.name);
+
+  const bgColor = meta.providerLogo ? `${meta.color}18` : undefined;
+
+  if (meta.providerLogo) {
+    return (
+      <span
+        className={`flex ${px} shrink-0 items-center justify-center rounded-full`}
+        style={{ backgroundColor: bgColor }}
+      >
+        <Image src={meta.providerLogo} alt={meta.provider} width={14} height={14} className={iconPx} />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`flex ${px} shrink-0 items-center justify-center rounded-full bg-marble-200`}
+    >
+      <Bot className={`${iconPx} text-marble-600`} />
+    </span>
+  );
+}
+
+function RankBadge({ rank }: { rank: number }) {
+  if (rank <= 3) {
+    return <CivIcon icon={Medal} color={MEDAL_COLORS[rank - 1]} size="sm" />;
+  }
+  return (
+    <span className="flex h-5 w-5 items-center justify-center font-mono text-sm tabular-nums text-marble-400">
+      {rank}
+    </span>
+  );
+}
+
+function EloBadge({ elo, color }: { elo: number; color?: string }) {
+  return (
+    <span
+      className={`font-mono text-base font-semibold tabular-nums ${
+        elo >= 1500 ? "text-patina" : "text-terracotta"
+      }`}
+      style={color ? { color } : undefined}
+    >
+      {elo}
+    </span>
+  );
+}
+
+function WinLoss({ wins, losses }: { wins: number; losses: number }) {
+  return (
+    <span className="font-mono text-base tabular-nums text-marble-600">
+      <span className="text-patina">{wins}</span>
+      <span className="text-marble-400">-</span>
+      <span className="text-terracotta">{losses}</span>
+    </span>
+  );
+}
+
+function WinRateBar({ pct }: { pct: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="relative h-1.5 w-12 overflow-hidden rounded-full bg-marble-200">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-patina/40"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="font-mono text-sm tabular-nums text-marble-600">
+        {pct}%
+      </span>
+    </div>
+  );
+}
+
+// ─── Preview (landing page) ─────────────────────────────────────────────────
+
+export function LeaderboardPreview() {
+  const { ratings, gameCount, loading } = useElo();
+
+  if (loading) {
+    return (
+      <section>
+        <div className="flex items-baseline justify-between">
+          <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-[0.08em] text-marble-500">
+            <CivIcon icon={Trophy} color={CIV6_COLORS.goldMetal} size="sm" />
+            Model ELO Rankings
+          </h3>
+        </div>
+        <div className="mt-3 space-y-2">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="flex items-stretch gap-0 rounded-sm border border-marble-300/50 bg-marble-50"
+            >
+              <div className="w-1.5 shrink-0 rounded-l-sm bg-marble-200" />
+              <div className="flex flex-1 items-center gap-2.5 py-2.5 pl-3 pr-2">
+                <SkeletonBlock className="h-6 w-6 rounded-full" />
+                <div className="flex-1 space-y-1.5">
+                  <SkeletonLine className="w-28" />
+                  <SkeletonLine className="w-16" />
+                </div>
+                <SkeletonLine className="w-10" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  const models = ratings.filter((e) => e.type === "model");
+  if (models.length === 0) return null;
+
+  const top3 = models.slice(0, 3);
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between">
+        <h3 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-[0.08em] text-marble-500">
+          <CivIcon icon={Trophy} color={CIV6_COLORS.goldMetal} size="sm" />
+          Model ELO Rankings
+        </h3>
+        <span className="text-xs tabular-nums text-marble-400">
+          {gameCount} game{gameCount !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {top3.map((entry, i) => {
+          const meta = getModelMeta(entry.name);
+          return (
+            <div
+              key={entry.id}
+              className="flex items-stretch gap-0 rounded-sm border border-marble-300/50 bg-marble-50"
+            >
+              <div
+                className="w-1.5 shrink-0 rounded-l-sm"
+                style={{ backgroundColor: meta.color }}
+              />
+              <div className="flex flex-1 items-center gap-2.5 pl-3 pr-2 py-2.5">
+                <ModelAvatar entry={entry} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <span className="font-display text-sm font-bold tracking-wide uppercase text-marble-800">
+                    {formatModelName(entry.name)}
+                  </span>
+                  <span className="ml-1.5 text-xs text-marble-400">
+                    {meta.provider}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="font-mono text-sm font-semibold tabular-nums text-marble-700">
+                    {entry.elo}
+                  </span>
+                  <CivIcon icon={Medal} color={MEDAL_COLORS[i]} size="sm" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Link
+        href="/civbench"
+        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-marble-500 transition-colors hover:text-gold-dark"
+      >
+        View Full Leaderboard
+        <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
+    </section>
+  );
+}
+
+// ─── Full Leaderboard (dedicated page) ──────────────────────────────────────
+
+export function FullLeaderboard({ filter }: { filter?: EloFilter } = {}) {
+  const { ratings, gameCount, loading, modelScores } = useElo(filter);
+
+  if (loading) {
+    return (
+      <div className="space-y-10">
+        <section>
+          <SkeletonLine className="mb-3 w-32" />
+          <div className="overflow-x-auto rounded-sm border border-marble-300/50">
+            <div className="space-y-0">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 border-b border-marble-300/30 px-3 py-3 last:border-0"
+                >
+                  <SkeletonBlock className="h-5 w-5 rounded-full" />
+                  <SkeletonBlock className="h-8 w-8 rounded-full" />
+                  <SkeletonLine className="w-32" />
+                  <div className="flex-1" />
+                  <SkeletonLine className="w-12" />
+                  <SkeletonLine className="w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  const models = ratings.filter((e) => e.type === "model");
+
+  if (models.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-20 text-sm text-marble-400">
+        No completed games yet. Ratings will appear once games finish.
+      </div>
+    );
+  }
+
+  // ELO range for proportional bars
+  const eloMin = Math.min(...models.map((e) => e.elo));
+  const eloMax = Math.max(...models.map((e) => e.elo));
+  const eloRange = eloMax - eloMin || 1;
+
+  return (
+    <div className="space-y-10">
+      {/* Rankings Table */}
+      <section>
+        <div className="flex items-baseline justify-between">
+          <h2 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-[0.08em] text-marble-500">
+            <CivIcon
+              icon={TrendingUp}
+              color={CIV6_COLORS.goldMetal}
+              size="sm"
+            />
+            Rankings
+          </h2>
+          <span className="text-xs tabular-nums text-marble-400">
+            {gameCount} game{gameCount !== 1 ? "s" : ""} played
+          </span>
+        </div>
+
+        <div className="mt-3 overflow-x-auto rounded-sm border border-marble-300/50">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-marble-300/50 bg-marble-100 text-left text-xs font-bold uppercase tracking-[0.08em] text-marble-500">
+                <th className="w-10 px-3 py-2.5 text-center">#</th>
+                <th className="px-3 py-2.5">Model</th>
+                <th className="hidden px-3 py-2.5 sm:table-cell">Provider</th>
+                <th className="px-3 py-2.5 text-right">ELO</th>
+                <th className="px-3 py-2.5 text-right">W-L</th>
+                <th className="hidden px-3 py-2.5 text-right sm:table-cell">
+                  Win Rate
+                </th>
+                <th className="hidden px-3 py-2.5 text-right sm:table-cell">
+                  Games
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {models.map((entry, i) => {
+                const meta = getModelMeta(entry.name);
+                const winPct =
+                  entry.games > 0
+                    ? Math.round((entry.wins / entry.games) * 100)
+                    : 0;
+                const eloBarWidth = ((entry.elo - eloMin) / eloRange) * 100;
+
+                return (
+                  <tr
+                    key={entry.id}
+                    className="border-b border-marble-300/30 last:border-0 transition-colors hover:bg-marble-100/50"
+                    style={{ borderLeftWidth: 5, borderLeftColor: meta.color }}
+                  >
+                    <td className="px-3 py-2.5 text-center">
+                      <RankBadge rank={i + 1} />
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Link
+                        href={`/games?model=${encodeURIComponent(entry.name)}`}
+                        className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+                      >
+                        <ModelAvatar entry={entry} />
+                        <span className="font-display text-sm font-bold tracking-wide uppercase text-marble-800 hover:underline">
+                          {formatModelName(entry.name)}
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="hidden px-3 py-2.5 sm:table-cell">
+                      <div className="flex items-center gap-1.5">
+                        {meta.providerLogo && (
+                          <Image
+                            src={meta.providerLogo}
+                            alt=""
+                            width={14}
+                            height={14}
+                            className="h-3.5 w-3.5"
+                          />
+                        )}
+                        <span className="text-sm text-marble-500">
+                          {meta.provider}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <div className="relative inline-flex items-center">
+                        <div
+                          className="absolute inset-y-0 right-0 rounded-sm opacity-10"
+                          style={{
+                            backgroundColor: meta.color,
+                            width: `${eloBarWidth}%`,
+                          }}
+                        />
+                        <EloBadge elo={entry.elo} />
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <WinLoss wins={entry.wins} losses={entry.losses} />
+                    </td>
+                    <td className="hidden px-3 py-2.5 sm:table-cell">
+                      <div className="flex justify-end">
+                        <WinRateBar pct={winPct} />
+                      </div>
+                    </td>
+                    <td className="hidden px-3 py-2.5 text-right font-mono text-sm tabular-nums text-marble-600 sm:table-cell">
+                      {entry.games}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Model Cards */}
+      <section>
+        <h2 className="flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-[0.08em] text-marble-500">
+          <CivIcon icon={Swords} color={CIV6_COLORS.military} size="sm" />
+          Model Profiles
+        </h2>
+        <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-wider">
+          {SCORE_DIMS.map((d) => {
+            const Icon = d.icon;
+            return (
+              <span
+                key={d.key}
+                className="inline-flex items-center gap-0.5"
+                title={d.label}
+                style={{ color: d.color }}
+              >
+                <Icon className="h-3 w-3" aria-hidden="true" />
+                <span>{d.label}</span>
+              </span>
+            );
+          })}
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {models.map((entry) => {
+            const meta = getModelMeta(entry.name);
+            const winPct =
+              entry.games > 0
+                ? Math.round((entry.wins / entry.games) * 100)
+                : 0;
+            const scores = modelScores?.[entry.name] ?? null;
+            return (
+              <Link
+                key={entry.id}
+                href={`/games?model=${encodeURIComponent(entry.name)}`}
+                className="flex items-stretch gap-0 rounded-sm border border-marble-300/50 bg-marble-50 transition-colors hover:bg-marble-100/80 group"
+              >
+                <div
+                  className="w-1.5 shrink-0 rounded-l-sm"
+                  style={{ backgroundColor: meta.color }}
+                />
+                <div className="flex-1 p-4">
+                  <div className="flex items-center gap-2.5">
+                    <ModelAvatar entry={entry} />
+                    <div>
+                      <div className="font-display text-sm font-bold uppercase tracking-wide text-marble-800 group-hover:underline">
+                        {meta.name}
+                      </div>
+                      <div className="text-xs text-marble-500">
+                        {meta.provider}
+                      </div>
+                    </div>
+                  </div>
+                  {scores ? (
+                    <div className="-mx-3 mt-1 flex justify-center">
+                      <DimensionRadar
+                        scores={scores}
+                        color={meta.color}
+                        size={220}
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex items-center justify-center h-[160px] text-xs text-marble-400">
+                      Scores pending
+                    </div>
+                  )}
+                  <div className="mt-1 grid grid-cols-3 gap-2">
+                    <div className="text-center">
+                      <div className="font-mono text-lg font-bold tabular-nums">
+                        <EloBadge elo={entry.elo} />
+                      </div>
+                      <div className="text-xs uppercase tracking-wider text-marble-500">
+                        ELO
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-mono text-sm font-semibold tabular-nums text-marble-700">
+                        <WinLoss wins={entry.wins} losses={entry.losses} />
+                      </div>
+                      <div className="text-xs uppercase tracking-wider text-marble-500">
+                        W-L
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-mono text-sm font-semibold tabular-nums text-marble-700">
+                        {winPct}%
+                      </div>
+                      <div className="mt-0.5 mx-auto h-1 w-8 overflow-hidden rounded-full bg-marble-200">
+                        <div
+                          className="h-full rounded-full bg-patina/50"
+                          style={{ width: `${winPct}%` }}
+                        />
+                      </div>
+                      <div className="mt-0.5 text-xs uppercase tracking-wider text-marble-500">
+                        Win
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
