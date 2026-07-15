@@ -2,11 +2,11 @@
 -- Haikesi_AI_Relics.sql — AI 专属海克斯（PVE 模式 + NW_HAIKESI_AI_RELIC 开关开启时加载）
 -- 仅 AI 可获得，不进玩家刷新池（IsActive=0，ApplyRelicToPlayer 不检查 IsActive）
 -- AI 每次随玩家同步触发，从池中随机选 1 个（不可重复，南蛮入侵除外）
--- 1-6: 产出百分比（MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_MODIFIER）
--- 7-14: 生产单位赠同单位（MODIFIER_PLAYER_UNITS_ADJUST_EXTRA_UNIT_COPY[_TAG]）
---   平民（开拓者/建造者）无 PromotionClass，用 UnitType 版；战斗单位用 _TAG 版
--- 15: 南蛮入侵（Lua）
--- 16+: 资源创建类型（见 Haikesi_Relic_ResourceSpawns：棉花/烟草/糖/丝绸/茶）
+-- 一、属性叠属性叠属性：产出百分比
+-- 二、回响施放：生产单位赠同单位（平民 UnitType 版；战斗单位 _TAG 版）
+-- 三、混乱干扰：南蛮入侵等（对其他文明施压/捣乱）
+-- 四、资源创建类型（见 Haikesi_Relic_ResourceSpawns）
+-- 五、和平互利：入向商路双方加成等
 -- ===========================================================================
 
 -- ===========================================================================
@@ -132,7 +132,8 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIF
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_SIEGE', 'MODIFIER_NW_AI_ECHO_SIEGE');
 
 -- ===========================================================================
--- 三、南蛮入侵（最新城市 5 环尝试生成 3 营地；每缺 1 个在最近营地补 3 战士；无营地则所有城市 4 环各补 3 战士）
+-- 三、混乱干扰系列（对其他文明施压/捣乱；可扩展）
+-- 南蛮入侵：最新城市 5 环尝试生成 3 营地；每缺 1 个在最近营地补 3 战士；无营地则所有城市 4 环各补 3 战士
 -- ===========================================================================
 INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
     ('NW_AI_BARBARIAN_INVASION', 'LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_NAME', 'LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 1);
@@ -186,3 +187,45 @@ INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_DRINK_TEA_MARKER', 'Key', 'PROP_NW_AI_DRINK_TEA');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_DRINK_TEA_MARKER', 'Amount', '1');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_DRINK_TEA', 'MODIFIER_NW_AI_DRINK_TEA_MARKER');
+
+-- ===========================================================================
+-- 五、和平互利系列（入向国际商路双方受益；可扩展）
+-- 天朝上国：通往本文明城市的商路 → 对方 +1 科 +1 文；本方 +4 金 +2 信仰
+-- （埃及地中海新娘同款 TO_OTHERS / FROM_OTHERS API）
+-- ===========================================================================
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_CELESTIAL_EMPIRE', 'LOC_HAIKESI_RELIC_NW_AI_CELESTIAL_EMPIRE_NAME', 'LOC_HAIKESI_RELIC_NW_AI_CELESTIAL_EMPIRE_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_CELESTIAL_EMPIRE_FLAVOR', 'ICON_HAIKESI_RELIC_HAILTOTHEKINGRUNE', 'PRISMATIC', 0, 0);
+
+-- 对方（出发城）+1 科技
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_AI_CELESTIAL_TO_OTHERS_SCIENCE', 'MODIFIER_PLAYER_CITIES_ADJUST_TRADE_ROUTE_YIELD_TO_OTHERS');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_AI_CELESTIAL_TO_OTHERS_SCIENCE', 'YieldType', 'YIELD_SCIENCE'),
+    ('MODIFIER_NW_AI_CELESTIAL_TO_OTHERS_SCIENCE', 'Amount',    '1');
+
+-- 对方（出发城）+1 文化
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_AI_CELESTIAL_TO_OTHERS_CULTURE', 'MODIFIER_PLAYER_CITIES_ADJUST_TRADE_ROUTE_YIELD_TO_OTHERS');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_AI_CELESTIAL_TO_OTHERS_CULTURE', 'YieldType', 'YIELD_CULTURE'),
+    ('MODIFIER_NW_AI_CELESTIAL_TO_OTHERS_CULTURE', 'Amount',    '1');
+
+-- 本方（到达城）+4 金币
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_AI_CELESTIAL_FROM_OTHERS_GOLD', 'MODIFIER_PLAYER_CITIES_ADJUST_TRADE_ROUTE_YIELD_FROM_OTHERS');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_AI_CELESTIAL_FROM_OTHERS_GOLD', 'YieldType', 'YIELD_GOLD'),
+    ('MODIFIER_NW_AI_CELESTIAL_FROM_OTHERS_GOLD', 'Amount',    '4');
+
+-- 本方（到达城）+2 信仰
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_AI_CELESTIAL_FROM_OTHERS_FAITH', 'MODIFIER_PLAYER_CITIES_ADJUST_TRADE_ROUTE_YIELD_FROM_OTHERS');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_AI_CELESTIAL_FROM_OTHERS_FAITH', 'YieldType', 'YIELD_FAITH'),
+    ('MODIFIER_NW_AI_CELESTIAL_FROM_OTHERS_FAITH', 'Amount',    '2');
+
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('NW_AI_CELESTIAL_EMPIRE', 'MODIFIER_NW_AI_CELESTIAL_TO_OTHERS_SCIENCE'),
+    ('NW_AI_CELESTIAL_EMPIRE', 'MODIFIER_NW_AI_CELESTIAL_TO_OTHERS_CULTURE'),
+    ('NW_AI_CELESTIAL_EMPIRE', 'MODIFIER_NW_AI_CELESTIAL_FROM_OTHERS_GOLD'),
+    ('NW_AI_CELESTIAL_EMPIRE', 'MODIFIER_NW_AI_CELESTIAL_FROM_OTHERS_FAITH');

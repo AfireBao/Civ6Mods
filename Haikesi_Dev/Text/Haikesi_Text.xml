@@ -1250,7 +1250,7 @@
             <Text>南蛮入侵</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>除触发该海克斯的 AI 外，在其他每位玩家最新建立的城市 5 环尝试生成 3 个遵循原版间距的蛮族营地；每少生成 1 个，则在距离该城市最近的现有蛮族营地处补充 3 个蛮族战士；若全图不存在蛮族营地，则在该文明所有城市的 4 环各生成 3 个蛮族战士。每轮 AI 海克斯选择中，至多 1 个 AI 可抽中此海克斯。</Text>
+            <Text>【混乱干扰】除触发该海克斯的 AI 外，在其他每位玩家最新建立的城市 5 环尝试生成 3 个遵循原版间距的蛮族营地；每少生成 1 个，则在距离该城市最近的现有蛮族营地处补充 3 个蛮族战士；若全图不存在蛮族营地，则在该文明所有城市的 4 环各生成 3 个蛮族战士。每轮 AI 海克斯选择中，至多 1 个 AI 可抽中此海克斯。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_FLAVOR" Language="zh_Hans_CN">
             <Text>烟起蛮帐，铁骑叩城，南地风雷一夜至。</Text>
@@ -1304,6 +1304,16 @@
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_FLAVOR" Language="zh_Hans_CN">
             <Text>三点几咯，饮茶先啦。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CELESTIAL_EMPIRE_NAME" Language="zh_Hans_CN">
+            <Text>天朝上国</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CELESTIAL_EMPIRE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【和平互利】通往本文明城市的国际 [ICON_TradeRoute] 商路：对方出发城 +1 [ICON_Science] 科技、+1 [ICON_Culture] 文化；本文明到达城 +4 [ICON_Gold] 金币、+2 [ICON_Faith] 信仰。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CELESTIAL_EMPIRE_FLAVOR" Language="zh_Hans_CN">
+            <Text>万邦来朝，厚往薄来。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_BARB_INVASION_ASSAULT_TITLE" Language="zh_Hans_CN">
