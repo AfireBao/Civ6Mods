@@ -44,10 +44,15 @@ end
 -- ===========================================================================
 function ReadCustomUnitStats( pUnit:table, kSubjectData:table )	
 	kSubjectData = BASE_ReadCustomUnitStats(pUnit, kSubjectData );
-	if IsRockBandUnitTypeName(GameInfo.Units[kSubjectData.UnitType].UnitType) then 
+	local unitTypeName = GameInfo.Units[kSubjectData.UnitType] and GameInfo.Units[kSubjectData.UnitType].UnitType or nil;
+	if IsRockBandUnitTypeName(unitTypeName) then 
 		kSubjectData.IsRockbandUnit = true;
 		kSubjectData.RockBandLevel	= pUnit:GetRockBand():GetRockBandLevel();
 		kSubjectData.AlbumSales		= pUnit:GetRockBand():GetAlbumSales();
+	end
+	-- 特工：面板显示实例名「憨豆」（类型名仍为 LOC_UNIT_NW_BEAN_NAME=特工）
+	if unitTypeName == "UNIT_NW_BEAN" then
+		kSubjectData.Name = "LOC_UNIT_NW_BEAN_INSTANCE_NAME";
 	end
 
 	return kSubjectData;

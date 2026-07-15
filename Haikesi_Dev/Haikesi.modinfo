@@ -92,6 +92,7 @@
       <File>UI/Haikesi_Tracker_Panel.xml</File>
       <File>UI/Haikesi_Ability_Panel.xml</File>
       <File>UI/Haikesi_TriTrade_Bridge.xml</File>
+      <File>UI/Haikesi_Bean_Bridge.xml</File>
       <File>UI/Haikesi_Planter_Chooser.xml</File>
       <File>UI/Haikesi_Planter_Launcher.xml</File>
     </AddUserInterfaces>
@@ -106,6 +107,12 @@
         <LoadOrder>16796</LoadOrder>
       </Properties>
       <File>GamePlay/Haikesi_Planter_GamePlay.lua</File>
+    </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_BeanGamePlay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_Bean_GamePlay.lua</File>
     </AddGameplayScripts>
     <AddGameplayScripts id="Haikesi_Trigger">
       <Properties>
@@ -139,6 +146,7 @@
     <File>Data/ModCore.sql</File>
     <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
     <File>GamePlay/Haikesi_Planter_GamePlay.lua</File>
+    <File>GamePlay/Haikesi_Bean_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Trigger.lua</File>
     <File>Haikesi.dep</File>
     <File>Platforms/Windows/BLPs/UI/Icons.blp</File>
@@ -146,6 +154,8 @@
     <File>Text/Haikesi_Text.xml</File>
     <File>UI/Haikesi_Ability_Panel.lua</File>
     <File>UI/Haikesi_Ability_Panel.xml</File>
+    <File>UI/Haikesi_Bean_Bridge.lua</File>
+    <File>UI/Haikesi_Bean_Bridge.xml</File>
     <File>UI/Haikesi_BarbClan_Bridge.lua</File>
     <File>UI/Haikesi_BarbClan_Bridge.xml</File>
     <File>UI/Haikesi_ExtAI_Bridge.lua</File>

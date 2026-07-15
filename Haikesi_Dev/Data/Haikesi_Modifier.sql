@@ -1680,3 +1680,201 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
 
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('PEARLPIGRUNE', 'MODIFIER_NW_JUAN_GRANT');
+
+-- ===========================================================================
+-- 世外桃源 (SHANGRILARUNE): 全城地块 +1 魅力；惊艳（魅力≥4）地块 +1 生产力
+-- 产量侧抄大地女神 GS（CITY_PLOT_YIELDS + PLOT_BREATHTAKING / MinimumAppeal=4）
+-- ===========================================================================
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
+    VALUES ('NW_REQUIRES_PLOT_APPEAL_GE_4', 'REQUIREMENT_PLOT_IS_APPEAL_BETWEEN');
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value)
+    VALUES ('NW_REQUIRES_PLOT_APPEAL_GE_4', 'MinimumAppeal', '4');
+
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
+    VALUES ('NW_PLOT_APPEAL_GE_4', 'REQUIREMENTSET_TEST_ALL');
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId)
+    VALUES ('NW_PLOT_APPEAL_GE_4', 'NW_REQUIRES_PLOT_APPEAL_GE_4');
+
+-- 所有城市地块 +1 魅力（埃菲尔同款）
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_SHANGRILA_APPEAL', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_APPEAL');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_SHANGRILA_APPEAL', 'Amount', '1');
+
+-- 内层：城内地块产量；外层：挂到玩家所有城市
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
+    VALUES ('MODIFIER_NW_SHANGRILA_PROD_PLOT',
+            'MODIFIER_CITY_PLOT_YIELDS_ADJUST_PLOT_YIELD',
+            'NW_PLOT_APPEAL_GE_4');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_SHANGRILA_PROD_PLOT', 'YieldType', 'YIELD_PRODUCTION'),
+    ('MODIFIER_NW_SHANGRILA_PROD_PLOT', 'Amount',    '1');
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_SHANGRILA_PROD', 'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_SHANGRILA_PROD', 'ModifierId', 'MODIFIER_NW_SHANGRILA_PROD_PLOT');
+
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('SHANGRILARUNE', 'MODIFIER_NW_SHANGRILA_APPEAL'),
+    ('SHANGRILARUNE', 'MODIFIER_NW_SHANGRILA_PROD');
+
+-- ===========================================================================
+-- 憨豆特工 (BEANAGENTRUNE): 首都赠送 1 名「憨豆」（带晋升的间谍）
+-- 进攻任务成功等级 -4；憨豆 Ability 在己方反间谍城 +3 宜居（仅 UNIT_NW_BEAN）
+-- 卡面图标暂借未实装 TAPDANCERUNE，不改写占位
+-- ===========================================================================
+INSERT OR IGNORE INTO Types (Type, Kind) VALUES
+    ('UNIT_NW_BEAN',                              'KIND_UNIT'),
+    ('ABILITY_NW_BEAN',                           'KIND_ABILITY'),
+    ('TRAIT_NW_BEAN_LOCK',                        'KIND_TRAIT'),
+    ('MODIFIER_NW_UNIT_NEAREST_CITY_TRAIT_AMENITY', 'KIND_MODIFIER');
+
+-- 单位 Ability → 最近己方城市 +TRAIT_AMENITY（仅憨豆本体有 Ability，普通间谍无）
+INSERT OR IGNORE INTO DynamicModifiers (ModifierType, CollectionType, EffectType) VALUES
+    ('MODIFIER_NW_UNIT_NEAREST_CITY_TRAIT_AMENITY',
+     'COLLECTION_UNIT_NEAREST_OWNER_CITY',
+     'EFFECT_ADJUST_TRAIT_AMENITY');
+
+INSERT OR IGNORE INTO Traits (TraitType, Name, Description, InternalOnly) VALUES
+    ('TRAIT_NW_BEAN_LOCK',
+     'LOC_UNIT_NW_BEAN_NAME',
+     'LOC_UNIT_NW_BEAN_DESCRIPTION',
+     1);
+
+INSERT OR IGNORE INTO Tags (Tag, Vocabulary) VALUES
+    ('CLASS_NW_BEAN', 'ABILITY_CLASS');
+
+INSERT OR IGNORE INTO TypeTags (Type, Tag) VALUES
+    ('UNIT_NW_BEAN',    'CLASS_SPY'),
+    ('UNIT_NW_BEAN',    'CLASS_LANDCIVILIAN'),
+    ('UNIT_NW_BEAN',    'CLASS_NW_BEAN'),
+    ('ABILITY_NW_BEAN', 'CLASS_NW_BEAN');
+
+INSERT OR IGNORE INTO Units (
+    UnitType, Name, Description,
+    Cost, Maintenance, BaseMoves, BaseSightRange, ZoneOfControl,
+    Domain, FormationClass, PromotionClass, AdvisorType,
+    CanCapture, PurchaseYield, MustPurchase, TraitType,
+    IgnoreMoves, NumRandomChoices, InitialLevel, Spy, TeamVisibility
+) VALUES (
+    'UNIT_NW_BEAN',
+    'LOC_UNIT_NW_BEAN_NAME',
+    'LOC_UNIT_NW_BEAN_DESCRIPTION',
+    0, 4, 1, 3, 0,
+    'DOMAIN_LAND', 'FORMATION_CLASS_CIVILIAN', 'PROMOTION_CLASS_SPY', 'ADVISOR_TECHNOLOGY',
+    0, 'YIELD_GOLD', 1, 'TRAIT_NW_BEAN_LOCK',
+    1, 0, 2, 1, 1
+);
+-- NumRandomChoices=0：减少随机名干扰；类型名=特工，实例名由 UI NAME_UNIT → LOC_UNIT_NW_BEAN_INSTANCE_NAME（憨豆）
+UPDATE Units SET NumRandomChoices = 0 WHERE UnitType = 'UNIT_NW_BEAN';
+
+-- 原版间谍挂在 UnitAiInfos（非 UnitAiTypes；后者只有 AiType 定义）
+INSERT OR IGNORE INTO UnitAiInfos (UnitType, AiType)
+    VALUES ('UNIT_NW_BEAN', 'UNITTYPE_CIVILIAN');
+
+INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactive) VALUES
+    ('ABILITY_NW_BEAN',
+     'LOC_UNIT_NW_BEAN_NAME',
+     'LOC_ABILITY_NW_BEAN_DESCRIPTION', 0);
+
+-- 进攻任务成功等级 -4
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES
+    ('MODIFIER_NW_BEAN_CHANCE_STEALTECH',   'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE'),
+    ('MODIFIER_NW_BEAN_CHANCE_SIPHON',      'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE'),
+    ('MODIFIER_NW_BEAN_CHANCE_SABOTAGE',    'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE'),
+    ('MODIFIER_NW_BEAN_CHANCE_HEIST',       'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE'),
+    ('MODIFIER_NW_BEAN_CHANCE_PARTISANS',   'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE'),
+    ('MODIFIER_NW_BEAN_CHANCE_ROCKETRY',    'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE'),
+    ('MODIFIER_NW_BEAN_CHANCE_UNREST',      'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE'),
+    ('MODIFIER_NW_BEAN_CHANCE_SCANDAL',     'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE'),
+    ('MODIFIER_NW_BEAN_CHANCE_GOVERNOR',    'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE'),
+    ('MODIFIER_NW_BEAN_CHANCE_BREACH_DAM',  'MODIFIER_PLAYER_UNIT_ADJUST_SPY_OPERATION_CHANCE');
+
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_BEAN_CHANCE_STEALTECH',  'OperationType', 'UNITOPERATION_SPY_STEAL_TECH_BOOST'),
+    ('MODIFIER_NW_BEAN_CHANCE_STEALTECH',  'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_STEALTECH',  'Amount',        '-4'),
+    ('MODIFIER_NW_BEAN_CHANCE_SIPHON',     'OperationType', 'UNITOPERATION_SPY_SIPHON_FUNDS'),
+    ('MODIFIER_NW_BEAN_CHANCE_SIPHON',     'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_SIPHON',     'Amount',        '-4'),
+    ('MODIFIER_NW_BEAN_CHANCE_SABOTAGE',   'OperationType', 'UNITOPERATION_SPY_SABOTAGE_PRODUCTION'),
+    ('MODIFIER_NW_BEAN_CHANCE_SABOTAGE',   'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_SABOTAGE',   'Amount',        '-4'),
+    ('MODIFIER_NW_BEAN_CHANCE_HEIST',      'OperationType', 'UNITOPERATION_SPY_GREAT_WORK_HEIST'),
+    ('MODIFIER_NW_BEAN_CHANCE_HEIST',      'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_HEIST',      'Amount',        '-4'),
+    ('MODIFIER_NW_BEAN_CHANCE_PARTISANS',  'OperationType', 'UNITOPERATION_SPY_RECRUIT_PARTISANS'),
+    ('MODIFIER_NW_BEAN_CHANCE_PARTISANS',  'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_PARTISANS',  'Amount',        '-4'),
+    ('MODIFIER_NW_BEAN_CHANCE_ROCKETRY',   'OperationType', 'UNITOPERATION_SPY_DISRUPT_ROCKETRY'),
+    ('MODIFIER_NW_BEAN_CHANCE_ROCKETRY',   'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_ROCKETRY',   'Amount',        '-4'),
+    ('MODIFIER_NW_BEAN_CHANCE_UNREST',     'OperationType', 'UNITOPERATION_SPY_FOMENT_UNREST'),
+    ('MODIFIER_NW_BEAN_CHANCE_UNREST',     'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_UNREST',     'Amount',        '-4'),
+    ('MODIFIER_NW_BEAN_CHANCE_SCANDAL',    'OperationType', 'UNITOPERATION_SPY_FABRICATE_SCANDAL'),
+    ('MODIFIER_NW_BEAN_CHANCE_SCANDAL',    'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_SCANDAL',    'Amount',        '-4'),
+    ('MODIFIER_NW_BEAN_CHANCE_GOVERNOR',   'OperationType', 'UNITOPERATION_SPY_NEUTRALIZE_GOVERNOR'),
+    ('MODIFIER_NW_BEAN_CHANCE_GOVERNOR',   'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_GOVERNOR',   'Amount',        '-4'),
+    ('MODIFIER_NW_BEAN_CHANCE_BREACH_DAM', 'OperationType', 'UNITOPERATION_SPY_BREACH_DAM'),
+    ('MODIFIER_NW_BEAN_CHANCE_BREACH_DAM', 'Offensive',     'true'),
+    ('MODIFIER_NW_BEAN_CHANCE_BREACH_DAM', 'Amount',        '-4');
+
+INSERT OR IGNORE INTO UnitAbilityModifiers (UnitAbilityType, ModifierId) VALUES
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_STEALTECH'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_SIPHON'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_SABOTAGE'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_HEIST'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_PARTISANS'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_ROCKETRY'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_UNREST'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_SCANDAL'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_GOVERNOR'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_BREACH_DAM'),
+    ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_AMENITY');
+
+-- 憨豆本人在己方领土、且最近己方城市有反间谍时 +3 宜居
+-- （宜居挂在 ABILITY_NW_BEAN 上，仅 UNIT_NW_BEAN 有此 Ability；普通间谍不触发）
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES
+    ('NW_REQUIRES_BEAN_IN_OWNER_TERRITORY', 'REQUIREMENT_UNIT_IN_OWNER_TERRITORY'),
+    ('NW_REQUIRES_CITY_HAS_COUNTERSPY',     'REQUIREMENT_CITY_HAS_COUNTERSPY');
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType) VALUES
+    ('NW_BEAN_IN_OWNER_TERRITORY', 'REQUIREMENTSET_TEST_ALL'),
+    ('NW_CITY_HAS_COUNTERSPY',     'REQUIREMENTSET_TEST_ALL');
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
+    ('NW_BEAN_IN_OWNER_TERRITORY', 'NW_REQUIRES_BEAN_IN_OWNER_TERRITORY'),
+    ('NW_CITY_HAS_COUNTERSPY',     'NW_REQUIRES_CITY_HAS_COUNTERSPY');
+
+DELETE FROM ModifierArguments WHERE ModifierId = 'MODIFIER_NW_BEAN_AMENITY';
+DELETE FROM Modifiers WHERE ModifierId = 'MODIFIER_NW_BEAN_AMENITY';
+INSERT INTO Modifiers (ModifierId, ModifierType, OwnerRequirementSetId, SubjectRequirementSetId)
+    VALUES ('MODIFIER_NW_BEAN_AMENITY',
+            'MODIFIER_NW_UNIT_NEAREST_CITY_TRAIT_AMENITY',
+            'NW_BEAN_IN_OWNER_TERRITORY',
+            'NW_CITY_HAS_COUNTERSPY');
+INSERT INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_BEAN_AMENITY', 'Amount', '3');
+
+-- 首都赠送 1 名憨豆
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, RunOnce, Permanent, NewOnly, SubjectStackLimit) VALUES
+    ('MODIFIER_NW_BEAN_GRANT_EFFECT',
+     'MODIFIER_SINGLE_CITY_GRANT_UNIT_IN_CITY', 1, 1, 0, 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_BEAN_GRANT_EFFECT', 'UnitType',            'UNIT_NW_BEAN'),
+    ('MODIFIER_NW_BEAN_GRANT_EFFECT', 'Amount',              '1'),
+    ('MODIFIER_NW_BEAN_GRANT_EFFECT', 'AllowUniqueOverride', 'false');
+
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, SubjectRequirementSetId, SubjectStackLimit) VALUES
+    ('MODIFIER_NW_BEAN_GRANT',
+     'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', 'NW_CITY_HAS_BUILDING_PALACE', 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_BEAN_GRANT', 'ModifierId', 'MODIFIER_NW_BEAN_GRANT_EFFECT');
+
+-- 宜居随单位 Ability 生效，不挂玩家级 Relic Modifier（避免任意反间谍都触发）
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('BEANAGENTRUNE', 'MODIFIER_NW_BEAN_GRANT');

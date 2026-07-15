@@ -717,6 +717,40 @@
             <Text>工头喊了一嗓子</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_NAME" Language="zh_Hans_CN">
+            <Text>世外桃源</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市的所有地块 +1 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>桃林深处无车马喧，唯听风过水田。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_BEANAGENTRUNE_NAME" Language="zh_Hans_CN">
+            <Text>憨豆特工</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BEANAGENTRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立即获得一名特工「憨豆」（自带一次晋升）。[NEWLINE]憨豆执行进攻任务时成功等级 -4。[NEWLINE]憨豆在己方城市执行反间谍任务时，该城市 +3 [ICON_Amenities] 宜居度。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BEANAGENTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>通行证、微型相机、一颗沉默的卷心菜——任务说明书上写着「请勿弄坏」。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_UNIT_NW_BEAN_NAME" Language="zh_Hans_CN">
+            <Text>特工</Text>
+        </Replace>
+        <!-- 单位类型名=特工；实例公民名由 UI NAME_UNIT 固定为「憨豆」 -->
+        <Replace Tag="LOC_UNIT_NW_BEAN_INSTANCE_NAME" Language="zh_Hans_CN">
+            <Text>憨豆</Text>
+        </Replace>
+        <Replace Tag="LOC_UNIT_NW_BEAN_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>特殊间谍单位。执行进攻任务时成功等级 -4；在己方城市执行反间谍时可提供大量宜居。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_BEAN_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>进攻任务成功等级 -4。在己方城市执行反间谍任务时，该城市 +3 [ICON_Amenities] 宜居度。</Text>
+        </Replace>
+
         <Replace Tag="LOC_UNIT_NW_JUAN_NAME" Language="zh_Hans_CN">
             <Text>娟</Text>
         </Replace>
@@ -1174,7 +1208,7 @@
             <Text>开发者模式</Text>
         </Row>
         <Row Tag="LOC_NW_HAIKESI_MODE_DEV_DESC" Language="zh_Hans_CN">
-            <Text>每回合解锁一次海克斯选择（调试用）</Text>
+            <Text>每回合解锁一次海克斯选择；人类玩家开局获得全图实时视野（调试用）</Text>
         </Row>
 
         <Row Tag="LOC_NW_HAIKESI_MODE_MP_NAME" Language="zh_Hans_CN">

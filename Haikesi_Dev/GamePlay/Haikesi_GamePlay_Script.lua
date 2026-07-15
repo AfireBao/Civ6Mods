@@ -8,8 +8,7 @@
 
 --||======================= Debug ========================||--
 
--- [DEV 测试] 人类玩家开局拥有全图实时视野；正式发布时设为 false
-local DEV_FULL_MAP_VISION = true
+-- 人类全图实时视野：仅高级选项「海克斯模式 = 开发者模式」(NW_HAIKESI_MODE == 3) 时开启
 local DEV_FULL_MAP_VISION_PROP = 'PROP_NW_HAIKESI_DEV_FULL_MAP_VISION'
 
 -- 内存 Map：RelicType → ModifierId[]（在 Initialize 中构建）
@@ -3681,7 +3680,7 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
 end
 
 local function Haikesi_DevGrantFullMapVisionForHumans()
-    if not DEV_FULL_MAP_VISION then return end
+    if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) ~= 3 then return end
     for _, pPlayer in ipairs(PlayerManager.GetAliveMajors()) do
         if pPlayer:IsHuman() then
             local iPlayer = pPlayer:GetID()
@@ -3703,7 +3702,7 @@ end
 -- （主脚本文件级 local 已近 Firaxis Lua 5.1 寄存器上限，再塞会整文件加载失败）
 
 local function OnDevVisionPlayerTurnActivated(_, bIsFirstTime)
-    if not DEV_FULL_MAP_VISION or not bIsFirstTime then return end
+    if not bIsFirstTime then return end
     Haikesi_DevGrantFullMapVisionForHumans()
 end
 
@@ -3743,7 +3742,7 @@ function Initialize()
     GameEvents.HaikesiSelectAbility.Add(HaikesiSelectAbility)
     GameEvents.CityBuilt.Add(OnHaikesiCityBuilt)
 
-    if DEV_FULL_MAP_VISION then
+    if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) == 3 then
         Haikesi_DevGrantFullMapVisionForHumans()
         Events.PlayerTurnActivated.Add(OnDevVisionPlayerTurnActivated)
     end
