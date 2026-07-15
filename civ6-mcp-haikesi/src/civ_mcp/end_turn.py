@@ -560,6 +560,8 @@ async def execute_end_turn(gs: GameState) -> str:
     #     so we MUST register a handler BEFORE sending ACTION_ENDTURN.
     try:
         wc_status = await gs.get_world_congress()
+        if wc_status is None:
+            raise RuntimeError("World Congress unavailable")
         if wc_status.turns_until_next <= 0 or wc_status.is_in_session:
             n_res = len(wc_status.resolutions) if wc_status.resolutions else 0
             # Skip gate when WC fires with 0 resolutions — nothing to vote on

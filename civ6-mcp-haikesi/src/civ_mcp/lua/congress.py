@@ -6,13 +6,20 @@ from civ_mcp.lua._helpers import SENTINEL, _bail
 from civ_mcp.lua.models import CongressProposal, CongressResolution, WorldCongressStatus
 
 
-def build_world_congress_query() -> str:
-    """Get World Congress status, resolutions, and proposals (InGame context)."""
+def build_world_congress_query(*, soft_missing: bool = False) -> str:
+    """Get World Congress status, resolutions, and proposals (InGame context).
+
+    soft_missing=True: emit WC_NONE instead of hard bail (for Haikesi prompt context).
+    """
+    if soft_missing:
+        missing = f'print("WC_NONE|not_available")\nprint("{SENTINEL}")\nreturn'
+    else:
+        missing = _bail("ERR:NO_WORLD_CONGRESS|World Congress not available yet")
     return f"""
 local me = Game.GetLocalPlayer()
 local pDiplo = Players[me]:GetDiplomacy()
 local wc = Game.GetWorldCongress()
-if not wc then {_bail("ERR:NO_WORLD_CONGRESS|World Congress not available yet")} end
+if not wc then {missing} end
 local inSession = wc:IsInSession()
 local meeting = wc:GetMeetingStatus()
 local turnsLeft = meeting and meeting.TurnsLeft or -1
@@ -110,8 +117,13 @@ print("{SENTINEL}")
 """
 
 
-def parse_world_congress_response(lines: list[str]) -> WorldCongressStatus:
-    """Parse WC_STATUS / WC_RES / WC_PROP lines into WorldCongressStatus."""
+def parse_world_congress_response(lines: list[str]) -> WorldCongressStatus | None:
+    """Parse WC_STATUS / WC_RES / WC_PROP lines into WorldCongressStatus.
+
+    Returns None when soft-missing query emitted WC_NONE.
+    """
+    if any(line.startswith("WC_NONE|") for line in lines):
+        return None
     status = WorldCongressStatus(
         is_in_session=False,
         turns_until_next=-1,

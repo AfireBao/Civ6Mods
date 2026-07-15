@@ -472,6 +472,14 @@ def parse_rst_strategies(lines: list[str]) -> tuple[dict[int, RstStrategyView], 
 
 
 @dataclass
+class DiploModifierView:
+    """One diplomatic opinion modifier (other civ → viewer)."""
+
+    score: int
+    text: str
+
+
+@dataclass
 class MetCivView:
     player_id: int
     civ_name: str
@@ -489,7 +497,9 @@ class MetCivView:
     diplomatic_state: str
     relationship_score: int
     is_at_war: bool
-    grievances: int
+    grievances: int  # viewer → them (我对彼不满)
+    grievances_against_me: int = 0  # them → viewer (彼对我不满)
+    modifiers: list[DiploModifierView] = field(default_factory=list)
 
 
 @dataclass
@@ -570,12 +580,13 @@ class LeaderView:
     rst: RstStrategyView | None = None
     religion: CivReligionBeliefs | None = None
     victory_peers: list[VictoryPeerStat] = field(default_factory=list)
+    favor: int = 0  # diplomatic favor (世界会议投票资源)
 
 
 def build_leader_views_query(viewer_ids: list[int]) -> str:
     """FireTuner query that simulates each AI's diplo + fog view.
 
-    Emits VIEWER / TRAIT / AGENDA / CITY / MET / THREAT lines per viewer.
+    Emits VIEWER / TRAIT / AGENDA / CITY / MET / DIPMOD / THREAT lines per viewer.
     Soft-reads Real Strategy when present: RST_MOD / RST lines.
     Also emits FAITH / FBELIEF for pantheon + religion tenets.
     Also emits VSTAT for self+met victory progress (per-viewer fog).
@@ -826,11 +837,13 @@ for _, vid in ipairs(viewers) do
     pcall(function() leaderType = cfg:GetLeaderTypeName() end)
     pcall(function() civType = cfg:GetCivilizationTypeName() end)
     local score, cities, pop, sci, cul, gold, mil, techs, civics, faith, research, civic = empireStats(vid)
+    local favor = 0
+    pcall(function() favor = Players[vid]:GetFavor() or 0 end)
     print("VIEWER|" .. vid .. "|" .. civName .. "|" .. leaderName
       .. "|" .. score .. "|" .. cities .. "|" .. pop
       .. "|" .. string.format("%.1f", sci) .. "|" .. string.format("%.1f", cul) .. "|" .. string.format("%.1f", gold)
       .. "|" .. mil .. "|" .. techs .. "|" .. civics .. "|" .. string.format("%.1f", faith)
-      .. "|" .. research .. "|" .. civic)
+      .. "|" .. research .. "|" .. civic .. "|" .. favor)
     printTraits(vid, leaderType, civType)
     printAgendas(vid, leaderType)
     printRst(vid)
@@ -903,10 +916,16 @@ for _, vid in ipairs(viewers) do
           local relScore = 0
           local war = 0
           local griev = 0
+          local grievMe = 0
           pcall(function()
             if pDiplo:IsAtWarWith(tid) then war = 1 end
           end)
           pcall(function() griev = pDiplo:GetGrievancesAgainst(tid) or 0 end)
+          pcall(function()
+            local tDiplo = Players[tid]:GetDiplomacy()
+            if tDiplo then grievMe = tDiplo:GetGrievancesAgainst(vid) or 0 end
+          end)
+          local modLines = {{}}
           pcall(function()
             local ai = Players[tid]:GetDiplomaticAI()
             local stateIdx = ai:GetDiplomaticStateIndex(vid)
@@ -915,6 +934,10 @@ for _, vid in ipairs(viewers) do
             if mods then
               for _, mod in ipairs(mods) do
                 relScore = relScore + (mod.Score or 0)
+                local txt = tostring(mod.Text or ""):gsub("|", "/"):gsub("~", "-"):gsub("\\n", " ")
+                if txt ~= "" and not string.find(txt, "^LOC_") then
+                  table.insert(modLines, (mod.Score or 0) .. "|" .. txt)
+                end
               end
             end
           end)
@@ -922,7 +945,10 @@ for _, vid in ipairs(viewers) do
             .. "|" .. tscore .. "|" .. tcities .. "|" .. tpop
             .. "|" .. string.format("%.1f", tsci) .. "|" .. string.format("%.1f", tcul) .. "|" .. string.format("%.1f", tgold)
             .. "|" .. tmil .. "|" .. ttechs .. "|" .. tcivics .. "|" .. string.format("%.1f", tfaith)
-            .. "|" .. stateName .. "|" .. relScore .. "|" .. war .. "|" .. griev)
+            .. "|" .. stateName .. "|" .. relScore .. "|" .. war .. "|" .. griev .. "|" .. grievMe)
+          for _, ml in ipairs(modLines) do
+            print("DIPMOD|" .. vid .. "|" .. tid .. "|" .. ml)
+          end
           printVStat(vid, tid, tciv)
         end
       end
@@ -1098,6 +1124,7 @@ def parse_leader_views(lines: list[str]) -> tuple[dict[int, LeaderView], bool | 
                 faith=float(p[13] or 0),
                 current_research=p[14] or "无",
                 current_civic=p[15] or "无",
+                favor=int(float(p[16] or 0)) if len(p) > 16 else 0,
             )
         elif line.startswith("TRAIT|"):
             p = line.split("|", 4)
@@ -1176,8 +1203,23 @@ def parse_leader_views(lines: list[str]) -> tuple[dict[int, LeaderView], bool | 
                     relationship_score=int(float(p[16] or 0)),
                     is_at_war=p[17] == "1",
                     grievances=int(float(p[18] if len(p) > 18 else 0)),
+                    grievances_against_me=int(float(p[19] if len(p) > 19 else 0)),
                 )
             )
+        elif line.startswith("DIPMOD|"):
+            p = line.split("|", 4)
+            if len(p) < 5:
+                continue
+            vid = int(p[1])
+            tid = int(p[2])
+            view = views.get(vid)
+            if view is None:
+                continue
+            met = next((m for m in view.met if m.player_id == tid), None)
+            if met is not None:
+                met.modifiers.append(
+                    DiploModifierView(score=int(float(p[3] or 0)), text=p[4])
+                )
         elif line.startswith("THREAT|"):
             p = line.split("|")
             if len(p) < 6:

@@ -1,4 +1,4 @@
-﻿-- Haikesi_GamePlay_Script
+-- Haikesi_GamePlay_Script
 -- Author: 帅翔翔
 -- DateCreated: 2025-7-14 16:00:00
 --------------------------------------------------------------
@@ -544,6 +544,13 @@ local function Haikesi_GetAliveAIPlayers()
     return aiPlayers
 end
 
+-- 必须在 Haikesi_ApplyAIChoicesForRound 等全局函数之前定义：
+-- 全局 function 编译时若尚未声明该 local，会把名字解析成全局（运行时为 nil）。
+local function Haikesi_GetPlayerRelicCount(pPlayer)
+    if pPlayer == nil then return 0 end
+    return tonumber(pPlayer:GetProperty(RelicsCountPropertyKey) or 0) or 0
+end
+
 local function GetAIAvailableRelics(pAI, excludeInvasionThisRound)
     local selected = GetSelectedRelicTypesForPlayer(pAI)
     local available = {}
@@ -741,11 +748,6 @@ end
 
 local function Haikesi_IsExternalAIEnabled()
     return Haikesi_IsConfigEnabled('NW_HAIKESI_EXTERNAL_AI')
-end
-
-local function Haikesi_GetPlayerRelicCount(pPlayer)
-    if pPlayer == nil then return 0 end
-    return tonumber(pPlayer:GetProperty(RelicsCountPropertyKey) or 0) or 0
 end
 
 -- 以人类「选择轮次」为准给 AI 补齐（Trigger 递增前 target = SELECT_COUNT+1）
@@ -1192,13 +1194,19 @@ local function Haikesi_ApplyExternalAIFromNetwork(raw)
         Haikesi_ClearExternalAIRequest()
         return false
     end
-    local applied = Haikesi_ApplyAIChoicesForRound(
+    local okApply, appliedOrErr = pcall(
+        Haikesi_ApplyAIChoicesForRound,
         requester, choicesTable, countBefore, sanitizedReasons
     )
+    if not okApply then
+        print("[Haikesi GamePlay] ExtAIApply ApplyAIChoices error: " .. tostring(appliedOrErr))
+        -- 不清除 pending，留给超时/下次选卡补齐；避免半写入后丢请求
+        return false
+    end
     pRequester:SetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT', targetRound)
     Haikesi_ClearExternalAIRequest()
     print("[Haikesi GamePlay] ExtAIApply applied request_id=" .. tostring(requestID)
-        .. " applied=" .. tostring(applied) .. " round=" .. tostring(targetRound))
+        .. " applied=" .. tostring(appliedOrErr) .. " round=" .. tostring(targetRound))
     return true
 end
 
@@ -1237,20 +1245,30 @@ local function Haikesi_TryFallbackExternalAIRequest()
         .. tostring(Game:GetProperty(EXT_AI_REQUEST_ID_KEY)))
     local targetRound = countBefore + 1
     local aiSyncedTo = tonumber(pRequester:GetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT') or -1) or -1
-    if aiSyncedTo < countBefore then
-        Haikesi_SyncAIRelicCountToHuman(requester, countBefore, nil, nil)
-        pRequester:SetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT', countBefore)
-    end
     if aiSyncedTo >= targetRound then
         Haikesi_ClearExternalAIRequest()
         return
+    end
+    if aiSyncedTo < countBefore then
+        local okSync, syncErr = pcall(Haikesi_SyncAIRelicCountToHuman, requester, countBefore, nil, nil)
+        if not okSync then
+            print("[Haikesi GamePlay] External AI timeout pre-align error: " .. tostring(syncErr))
+            return
+        end
+        pRequester:SetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT', countBefore)
     end
     local choices = Haikesi_BuildDeterministicAIChoices(requester, countBefore)
     local fallbackReasons = {}
     for aiIDStr, _ in pairs(choices) do
         fallbackReasons[aiIDStr] = "外部决策超时，依规则自动选定"
     end
-    Haikesi_ApplyAIChoicesForRound(requester, choices, countBefore, fallbackReasons)
+    local okApply, applyErr = pcall(
+        Haikesi_ApplyAIChoicesForRound, requester, choices, countBefore, fallbackReasons
+    )
+    if not okApply then
+        print("[Haikesi GamePlay] External AI timeout apply error: " .. tostring(applyErr))
+        return
+    end
     pRequester:SetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT', targetRound)
     Haikesi_ClearExternalAIRequest()
 end

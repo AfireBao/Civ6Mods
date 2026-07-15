@@ -20,7 +20,7 @@ from civ_mcp.lua.haikesi import (
     MetCivView,
     RST_STRATEGY_LABELS,
 )
-from civ_mcp.lua.models import GameOverview
+from civ_mcp.lua.models import GameOverview, WorldCongressStatus
 
 log = logging.getLogger(__name__)
 
@@ -180,23 +180,100 @@ def load_deepseek_config() -> HaikesiLLMConfig:
     return HaikesiLLMConfig(api_key=api_key, model=model, base_url=base_url)
 
 
+_LLM_MAX_TOKENS = int(os.environ.get("HAIKESI_LLM_MAX_TOKENS", "4096"))
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 class _OpenAICompatibleClient:
     def __init__(self, config: HaikesiLLMConfig) -> None:
         from openai import OpenAI
 
         self._client = OpenAI(api_key=config.api_key, base_url=config.base_url)
         self._model = config.model
+        # DeepSeek 官方：JSON Output 会偶发空 content；默认关闭，靠 prompt + 解析容错。
+        self._json_mode = _env_flag("HAIKESI_LLM_JSON_MODE", False)
+        # DeepSeek V4 thinking 默认 enabled，推理会吃掉 max_tokens 导致 content 为空。
+        self._thinking_enabled = _env_flag("HAIKESI_LLM_THINKING", False)
+
+    def _build_kwargs(self, prompt: str) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": _LLM_MAX_TOKENS,
+        }
+        if self._json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+        # OpenAI SDK：thinking 走 extra_body（DeepSeek V4）
+        kwargs["extra_body"] = {
+            "thinking": {"type": "enabled" if self._thinking_enabled else "disabled"}
+        }
+        return kwargs
+
+    def _extract_content(self, response: Any) -> tuple[str, str]:
+        choice = response.choices[0]
+        msg = choice.message
+        content = (msg.content or "").strip()
+        finish = getattr(choice, "finish_reason", None) or ""
+        reasoning = getattr(msg, "reasoning_content", None) or ""
+        if not content and reasoning:
+            # 极少数网关把最终答案只放在 reasoning；尝试抽取 JSON
+            extracted = _extract_json_object(str(reasoning))
+            if extracted:
+                log.warning(
+                    "message.content empty; recovered JSON from reasoning_content "
+                    "(finish_reason=%s)",
+                    finish,
+                )
+                return extracted, finish
+        return content, finish
 
     def complete(self, prompt: str) -> str:
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=1800,
+        last_detail = ""
+        # 空 content 时逐步降级：关 json → 关 thinking 已是默认 → 再重试
+        attempts = (
+            (self._json_mode, self._thinking_enabled),
+            (False, self._thinking_enabled),
+            (False, False),
         )
-        content = response.choices[0].message.content
-        if not content:
-            raise RuntimeError("LLM returned empty content")
-        return content
+        seen: set[tuple[bool, bool]] = set()
+        for json_mode, thinking in attempts:
+            key = (json_mode, thinking)
+            if key in seen:
+                continue
+            seen.add(key)
+            self._json_mode = json_mode
+            self._thinking_enabled = thinking
+            kwargs = self._build_kwargs(prompt)
+            try:
+                response = self._client.chat.completions.create(**kwargs)
+            except Exception as exc:
+                last_detail = str(exc)
+                # 不支持 json_object / thinking 时换下一档
+                log.warning(
+                    "LLM create failed (json=%s thinking=%s): %s",
+                    json_mode,
+                    thinking,
+                    exc,
+                )
+                continue
+            content, finish = self._extract_content(response)
+            if content:
+                return content
+            reasoning_len = len(
+                getattr(response.choices[0].message, "reasoning_content", None) or ""
+            )
+            last_detail = (
+                f"empty content finish_reason={finish!r} "
+                f"reasoning_chars={reasoning_len} json={json_mode} thinking={thinking}"
+            )
+            log.warning("LLM empty content; retrying (%s)", last_detail)
+        raise RuntimeError(f"LLM returned empty content ({last_detail})")
 
 
 class _AnthropicClient:
@@ -209,7 +286,7 @@ class _AnthropicClient:
     def complete(self, prompt: str) -> str:
         response = self._client.messages.create(
             model=self._model,
-            max_tokens=1800,
+            max_tokens=_LLM_MAX_TOKENS,
             messages=[{"role": "user", "content": prompt}],
         )
         return response.content[0].text
@@ -229,6 +306,7 @@ class HaikesiGameContext:
     leader_views: dict[int, LeaderView] = field(default_factory=dict)
     human_player_id: int = 0
     fetch_notes: list[str] = field(default_factory=list)
+    world_congress: WorldCongressStatus | None = None
 
 
 async def _safe_fetch(label: str, coro, notes: list[str]):
@@ -297,11 +375,17 @@ async def gather_haikesi_game_context(
                     f"Real Strategy: {with_rst}/{len(leader_views)} 位领袖有战略意图"
                 )
 
+    async def _fetch_wc():
+        return await gs.get_world_congress(soft_missing=True)
+
+    world_congress = await _safe_fetch("world_congress", _fetch_wc(), notes)
+
     return HaikesiGameContext(
         overview=overview,
         leader_views=leader_views,
         human_player_id=human_id,
         fetch_notes=notes,
+        world_congress=world_congress,
     )
 
 
@@ -310,7 +394,7 @@ def _met_table(met: list[MetCivView]) -> str:
         return "(尚未与其他主要文明建立接触)"
     header = (
         "id | 文明 | 领袖 | 分数 | 城 | 人口 | 科/回合 | 文/回合 | 金/回合 | "
-        "军力 | 科技数 | 市政数 | 信仰 | 关系 | 交战 | grievances"
+        "军力 | 科技数 | 市政数 | 信仰 | 关系 | 交战 | 我对彼不满 | 彼对我不满"
     )
     rows = [header]
     for m in sorted(met, key=lambda x: -x.score):
@@ -318,9 +402,107 @@ def _met_table(met: list[MetCivView]) -> str:
             f"{m.player_id} | {m.civ_name} | {m.leader_name} | {m.score} | {m.cities} | {m.pop} | "
             f"{m.sci} | {m.cul} | {m.gold} | {m.mil} | {m.techs} | {m.civics} | {m.faith} | "
             f"{m.diplomatic_state}({m.relationship_score}) | "
-            f"{'是' if m.is_at_war else '否'} | {m.grievances}"
+            f"{'是' if m.is_at_war else '否'} | {m.grievances} | {m.grievances_against_me}"
         )
     return "\n".join(rows)
+
+
+def _diplo_attitude_block(met: list[MetCivView]) -> str:
+    """Summarize grievances + top opinion modifiers for met civs."""
+    if not met:
+        return ""
+    lines: list[str] = [
+        "【对已遇文明的不满与观感】（不满=外交不满值；修饰语=对方对你的好感/恶感原因）"
+    ]
+    any_row = False
+    for m in sorted(
+        met,
+        key=lambda x: -(abs(x.grievances) + abs(x.grievances_against_me) + abs(x.relationship_score)),
+    ):
+        if (
+            m.grievances == 0
+            and m.grievances_against_me == 0
+            and not m.modifiers
+            and abs(m.relationship_score) < 5
+        ):
+            continue
+        any_row = True
+        lines.append(
+            f"- {m.civ_name}（{m.leader_name}）: 关系 {m.diplomatic_state}"
+            f"（{m.relationship_score}）；我对彼不满 {m.grievances}；"
+            f"彼对我不满 {m.grievances_against_me}"
+        )
+        # Prefer largest absolute modifiers; keep prompt short
+        top = sorted(m.modifiers, key=lambda x: -abs(x.score))[:4]
+        for mod in top:
+            sign = f"+{mod.score}" if mod.score >= 0 else str(mod.score)
+            lines.append(f"  · [{sign}] {mod.text}")
+    if not any_row:
+        return ""
+    return "\n".join(lines)
+
+
+def _format_world_congress(status: WorldCongressStatus | None) -> str:
+    """Public World Congress block for Haikesi prompts (Chinese)."""
+    if status is None:
+        return "世界会议: 尚未解锁或当前不可用"
+
+    imminent = not status.is_in_session and status.turns_until_next <= 0
+    lines: list[str] = []
+    if status.is_in_session:
+        lines.append("状态: 开会中（本局正在表决）")
+    elif imminent:
+        lines.append("状态: 本回合即将开会")
+    elif status.turns_until_next >= 0:
+        lines.append(f"状态: 距下次会议还有 {status.turns_until_next} 回合")
+    else:
+        lines.append("状态: 尚未召开")
+
+    if status.resolutions:
+        lines.append("决议/议程:")
+        for i, r in enumerate(status.resolutions, 1):
+            if status.is_in_session or imminent:
+                lines.append(f"  {i}. {r.name}（{r.resolution_type}）")
+                if r.effect_a:
+                    lines.append(f"     选项A: {r.effect_a}")
+                if r.effect_b:
+                    lines.append(f"     选项B: {r.effect_b}")
+                if r.possible_targets:
+                    tgt_strs = []
+                    for t in r.possible_targets[:8]:
+                        if ":" in t:
+                            _tid, tname = t.split(":", 1)
+                            tgt_strs.append(tname)
+                        else:
+                            tgt_strs.append(t)
+                    more = "…" if len(r.possible_targets) > 8 else ""
+                    lines.append(f"     可选目标: {', '.join(tgt_strs)}{more}")
+            else:
+                outcome = "A" if r.winner == 0 else "B" if r.winner == 1 else "?"
+                effect = (
+                    r.effect_a
+                    if r.winner == 0
+                    else r.effect_b
+                    if r.winner == 1
+                    else ""
+                )
+                chosen = f"（{r.chosen_thing}）" if r.chosen_thing else ""
+                lines.append(
+                    f"  {i}. {r.name} — 已通过选项{outcome}{chosen}"
+                    + (f": {effect}" if effect else "")
+                )
+    else:
+        lines.append("决议/议程: （无）")
+
+    if status.is_in_session and status.proposals:
+        lines.append("讨论提案:")
+        for p in status.proposals[:6]:
+            desc = f" — {p.description}" if p.description else ""
+            lines.append(
+                f"  · {p.sender_name} → {p.target_name}{desc}"
+            )
+
+    return "\n".join(lines)
 
 
 def _threat_table(view: LeaderView) -> str:
@@ -529,7 +711,8 @@ def _format_leader_block(
             f"已接触人类玩家 {human_met.civ_name}（{human_met.leader_name}）："
             f"关系 {human_met.diplomatic_state}({human_met.relationship_score})，"
             f"{'交战' if human_met.is_at_war else '和平'}，"
-            f"科{human_met.sci}/文{human_met.cul}/金{human_met.gold}，军力{human_met.mil}"
+            f"科{human_met.sci}/文{human_met.cul}/金{human_met.gold}，军力{human_met.mil}，"
+            f"我对彼不满{human_met.grievances}，彼对我不满{human_met.grievances_against_me}"
         )
     else:
         human_line = "尚未与人类玩家建立接触（不知其详细国力与位置）"
@@ -543,6 +726,7 @@ def _format_leader_block(
             f"分数{view.score} | {view.cities}城 | 人口{view.pop} | "
             f"科{view.sci}/回合 文{view.cul}/回合 金{view.gold}/回合 | "
             f"军力{view.mil} | 科技{view.techs} 市政{view.civics} | 信仰{view.faith}/回合 | "
+            f"外交支持度{view.favor} | "
             f"在研:{view.current_research} | 市政:{view.current_civic}"
         ),
     ]
@@ -563,6 +747,13 @@ def _format_leader_block(
             human_line,
             "【已相遇文明（外交可见数值；未相遇者不出现）】",
             _met_table(view.met),
+        ]
+    )
+    attitude = _diplo_attitude_block(view.met)
+    if attitude:
+        parts.append(attitude)
+    parts.extend(
+        [
             "【视野内可见敌对军事单位（战争迷雾外不可见）】",
             _threat_table(view),
             "【候选海克斯】",
@@ -591,6 +782,14 @@ def format_context_summary(context: HaikesiGameContext) -> str:
         and (v.religion.pantheon_type or v.religion.religion_type)
     )
     victory_peers = sum(len(v.victory_peers) for v in context.leader_views.values())
+    mod_total = sum(len(m.modifiers) for v in context.leader_views.values() for m in v.met)
+    wc = context.world_congress
+    if wc is None:
+        wc_tag = "none"
+    elif wc.is_in_session:
+        wc_tag = f"session:{len(wc.resolutions)}res"
+    else:
+        wc_tag = f"next={wc.turns_until_next}:{len(wc.resolutions)}res"
     parts = [
         f"turn={ov.turn}",
         f"human={ov.civ_name or '未知'}(id={context.human_player_id})",
@@ -598,10 +797,12 @@ def format_context_summary(context: HaikesiGameContext) -> str:
         f"traits_agendas={trait_total}",
         f"own_cities={city_total}",
         f"met_edges={met_total}",
+        f"diplo_modifiers={mod_total}",
         f"visible_threat_groups={threat_total}",
         f"rst_strategies={rst_total}",
         f"religion_intel={faith_total}",
         f"victory_peer_rows={victory_peers}",
+        f"world_congress={wc_tag}",
     ]
     if context.fetch_notes:
         parts.append(f"fetch_warnings={len(context.fetch_notes)}")
@@ -638,8 +839,8 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
 情报规则（必须遵守）：
 - 每位领袖只能使用**自己区块**内的情报做决策；禁止引用其他领袖区块，也禁止臆造未给出的单位/文明。
 - 未相遇文明、战争迷雾外的敌军对本领袖不存在，不得当作已知信息。
-- 人类本轮海克斯与全局时代/难度是本局公开机制信息，各位领袖都可以参考。
-- 已相遇文明的科/文/金/军力等为外交界面可见数值，可以比较。
+- 人类本轮海克斯、全局时代/难度、世界会议决议是本局公开机制信息，各位领袖都可以参考。
+- 已相遇文明的科/文/金/军力、双向不满值、对方对你的外交修饰语等为外交界面可见信息，可以比较。
 - 若区块含「已知文明胜利进度排名」：仅可比较榜内文明；未上榜者对本领袖不可见。
 - 若区块含「Real Strategy 战略意图」：将其作为该领袖当前胜利路线倾向；选卡应优先契合主战略（征服→军事/扩张，科技→科研，文化→文化/伟人，宗教→信仰，外交→使者/外交），但若候选与短板/可见威胁明显冲突，可偏离。
 
@@ -648,6 +849,9 @@ Turn {payload.get("turn")}
 
 ## 全局公开设定
 难度: {context.overview.difficulty or '未知'} | 速度: {context.overview.game_speed_name or '未知'} | 时代: {context.overview.era_name}
+
+## 世界会议（公开）
+{_format_world_congress(context.world_congress)}
 
 ## 人类玩家本轮海克斯（公开）
 {human_relic}
@@ -658,9 +862,9 @@ Turn {payload.get("turn")}
 ## 规则
 - 每位领袖只能从其「候选海克斯」中选 1 个 relic type
 - {invasion_note}
-- 若考虑 NW_AI_BARBARIAN_INVASION：仅当你已与目标交战，或视野内已见其军事压力时优先；对未知人类/无接触目标不要假设其位置
-- 决策结合：自身能力与议程、Real Strategy 主战略（若有）、本国万神殿/教义、已知胜利进度排名、本国城市与产出短板、已相遇文明对比、可见威胁、人类公开海克斯、候选效果
-- reason 用 1 句规范简体中文（常用汉字，20-40 字），第一人称「我」；禁止 emoji、英文、生僻字，不要复述效果全文
+- 决策结合：自身能力与议程、Real Strategy 主战略（若有）、本国万神殿/教义、已知胜利进度排名、对已遇文明的不满与观感、世界会议决议、本国城市与产出短板、已相遇文明对比、可见威胁、人类公开海克斯、候选效果
+- reason 用 1 句规范简体中文（常用汉字，20-40 字），第一人称「我」；禁止 emoji、英文双引号 "、生僻字，不要复述效果全文
+- 必须输出完整合法 JSON（所有字符串已闭合）；禁止 markdown 代码块
 
 ## 输出格式（仅 JSON，无 markdown）
 {{
@@ -670,14 +874,90 @@ Turn {payload.get("turn")}
 """
 
 
-def parse_llm_json(raw: str) -> dict[str, Any]:
-    text = raw.strip()
+def _strip_code_fences(text: str) -> str:
+    text = text.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[-1]
         if text.endswith("```"):
             text = text.rsplit("```", 1)[0]
         text = text.strip()
-    return json.loads(text)
+        if text.lower().startswith("json"):
+            text = text[4:].lstrip()
+    return text
+
+
+def _extract_json_object(text: str) -> str | None:
+    start = text.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    in_str = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    # 截断时返回从首 { 到末尾，交给上层再试/失败
+    return text[start:] if depth > 0 else None
+
+
+def parse_llm_json(raw: str) -> dict[str, Any]:
+    """Parse LLM JSON; tolerate markdown fences and surrounding prose."""
+    text = _strip_code_fences(raw)
+    candidates = [text]
+    extracted = _extract_json_object(text)
+    if extracted and extracted not in candidates:
+        candidates.append(extracted)
+    # 常见：尾逗号
+    for cand in list(candidates):
+        fixed = re.sub(r",\s*([}\]])", r"\1", cand)
+        if fixed not in candidates:
+            candidates.append(fixed)
+
+    errors: list[Exception] = []
+    for cand in candidates:
+        try:
+            data = json.loads(cand)
+            if isinstance(data, dict):
+                return data
+        except json.JSONDecodeError as exc:
+            errors.append(exc)
+    raise errors[-1] if errors else json.JSONDecodeError("no json object", text, 0)
+
+
+def _save_failed_llm_raw(
+    *,
+    prompt: str,
+    raw_response: str,
+    request_id: str,
+    model: str,
+    error: str,
+) -> None:
+    try:
+        save_last_llm_exchange(
+            prompt=prompt,
+            raw_response=raw_response,
+            request_id=request_id,
+            model=model,
+            choices={},
+            reasons={"_parse_error": error[:200]},
+        )
+    except OSError as exc:
+        log.warning("Failed to save broken LLM response: %s", exc)
 
 
 async def poll_pending_request(conn: GameConnection) -> dict[str, Any]:
@@ -727,11 +1007,48 @@ async def decide_and_submit_once(
     if verbose:
         print(f"Calling {model} (prompt ~{len(prompt)} chars) ...", flush=True)
     raw = client.complete(prompt)
-    decision = parse_llm_json(raw)
+    try:
+        decision = parse_llm_json(raw)
+    except json.JSONDecodeError as exc:
+        _save_failed_llm_raw(
+            prompt=prompt,
+            raw_response=raw,
+            request_id=request_id,
+            model=model,
+            error=str(exc),
+        )
+        if verbose:
+            print(
+                f"LLM JSON parse failed ({exc}); retrying once ...",
+                flush=True,
+            )
+        repair_prompt = (
+            prompt
+            + "\n\n【重试】你上次输出的 JSON 不合法（字符串未闭合或被截断）。"
+            "请重新输出一个完整合法的 JSON 对象，不要 markdown；"
+            "reasons 内只用中文逗号/句号，禁止英文双引号。"
+        )
+        raw = client.complete(repair_prompt)
+        try:
+            decision = parse_llm_json(raw)
+        except json.JSONDecodeError as exc2:
+            _save_failed_llm_raw(
+                prompt=repair_prompt,
+                raw_response=raw,
+                request_id=request_id,
+                model=model,
+                error=str(exc2),
+            )
+            raise RuntimeError(
+                f"LLM returned invalid JSON after retry: {exc2}"
+            ) from exc2
+
     choices = {str(k): v for k, v in decision.get("choices", {}).items()}
     raw_reasons = {str(k): v for k, v in decision.get("reasons", {}).items()}
     reasons: dict[str, str] = {}
     for ai_id, raw_reason in raw_reasons.items():
+        if str(ai_id).startswith("_"):
+            continue
         cleaned = sanitize_decision_reason(str(raw_reason))
         if cleaned:
             reasons[ai_id] = cleaned

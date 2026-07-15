@@ -1384,8 +1384,10 @@ class GameState:
     # World Congress (InGame context)
     # ------------------------------------------------------------------
 
-    async def get_world_congress(self) -> lq.WorldCongressStatus:
-        lua = lq.build_world_congress_query()
+    async def get_world_congress(
+        self, *, soft_missing: bool = False
+    ) -> lq.WorldCongressStatus | None:
+        lua = lq.build_world_congress_query(soft_missing=soft_missing)
         lines = await self.conn.execute_write(lua)
         return lq.parse_world_congress_response(lines)
 
