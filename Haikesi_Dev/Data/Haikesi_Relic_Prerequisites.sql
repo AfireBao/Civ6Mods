@@ -7,6 +7,7 @@
 --   TECHNOLOGY PrerequisiteType = Technologies.TechnologyType
 --   TRAIT      PrerequisiteType = Traits.TraitType（玩家文明须拥有该特色区域 Trait，海克斯才进刷新池）
 --   EXCLUDE_TRAIT PrerequisiteType = Traits.TraitType(玩家文明拥有该 Trait 时,海克斯【不】进刷新池,即负关联)
+--   CAPABILITY PrerequisiteType = GameCapabilities.GameCapability（当局须启用该 Capability，如秘密结社）
 --
 -- AllowInProgress:
 --   0 = 必须已完成
@@ -22,7 +23,7 @@ CREATE TABLE Haikesi_Relic_Prerequisites (
     AllowInProgress INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (RelicType, PrerequisiteKind, PrerequisiteType),
     FOREIGN KEY (RelicType) REFERENCES Haikesi_Relics(RelicType) ON DELETE CASCADE ON UPDATE CASCADE,
-    CHECK (PrerequisiteKind IN ('RELIC', 'TECHNOLOGY', 'TRAIT', 'EXCLUDE_TRAIT')),
+    CHECK (PrerequisiteKind IN ('RELIC', 'TECHNOLOGY', 'TRAIT', 'EXCLUDE_TRAIT', 'CAPABILITY')),
     CHECK (AllowInProgress IN (0, 1))
 );
 
@@ -58,3 +59,8 @@ INSERT INTO Haikesi_Relic_Prerequisites
     (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
     ('COREOVERLOADRUNE', 'EXCLUDE_TRAIT', 'TRAIT_CIVILIZATION_DISTRICT_HANSA',    0),  -- 德国
     ('COREOVERLOADRUNE', 'EXCLUDE_TRAIT', 'TRAIT_CIVILIZATION_DISTRICT_OPPIDUM',  0);  -- 高卢
+
+-- 德古拉 (OMINOUSPACTRUNE): 仅秘密结社模式可进刷新池（依赖 UNIT_VAMPIRE）
+INSERT INTO Haikesi_Relic_Prerequisites
+    (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
+    ('OMINOUSPACTRUNE', 'CAPABILITY', 'CAPABILITY_SECRETSOCIETIES', 0);

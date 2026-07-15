@@ -251,6 +251,24 @@ UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SYMPHONYOFWARRUNE'
 UPDATE Haikesi_Relics SET MinTurn = 150 WHERE RelicType = 'SYMPHONYOFWARRUNE';    -- 偏后期文化工具
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'SYMPHONYOFWARRUNE';
 
+-- 联合作战（复用未实装 TAPDANCERUNE 图标与 RelicType）：二环内同盟/宗主城邦部队叠战斗力
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'TAPDANCERUNE';       -- 联合作战
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'TAPDANCERUNE';
+UPDATE Haikesi_Relics SET MinTurn = 40 WHERE RelicType = 'TAPDANCERUNE';         -- 需城邦宗主或同盟雏形
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'TAPDANCERUNE';
+
+-- 德古拉（复用未实装 OMINOUSPACTRUNE 图标）：首都立即获得 3 个吸血鬼；仅秘密结社模式进池
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'OMINOUSPACTRUNE';     -- 德古拉
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'OMINOUSPACTRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 40 WHERE RelicType = 'OMINOUSPACTRUNE';       -- 与结社早期晋升时段大致对齐
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'OMINOUSPACTRUNE';
+
+-- 种地仙人（复用未实装 WATCHOUTGRAPEFRUITRUNE 图标）：首都赠送可种植加成/奢侈资源的特殊建造者
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'WATCHOUTGRAPEFRUITRUNE';  -- 种地仙人
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'WATCHOUTGRAPEFRUITRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 20 WHERE RelicType = 'WATCHOUTGRAPEFRUITRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'WATCHOUTGRAPEFRUITRUNE';
+
 -- District 升级套（7 个，复用未实装海克斯 RelicType 以共享预导入图标，均不可重复）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DRAWYOURSWORDRUNE';       -- 礁石船坞（英国）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DUALWIELDRUNE';           -- 港口使节（迦太基）

@@ -1498,3 +1498,201 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
 
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('SYMPHONYOFWARRUNE', 'MODIFIER_NW_ETERNAL_RB_GRANT');
+
+-- ===========================================================================
+-- 联合作战 (TAPDANCERUNE): 己方单位二环内每有 1 个同盟或宗主城邦战斗单位，则 +1 战斗力
+-- 机制（象兵 Varu 叠层范式）:
+--   ① 给本方战斗单位授 Marker Ability（仅作身份标记）
+--   ② ALL_UNITS_GRANT 给同盟单位 + 全体城邦单位授光环 Ability（已有该 Ability 则不再 GRANT，多人持卡互斥）
+--   ③ 光环对二环内、持有 Marker、且（同盟 或 宗主）的单位 ATTACH +1 力；不设 SubjectStackLimit 以按单位数叠加
+-- 城邦侧靠 REQUIREMENT_PLAYER_IS_SUZERAIN（Subject 为 Owner 城邦之宗主）过滤，故可安全授给全体城邦单位
+-- ===========================================================================
+INSERT OR IGNORE INTO Types (Type, Kind) VALUES
+    ('ABILITY_NW_JOINT_OPS_MARKER', 'KIND_ABILITY'),
+    ('ABILITY_NW_JOINT_OPS_AURA',   'KIND_ABILITY');
+
+INSERT OR IGNORE INTO TypeTags (Type, Tag) VALUES
+    ('ABILITY_NW_JOINT_OPS_MARKER', 'CLASS_ALL_COMBAT_UNITS'),
+    ('ABILITY_NW_JOINT_OPS_AURA',   'CLASS_ALL_COMBAT_UNITS');
+
+INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactive) VALUES
+    ('ABILITY_NW_JOINT_OPS_MARKER',
+     'LOC_ABILITY_NW_JOINT_OPS_MARKER_NAME',
+     'LOC_ABILITY_NW_JOINT_OPS_MARKER_DESCRIPTION', 1),
+    ('ABILITY_NW_JOINT_OPS_AURA',
+     'LOC_ABILITY_NW_JOINT_OPS_AURA_NAME',
+     'LOC_ABILITY_NW_JOINT_OPS_AURA_DESCRIPTION', 1);
+
+-- ① Marker：授给本方战斗单位
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_JOINT_OPS_GRANT_MARKER', 'MODIFIER_PLAYER_UNITS_GRANT_ABILITY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_JOINT_OPS_GRANT_MARKER', 'AbilityType', 'ABILITY_NW_JOINT_OPS_MARKER');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId)
+    VALUES ('TAPDANCERUNE', 'MODIFIER_NW_JOINT_OPS_GRANT_MARKER');
+
+-- ② 光环授予目标：同盟 或 城邦，且尚未持有光环 Ability（多人持卡互斥，避免层数叠加）
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES
+    ('NW_REQUIRES_JOINT_OPS_ALLY',  'REQUIREMENT_ALLY'),
+    ('NW_REQUIRES_JOINT_OPS_MINOR', 'REQUIREMENT_PLAYER_IS_MINOR');
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
+    VALUES ('NW_JOINT_OPS_AURA_GRANT_REL', 'REQUIREMENTSET_TEST_ANY');
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
+    ('NW_JOINT_OPS_AURA_GRANT_REL', 'NW_REQUIRES_JOINT_OPS_ALLY'),
+    ('NW_JOINT_OPS_AURA_GRANT_REL', 'NW_REQUIRES_JOINT_OPS_MINOR');
+
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
+    VALUES ('NW_REQUIRES_JOINT_OPS_GRANT_REL_MET', 'REQUIREMENT_REQUIREMENTSET_IS_MET');
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value)
+    VALUES ('NW_REQUIRES_JOINT_OPS_GRANT_REL_MET', 'RequirementSetId', 'NW_JOINT_OPS_AURA_GRANT_REL');
+
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType, Inverse)
+    VALUES ('NW_REQUIRES_JOINT_OPS_NO_AURA_YET', 'REQUIREMENT_UNIT_HAS_ABILITY', 1);
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value)
+    VALUES ('NW_REQUIRES_JOINT_OPS_NO_AURA_YET', 'UnitAbilityType', 'ABILITY_NW_JOINT_OPS_AURA');
+
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
+    VALUES ('NW_JOINT_OPS_AURA_GRANT_TARGETS', 'REQUIREMENTSET_TEST_ALL');
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
+    ('NW_JOINT_OPS_AURA_GRANT_TARGETS', 'NW_REQUIRES_JOINT_OPS_GRANT_REL_MET'),
+    ('NW_JOINT_OPS_AURA_GRANT_TARGETS', 'NW_REQUIRES_JOINT_OPS_NO_AURA_YET');
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
+    VALUES ('MODIFIER_NW_JOINT_OPS_GRANT_AURA', 'MODIFIER_ALL_UNITS_GRANT_ABILITY', 'NW_JOINT_OPS_AURA_GRANT_TARGETS');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_JOINT_OPS_GRANT_AURA', 'AbilityType', 'ABILITY_NW_JOINT_OPS_AURA');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId)
+    VALUES ('TAPDANCERUNE', 'MODIFIER_NW_JOINT_OPS_GRANT_AURA');
+
+-- ③ 光环附着条件：二环内 + 持有 Marker +（同盟 或 宗主）
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
+    VALUES ('NW_REQUIRES_JOINT_OPS_WITHIN_2', 'REQUIREMENT_PLOT_ADJACENT_TO_OWNER');
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value) VALUES
+    ('NW_REQUIRES_JOINT_OPS_WITHIN_2', 'MinDistance', '1'),
+    ('NW_REQUIRES_JOINT_OPS_WITHIN_2', 'MaxDistance', '2');
+
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
+    VALUES ('NW_REQUIRES_JOINT_OPS_HAS_MARKER', 'REQUIREMENT_UNIT_HAS_ABILITY');
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value)
+    VALUES ('NW_REQUIRES_JOINT_OPS_HAS_MARKER', 'UnitAbilityType', 'ABILITY_NW_JOINT_OPS_MARKER');
+
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
+    VALUES ('NW_REQUIRES_JOINT_OPS_SUZERAIN', 'REQUIREMENT_PLAYER_IS_SUZERAIN');
+
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
+    VALUES ('NW_JOINT_OPS_REL_ANY', 'REQUIREMENTSET_TEST_ANY');
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
+    ('NW_JOINT_OPS_REL_ANY', 'NW_REQUIRES_JOINT_OPS_ALLY'),
+    ('NW_JOINT_OPS_REL_ANY', 'NW_REQUIRES_JOINT_OPS_SUZERAIN');
+
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
+    VALUES ('NW_REQUIRES_JOINT_OPS_REL_MET', 'REQUIREMENT_REQUIREMENTSET_IS_MET');
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value)
+    VALUES ('NW_REQUIRES_JOINT_OPS_REL_MET', 'RequirementSetId', 'NW_JOINT_OPS_REL_ANY');
+
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
+    VALUES ('NW_JOINT_OPS_AURA_TARGET', 'REQUIREMENTSET_TEST_ALL');
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
+    ('NW_JOINT_OPS_AURA_TARGET', 'NW_REQUIRES_JOINT_OPS_WITHIN_2'),
+    ('NW_JOINT_OPS_AURA_TARGET', 'NW_REQUIRES_JOINT_OPS_HAS_MARKER'),
+    ('NW_JOINT_OPS_AURA_TARGET', 'NW_REQUIRES_JOINT_OPS_REL_MET');
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_JOINT_OPS_COMBAT', 'MODIFIER_UNIT_ADJUST_COMBAT_STRENGTH');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_JOINT_OPS_COMBAT', 'Amount', '1');
+INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text)
+    VALUES ('MODIFIER_NW_JOINT_OPS_COMBAT', 'Preview', '+{1_Amount} 联合作战战斗力增益');
+
+-- 不设 SubjectStackLimit：多名友军各自 ATTACH 一次，按单位数叠加
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
+    VALUES ('MODIFIER_NW_JOINT_OPS_AURA_ATTACH', 'MODIFIER_ALL_UNITS_ATTACH_MODIFIER', 'NW_JOINT_OPS_AURA_TARGET');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_JOINT_OPS_AURA_ATTACH', 'ModifierId', 'MODIFIER_NW_JOINT_OPS_COMBAT');
+
+INSERT OR IGNORE INTO UnitAbilityModifiers (UnitAbilityType, ModifierId)
+    VALUES ('ABILITY_NW_JOINT_OPS_AURA', 'MODIFIER_NW_JOINT_OPS_AURA_ATTACH');
+
+-- ===========================================================================
+-- 德古拉 (OMINOUSPACTRUNE): 立即在首都获得 3 个吸血鬼（秘密结社 UNIT_VAMPIRE）
+-- 复用官方 MODIFIER_PLAYER_GRANT_UNIT_IN_CAPITAL（与 SECRET_SOCIETY_GRANT_VAMPIRE 同型）
+-- ===========================================================================
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, RunOnce, Permanent)
+    VALUES ('MODIFIER_NW_DRACULA_GRANT_VAMPIRES', 'MODIFIER_PLAYER_GRANT_UNIT_IN_CAPITAL', 1, 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_DRACULA_GRANT_VAMPIRES', 'UnitType',            'UNIT_VAMPIRE'),
+    ('MODIFIER_NW_DRACULA_GRANT_VAMPIRES', 'Amount',              '3'),
+    ('MODIFIER_NW_DRACULA_GRANT_VAMPIRES', 'AllowUniqueOverride', 'false');
+
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('OMINOUSPACTRUNE', 'MODIFIER_NW_DRACULA_GRANT_VAMPIRES');
+
+-- ===========================================================================
+-- 种地仙人 (WATCHOUTGRAPEFRUITRUNE): 首都赠送 1 名特殊建造者
+-- 挂 CLASS_BUILDER 以吃金字塔/农奴制等建造次数修正；另可种植白名单资源
+-- 图标复用未实装「当心葡萄柚」；种植 UI/白名单见 Haikesi_Planter.sql
+-- ===========================================================================
+INSERT OR IGNORE INTO Types (Type, Kind) VALUES
+    ('UNIT_NW_FARM_IMMORTAL',       'KIND_UNIT'),
+    ('ABILITY_NW_FARM_IMMORTAL',    'KIND_ABILITY'),
+    ('TRAIT_NW_FARM_IMMORTAL_LOCK', 'KIND_TRAIT');
+
+INSERT OR IGNORE INTO Traits (TraitType, Name, Description, InternalOnly) VALUES
+    ('TRAIT_NW_FARM_IMMORTAL_LOCK',
+     'LOC_UNIT_NW_FARM_IMMORTAL_NAME',
+     'LOC_UNIT_NW_FARM_IMMORTAL_DESCRIPTION',
+     1);
+
+INSERT OR IGNORE INTO Tags (Tag, Vocabulary) VALUES
+    ('CLASS_NW_FARM_IMMORTAL', 'ABILITY_CLASS');
+
+INSERT OR IGNORE INTO TypeTags (Type, Tag) VALUES
+    ('UNIT_NW_FARM_IMMORTAL',    'CLASS_BUILDER'),
+    ('UNIT_NW_FARM_IMMORTAL',    'CLASS_LANDCIVILIAN'),
+    ('UNIT_NW_FARM_IMMORTAL',    'CLASS_NW_FARM_IMMORTAL'),
+    ('ABILITY_NW_FARM_IMMORTAL', 'CLASS_NW_FARM_IMMORTAL');
+
+INSERT OR IGNORE INTO Units (
+    UnitType, Name, Description,
+    Cost, Maintenance, BaseMoves, BaseSightRange, ZoneOfControl,
+    Domain, FormationClass, AdvisorType, BuildCharges,
+    PurchaseYield, MustPurchase, PseudoYieldType, TraitType
+) VALUES (
+    'UNIT_NW_FARM_IMMORTAL',
+    'LOC_UNIT_NW_FARM_IMMORTAL_NAME',
+    'LOC_UNIT_NW_FARM_IMMORTAL_DESCRIPTION',
+    0, 1, 2, 2, 0,
+    'DOMAIN_LAND', 'FORMATION_CLASS_CIVILIAN', 'ADVISOR_GENERIC', 3,
+    'YIELD_GOLD', 1, 'PSEUDOYIELD_UNIT_CIVILIAN', 'TRAIT_NW_FARM_IMMORTAL_LOCK'
+);
+
+-- 可建造原版建造者能造的改良
+INSERT OR IGNORE INTO Improvement_ValidBuildUnits (ImprovementType, UnitType)
+SELECT ImprovementType, 'UNIT_NW_FARM_IMMORTAL'
+FROM Improvement_ValidBuildUnits
+WHERE UnitType = 'UNIT_BUILDER';
+
+INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactive) VALUES
+    ('ABILITY_NW_FARM_IMMORTAL',
+     'LOC_UNIT_NW_FARM_IMMORTAL_NAME',
+     'LOC_ABILITY_NW_FARM_IMMORTAL_DESCRIPTION', 0);
+
+-- 首都赠送 1 名
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, RunOnce, Permanent, NewOnly, SubjectStackLimit) VALUES
+    ('MODIFIER_NW_FARM_IMMORTAL_GRANT_EFFECT',
+     'MODIFIER_SINGLE_CITY_GRANT_UNIT_IN_CITY', 1, 1, 0, 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_FARM_IMMORTAL_GRANT_EFFECT', 'UnitType',            'UNIT_NW_FARM_IMMORTAL'),
+    ('MODIFIER_NW_FARM_IMMORTAL_GRANT_EFFECT', 'Amount',              '1'),
+    ('MODIFIER_NW_FARM_IMMORTAL_GRANT_EFFECT', 'AllowUniqueOverride', 'false');
+
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, SubjectRequirementSetId, SubjectStackLimit) VALUES
+    ('MODIFIER_NW_FARM_IMMORTAL_GRANT',
+     'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', 'NW_CITY_HAS_BUILDING_PALACE', 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_FARM_IMMORTAL_GRANT', 'ModifierId', 'MODIFIER_NW_FARM_IMMORTAL_GRANT_EFFECT');
+
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('WATCHOUTGRAPEFRUITRUNE', 'MODIFIER_NW_FARM_IMMORTAL_GRANT');

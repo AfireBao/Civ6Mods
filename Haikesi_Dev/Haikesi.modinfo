@@ -61,6 +61,7 @@
         <LoadOrder>16798</LoadOrder>
       </Properties>
       <File>Data/Haikesi_Modifier.sql</File>
+      <File>Data/Haikesi_Planter.sql</File>
     </UpdateDatabase>
     <UpdateDatabase id="HaikesiAIRelics">
       <Properties>
@@ -91,6 +92,8 @@
       <File>UI/Haikesi_Tracker_Panel.xml</File>
       <File>UI/Haikesi_Ability_Panel.xml</File>
       <File>UI/Haikesi_TriTrade_Bridge.xml</File>
+      <File>UI/Haikesi_Planter_Chooser.xml</File>
+      <File>UI/Haikesi_Planter_Launcher.xml</File>
     </AddUserInterfaces>
     <AddGameplayScripts id="Haikesi_GamePlay">
       <Properties>
@@ -124,6 +127,7 @@
     <File>Data/Haikesi_Config_FE.sql</File>
     <File>Data/Haikesi_Icons.xml</File>
     <File>Data/Haikesi_Modifier.sql</File>
+    <File>Data/Haikesi_Planter.sql</File>
     <File>Data/Haikesi_Relics.sql</File>
     <File>Data/Haikesi_Relic_Prerequisites.sql</File>
     <File>Data/ModCore.sql</File>
@@ -140,6 +144,10 @@
     <File>UI/Haikesi_ExtAI_Bridge.xml</File>
     <File>UI/Haikesi_Panel.lua</File>
     <File>UI/Haikesi_Panel.xml</File>
+    <File>UI/Haikesi_Planter_Chooser.lua</File>
+    <File>UI/Haikesi_Planter_Chooser.xml</File>
+    <File>UI/Haikesi_Planter_Launcher.lua</File>
+    <File>UI/Haikesi_Planter_Launcher.xml</File>
     <File>UI/Haikesi_Tracker_EntryButton.lua</File>
     <File>UI/Haikesi_Tracker_EntryButton.xml</File>
     <File>UI/Haikesi_Tracker_Panel.lua</File>

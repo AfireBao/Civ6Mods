@@ -28,7 +28,11 @@
 
 ## 前置
 
-本项目基于以下前置代码开发，已包含在仓库中：
+另需：文明 6（含 Gathering Storm）、**Development Tools（FireTuner，AppID 404350）**、`AppOptions.txt` 中 `EnableTuner 1` 与窗口模式。完整步骤见下方「启动配置」文档。
+
+### 继承与借鉴（仓库内独立实现，不依赖）
+
+下列项目为本仓库的继承基线或思路来源；相关能力已在本仓库内自行落地，**运行时不要求启用对应工坊模组 / 上游仓库**。
 
 1. **civ6-mcp（上游 MCP 仓库）**  
    https://github.com/lmwilki/civ6-mcp  
@@ -38,11 +42,17 @@
    https://steamcommunity.com/sharedfiles/filedetails/?id=3751996207  
    建议先订阅原版了解玩法；本地开发请启用本仓库的 `Haikesi_Dev`（勿与工坊同 ID 模组混用导致数据错乱）。
 
-3. **Real Strategy / RST（Steam 创意工坊）**  
-   https://steamcommunity.com/sharedfiles/filedetails/?id=1617282434  
-   AI 行为增强依赖；与海克斯 PVE / 外部大模型流程配合使用。
+3. **Builder Plants Resources（建造者可建造资源）**  
+   https://steamcommunity.com/sharedfiles/filedetails/?id=3758337710  
+   「种地仙人」的种植入口与扣充能思路借鉴自该模组；本仓库已独立实现，不依赖、也不要求启用该工坊模组。
 
-另需：文明 6（含 Gathering Storm）、**Development Tools（FireTuner，AppID 404350）**、`AppOptions.txt` 中 `EnableTuner 1` 与窗口模式。完整步骤见下方「启动配置」文档。
+### 拓展依赖（软依赖）
+
+下列模组增强体验，**非硬性必需**；建议与海克斯 PVE / 外部大模型流程一并启用。
+
+1. **Real Strategy / RST（Steam 创意工坊）**  
+   https://steamcommunity.com/sharedfiles/filedetails/?id=1617282434  
+   AI 行为增强；与海克斯及外部大模型选卡流程配合使用。
 
 ---
 
@@ -52,6 +62,9 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-15 | **玩家海克斯「种地仙人」**：复用未实装「当心葡萄柚」图标；首都获赠特殊建造者，可在合法地形种植加成/奢侈资源（白名单 + `CanHaveResource`）；挂 `CLASS_BUILDER` 以吃金字塔等建造次数修正；普通工人无此能力。种植 UI 借鉴 BP_ResourcePlanter，不依赖该模组。 |
+| 2026-07-15 | **玩家海克斯「德古拉」**：复用未实装不祥契约（`OMINOUSPACTRUNE`）图标；立即在首都获得 3 个吸血鬼。前置表新增 `CAPABILITY` 种类，仅秘密结社模式进入选卡池。 |
+| 2026-07-15 | **玩家海克斯「联合作战」**：复用未实装踢踏舞（`TAPDANCERUNE`）图标；己方战斗单位二环内每有 1 个同盟或宗主城邦战斗单位则 +1 战斗力（按单位数叠加）。 |
 | 2026-07-15 | **AI 海克斯系列扩展**：新增「混乱干扰」系列（南蛮入侵归入）；新增「和平互利」系列与「天朝上国」——通往该文明城市的国际商路为对方 +1 科 +1 文、为本方 +4 金 +2 信仰（埃及同款 Incoming Trade Modifier）。 |
 | 2026-07-15 | **外部大模型选卡加固与局势情报**：修复 ExtAI 落地时 `Haikesi_GetPlayerRelicCount` 前置声明错误（Apply 崩溃导致 pending 不清、下次选卡才随机补齐）；Apply/超时路径加 `pcall`；LLM Prompt 改为逐位领袖迷雾视角（本国城市、已遇文明、视野威胁、RST/宗教/胜利进度），并补齐**双向外交不满**、对方观感修饰语与**世界会议决议**；DeepSeek V4 默认关 thinking / JSON Mode、非法 JSON 自动重试；`.env.example` 补充模型与 token 说明。 |
 | 2026-07-15 | **仓库首发**：联机/非 0 号位 AI 海克斯发放修复（主机权威 + 确定性 `AIChoices` 回退）；新增「外部大模型 AI 海克斯」异步决策（FireTuner / MCP 提交 choices + reasons，超时确定性回退）；追踪面板展示决策理由；**人类侧新海克斯**——三角贸易（同盟/宗主城邦商路产出加成，国际海洋商路完成后自到达城转移人口）、永生乐队（首都赠送高场地等级「终身乐队」摇滚乐队单位）；AI 海克斯池扩展——南蛮入侵、资源创建类型（棉花/烟草/糖/丝绸/茶等，数据表 `Haikesi_Relic_ResourceSpawns`）；vendored `civ6-mcp-haikesi` 与 DeepSeek/通用 LLM 监听脚本。 |

@@ -256,6 +256,25 @@ local function IsTechnologyPrerequisiteMet(pPlayer, techType, allowInProgress)
         and (pTechs:GetResearchingTech() == tech.Index or pTechs:IsResearchingTech(tech.Index))
 end
 
+-- 检测当局是否启用指定 GameCapability（如 CAPABILITY_SECRETSOCIETIES）
+local function IsCapabilityPrerequisiteMet(capType)
+    if capType == nil then return false end
+    if type(GameCapabilities) == 'table' and type(GameCapabilities.HasCapability) == 'function' then
+        return GameCapabilities.HasCapability(capType) == true
+    end
+    if type(HasCapability) == 'function' then
+        return HasCapability(capType) == true
+    end
+    if GameInfo.GameCapabilities ~= nil then
+        for row in GameInfo.GameCapabilities() do
+            if row.GameCapability == capType then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 -- 检查玩家是否拥有指定 Trait：通过 ModCore 绑定的 PROPERTY_<TraitType> 判断（O(1)）
 -- ModCore 给每个文明/领袖 Trait set PROPERTY_<TraitType>=1；替代遍历 CivilizationTraits/LeaderTraits 的 O(n) 旧逻辑
 local function PlayerHasTrait(playerID, traitType)
@@ -328,6 +347,10 @@ local function IsRelicRefreshEligible(aug, selectedTypes)
             local hasTrait = PlayerHasTrait(localPlayerID, req.Type)
             if hasTrait then
                 return false  -- 拥有该 Trait → 排除出刷新池
+            end
+        elseif req.Kind == 'CAPABILITY' then
+            if not IsCapabilityPrerequisiteMet(req.Type) then
+                return false
             end
         else
             return false

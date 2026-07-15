@@ -1,4 +1,4 @@
--- Haikesi_GamePlay_Script
+﻿-- Haikesi_GamePlay_Script
 -- Author: 帅翔翔
 -- DateCreated: 2025-7-14 16:00:00
 --------------------------------------------------------------
@@ -142,6 +142,25 @@ local function PlayerHasTrait(playerID, traitType)
     return (pPlayer:GetProperty('PROPERTY_' .. traitType) or 0) > 0
 end
 
+-- 检测当局是否启用指定 GameCapability（如 CAPABILITY_SECRETSOCIETIES）
+local function IsCapabilityPrerequisiteMet(capType)
+    if capType == nil then return false end
+    if type(GameCapabilities) == 'table' and type(GameCapabilities.HasCapability) == 'function' then
+        return GameCapabilities.HasCapability(capType) == true
+    end
+    if type(HasCapability) == 'function' then
+        return HasCapability(capType) == true
+    end
+    if GameInfo.GameCapabilities ~= nil then
+        for row in GameInfo.GameCapabilities() do
+            if row.GameCapability == capType then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function AreRelicPrerequisitesMet(pPlayer, relicType, selectedTypes)
     local tableAvailable = GameInfo.Haikesi_Relic_Prerequisites ~= nil
     local matchedRows = 0
@@ -182,6 +201,10 @@ local function AreRelicPrerequisitesMet(pPlayer, relicType, selectedTypes)
                         .. ' hasTrait=' .. tostring(hasTrait))
                     if hasTrait then
                         return false  -- 拥有该 Trait → 排除出刷新池
+                    end
+                elseif req.PrerequisiteKind == 'CAPABILITY' then
+                    if not IsCapabilityPrerequisiteMet(req.PrerequisiteType) then
+                        return false
                     end
                 else
                     return false
@@ -3676,6 +3699,128 @@ local function Haikesi_DevGrantFullMapVisionForHumans()
     end
 end
 
+-- ===========================================================================
+-- 种地仙人：UI EXECUTE_SCRIPT → 白名单 + CanHaveResource 种植
+-- ===========================================================================
+local NW_FARM_IMMORTAL_UNIT = 'UNIT_NW_FARM_IMMORTAL'
+
+local function Haikesi_IsFarmImmortalUnit(unit)
+    if unit == nil then
+        return false
+    end
+    local unitInfo = GameInfo.Units[unit:GetType()]
+    return unitInfo ~= nil and unitInfo.UnitType == NW_FARM_IMMORTAL_UNIT
+end
+
+local function Haikesi_IsPlanterWhitelistResource(resourceIndex)
+    if resourceIndex == nil or resourceIndex < 0 or GameInfo.Haikesi_PlanterResources == nil then
+        return false
+    end
+    local resourceInfo = GameInfo.Resources[resourceIndex]
+    if resourceInfo == nil then
+        return false
+    end
+    for row in GameInfo.Haikesi_PlanterResources() do
+        if row.ResourceType == resourceInfo.ResourceType then
+            return true
+        end
+    end
+    return false
+end
+
+local function Haikesi_IsValidPlanterPlot(plot, playerID)
+    if plot == nil then
+        return false
+    end
+    if plot:IsNaturalWonder() or plot:GetDistrictType() ~= -1 then
+        return false
+    end
+    local owner = plot:GetOwner()
+    if owner ~= -1 and owner ~= playerID then
+        return false
+    end
+    if plot:GetResourceType() ~= -1 then
+        return false
+    end
+    return true
+end
+
+local function Haikesi_FindPlanterChargeAbility(unit)
+    local unitAbility = unit and unit:GetAbility() or nil
+    if unitAbility == nil or GameInfo.Haikesi_PlanterChargeSlots == nil then
+        return nil
+    end
+    for row in GameInfo.Haikesi_PlanterChargeSlots() do
+        local abilityType = 'ABILITY_NW_PLANTER_CONSUMED_CHARGE_' .. row.Slot
+        if unitAbility:GetAbilityCount(abilityType) == 0 then
+            return abilityType
+        end
+    end
+    return nil
+end
+
+local function Haikesi_ConsumePlanterCharge(unit, abilityType)
+    local unitAbility = unit and unit:GetAbility() or nil
+    if unitAbility == nil or abilityType == nil then
+        return false
+    end
+    UnitManager.FinishMoves(unit)
+    unitAbility:ChangeAbilityCount(abilityType, 1)
+    return true
+end
+
+function HaikesiPlantResource(playerID, params)
+    local player = Players[playerID]
+    local unit = params and UnitManager.GetUnit(playerID, params.UnitID) or nil
+    local plot = params and Map.GetPlot(params.X, params.Y) or nil
+    local resourceIndex = params and tonumber(params.ResourceIndex) or nil
+
+    if player == nil or not player:IsHuman() or unit == nil or plot == nil or resourceIndex == nil then
+        print('[Haikesi Planter] canceled: invalid player/unit/plot/resource')
+        return
+    end
+    if not Haikesi_IsFarmImmortalUnit(unit)
+        or unit:GetX() ~= params.X
+        or unit:GetY() ~= params.Y
+        or unit:GetBuildCharges() <= 0
+        or unit:GetMovesRemaining() <= 0 then
+        print('[Haikesi Planter] canceled: invalid farm immortal state')
+        return
+    end
+    if not Haikesi_IsPlanterWhitelistResource(resourceIndex) then
+        print('[Haikesi Planter] canceled: resource not in whitelist')
+        return
+    end
+    if not Haikesi_IsValidPlanterPlot(plot, playerID) then
+        print('[Haikesi Planter] canceled: plot not eligible')
+        return
+    end
+    if not Haikesi_CanPlotHaveResource(plot, resourceIndex) then
+        print('[Haikesi Planter] canceled: CanHaveResource=false')
+        return
+    end
+
+    local chargeAbility = Haikesi_FindPlanterChargeAbility(unit)
+    if chargeAbility == nil then
+        print('[Haikesi Planter] canceled: charge ability slots exhausted')
+        return
+    end
+
+    local planted = Haikesi_PlaceResourceOnPlot(plot, resourceIndex, 1)
+    if not planted then
+        print('[Haikesi Planter] place failed resourceIndex=' .. tostring(resourceIndex))
+        return
+    end
+
+    Haikesi_ConsumePlanterCharge(unit, chargeAbility)
+    local resInfo = GameInfo.Resources[resourceIndex]
+    print(string.format(
+        '[Haikesi Planter] planted %s at (%d,%d) charge=%s',
+        resInfo and resInfo.ResourceType or tostring(resourceIndex),
+        plot:GetX(), plot:GetY(), tostring(chargeAbility)
+    ))
+end
+
 local function OnDevVisionPlayerTurnActivated(_, bIsFirstTime)
     if not DEV_FULL_MAP_VISION or not bIsFirstTime then return end
     Haikesi_DevGrantFullMapVisionForHumans()
@@ -3736,6 +3881,9 @@ function Initialize()
 
     -- 旧存档补挂同盟/宗主商路产出（仅 Attach 过一次的不会重复）
     Haikesi_SyncTriTradeYieldModifiersAll()
+
+    GameEvents.HaikesiPlantResource.Add(HaikesiPlantResource)
+    print("[Haikesi GamePlay] Farm Immortal planter ready")
 
     print("[Haikesi GamePlay] Script 初始化完成")
 end

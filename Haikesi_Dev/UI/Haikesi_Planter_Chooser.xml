@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 种地仙人资源选择器：借鉴 BP_ResourcePlanter 的独立弹窗骨架，不依赖该模组 -->
+<Context>
+  <Container ID="ChooserRoot" Size="parent,parent">
+    <Container Style="FullScreenVignetteConsumer"/>
+    <BoxButton
+      ID="ScreenConsumer"
+      Anchor="C,C"
+      Size="parent,parent"
+      Color="0,0,0,0"
+      ConsumeMouseButton="1"
+      ConsumeMouseWheel="1"/>
+    <Grid
+      ID="ChooserPanel"
+      Anchor="C,C"
+      Size="640,660"
+      Style="EventPopupFrame"
+      ConsumeMouseOver="1">
+      <Grid Style="EventPopupTitleBar" Size="parent-32,52" Offset="0,12" Anchor="C,T">
+        <Label
+          ID="ChooserTitle"
+          Style="EventPopupTitle"
+          Offset="0,2"
+          Align="Center"
+          WrapWidth="560"
+          String="LOC_HAIKESI_PLANTER_CHOOSER_TITLE"
+          Anchor="C,C"/>
+      </Grid>
+      <Container Size="parent-32,44" Offset="0,72" Anchor="C,T">
+        <Label
+          ID="ChooserPrompt"
+          Style="EventPopupDescription"
+          Align="Center"
+          WrapWidth="parent-20"
+          String="LOC_HAIKESI_PLANTER_CHOOSER_PROMPT"
+          Anchor="C,C"/>
+      </Container>
+      <Container ID="FilterTabArea" Anchor="C,T" Offset="0,120" Size="parent-32,40">
+        <Container ID="FilterTabContainer" Anchor="C,C" Size="parent,34"/>
+      </Container>
+      <Grid
+        ID="ChooserListFrame"
+        Anchor="C,T"
+        Offset="0,168"
+        Size="580,388"
+        Texture="Controls_DrawerUp"
+        SliceCorner="5,4"
+        SliceSize="3,2"
+        SliceTextureSize="14,8">
+        <ScrollPanel
+          ID="ChooserScrollPanel"
+          Anchor="C,C"
+          Size="parent-18,parent-18"
+          Vertical="1"
+          AutoScrollBar="1">
+          <ScrollBar Anchor="R,C" Size="11,100" Style="ScrollVerticalBar"/>
+          <Stack
+            ID="ChooserListStack"
+            Anchor="C,T"
+            Size="parent-20,auto"
+            StackGrowth="Bottom"
+            StackPadding="8"/>
+        </ScrollPanel>
+        <Label
+          ID="EmptyHint"
+          Anchor="C,C"
+          Style="EventPopupDescription"
+          Align="Center"
+          WrapWidth="parent-20"
+          String="LOC_HAIKESI_PLANTER_CHOOSER_EMPTY_HINT"
+          Hidden="1"/>
+      </Grid>
+      <GridButton
+        ID="CancelButton"
+        Anchor="C,B"
+        Offset="0,40"
+        Size="220,41"
+        Style="MainButton"
+        String="LOC_CANCEL"/>
+    </Grid>
+  </Container>
+
+  <Instance Name="ResourceEntryInstance">
+    <GridButton
+      ID="Button"
+      Anchor="C,T"
+      Size="520,56"
+      Texture="Controls_ButtonControl"
+      SliceCorner="10,10"
+      SliceSize="1,1"
+      SliceTextureSize="24,24"
+      StateOffsetIncrement="0,24">
+      <Image ID="ResourceIcon" Anchor="L,C" Offset="18,0" Size="38,38"/>
+      <Label
+        ID="MissingIcon"
+        Anchor="L,C"
+        Offset="35,0"
+        Size="68,68"
+        Align="Center"
+        String="?"
+        Hidden="1"/>
+      <Label ID="ResourceName" Anchor="L,C" Offset="70,0" Style="EventPopupDescription" TruncateWidth="420"/>
+    </GridButton>
+  </Instance>
+
+  <Instance Name="TabInstance">
+    <GridButton ID="Button" Size="80,34" Style="TabButton" FontSize="14" TextOffset="0,2">
+      <AlphaAnim
+        ID="Selection"
+        Offset="-2,0"
+        Size="parent+3,parent"
+        Speed="4"
+        AlphaBegin="0"
+        AlphaEnd="1"
+        Cycle="Once"
+        Function="Root"
+        Hidden="1">
+        <GridButton
+          Size="parent,parent"
+          Style="TabButtonSelected"
+          ConsumeMouseButton="0"
+          ConsumeMouseOver="1"/>
+      </AlphaAnim>
+    </GridButton>
+  </Instance>
+</Context>
