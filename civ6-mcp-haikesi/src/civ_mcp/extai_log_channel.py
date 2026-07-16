@@ -159,13 +159,28 @@ def context_from_log_payload(payload: dict[str, Any]):
         )
 
     ov_lines, wc_lines, view_lines = split_context_wire_lines(ctx_lines)
+    if not ov_lines:
+        ov_lines = haikesi_lua.recover_overview_lines(ctx_lines)
+    wire_meta = haikesi_lua.scrape_ctx_wire_meta(ctx_lines)
     if ov_lines:
         try:
             overview = overview_lua.parse_overview_response(ov_lines)
         except Exception as exc:  # noqa: BLE001 — soft-fail like SP gather
             notes.append(f"overview: unavailable ({exc})")
+            overview.turn = turn
+            overview.player_id = requester
     else:
         notes.append("overview: missing from CTX dump")
+
+    if wire_meta.get("era_name") and not overview.era_name:
+        overview.era_name = wire_meta["era_name"]
+    if wire_meta.get("game_speed_name") and not overview.game_speed_name:
+        overview.game_speed_name = wire_meta["game_speed_name"]
+    if wire_meta.get("speed_cost_multiplier"):
+        try:
+            overview.speed_cost_multiplier = int(wire_meta["speed_cost_multiplier"])
+        except ValueError:
+            pass
 
     if wc_lines:
         try:

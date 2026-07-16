@@ -479,7 +479,8 @@ API Key / 模型等仍读同目录 `.env`（`DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL
 | `Logs/haikesi_extai_apply.txt` | 与剪贴板相同的 wire 归档 |
 | `logs/haikesi_last_exchange.json` | **纯文本** wire 单行（便于打开复制；不是 JSON） |
 | `logs/haikesi_last_prompt.txt` | 最近一次完整 prompt |
-| `logs/haikesi_last_decision.txt` | 开发分析（`HAIKESI_DECISION_LOG=1`：thinking / raw JSON / `WIRE_INJECTED` / reasons） |
+| `logs/haikesi_last_decision.txt` | 最近一次 decision 镜像（快速查看） |
+| `logs/decisions/<对局>/` | 整场归档（`HAIKESI_DECISION_LOG=1`）：`session.json`、`index.jsonl`、每轮 `request_id.txt`；**新开档**（`GAME_SESSION` 随机种子变化）自动新建文件夹 |
 
 **Ctrl+C 停止 watch** 不会删除已发布决策；只要上述文件/剪贴板仍在，随时可 Ctrl+V 落地。
 
@@ -488,8 +489,8 @@ API Key / 模型等仍读同目录 `.env`（`DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL
 - **局势对齐单机**：dump 内嵌 `===HAIKESI_EXT_AI_CTX_*===`（外交/迷雾/胜利进度等与 FireTuner gather 同线）。  
 - **wire 上限**：EditBox/`EXECUTE_SCRIPT` 约 500 字符；watch 编码 wire≤505，**仅含 choices**（无 reasons hex）。  
 - **理由模式**：`HAIKESI_REASON_MODE=off` 不让模型输出 reasons；`short`/`full` 时 reasons **只写入 decision 日志**，不进游戏、不进 wire。  
-- **开发分析日志**：`HAIKESI_DECISION_LOG=1` 覆盖写入 `haikesi_last_decision.txt`；正式游玩请设 `0`。  
-- **logs 只保留最近一次**：`haikesi_last_prompt.txt`、`haikesi_last_exchange.json`；开启分析时另加 `haikesi_last_decision.txt`。  
+- **开发分析日志**：`HAIKESI_DECISION_LOG=1` 写入 `logs/decisions/<对局>/` 并镜像 `haikesi_last_decision.txt`；正式游玩请设 `0`。
+- **logs 只保留最近一次**：`haikesi_last_prompt.txt`、`haikesi_last_exchange.json`、`haikesi_last_decision.txt`（镜像）；decision 整场历史在 `logs/decisions/` 各对局文件夹内。  
 - **省 token**：`HAIKESI_REASON_MODE=off` + `HAIKESI_LLM_THINKING=0`；排查时再开 `THINKING=1` + `DECISION_LOG=1`。  
 - **Apply 主路径**：EditBox **Ctrl+V** → 自动 Apply。决策完成无游戏内 Toast，请看 PowerShell `★ 决策已发布` 或 `haikesi_last_exchange.json`。
 

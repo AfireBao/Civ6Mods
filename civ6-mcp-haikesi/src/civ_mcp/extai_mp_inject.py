@@ -6,7 +6,8 @@ watch 不阻塞、不抢前台。
 持久化（Ctrl+C 不丢决策）：
   Logs/haikesi_extai_apply.txt
   logs/haikesi_last_exchange.json（wire 单行）
-  logs/haikesi_last_decision.txt
+  logs/haikesi_last_decision.txt（最近一次镜像）
+  logs/decisions/<对局>/（HAIKESI_DECISION_LOG=1 时整场归档；新开档 GAME_SESSION 变化则新建文件夹）
   系统剪贴板（直到被其它程序覆盖）
 """
 

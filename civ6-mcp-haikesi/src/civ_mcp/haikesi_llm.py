@@ -87,15 +87,60 @@ def last_decision_path() -> Path:
     return last_prompt_path().parent / _LAST_DECISION_FILE
 
 
-def _prune_stale_decision_logs(log_dir: Path, *, keep: Path) -> None:
-    """Remove historical haikesi_decision_* files; only last_decision is retained."""
+def _prune_legacy_flat_decision_logs(log_dir: Path) -> None:
+    """Remove obsolete flat haikesi_decision_*.txt files (pre-archive layout)."""
     for stale in log_dir.glob("haikesi_decision_*.txt"):
-        if stale.resolve() == keep.resolve():
-            continue
         try:
             stale.unlink()
         except OSError:
             pass
+
+
+def _build_decision_log_body(
+    *,
+    request_id: str,
+    model: str,
+    prompt: str,
+    raw_response: str,
+    reasoning: str,
+    choices: dict[str, Any],
+    reasons: dict[str, str],
+    wire: str,
+    archive_path: Path | None = None,
+) -> str:
+    parts = [
+        f"saved_at={time.strftime('%Y-%m-%d %H:%M:%S')}",
+        f"request_id={request_id}",
+        f"model={model}",
+        f"reason_mode={reason_mode()}",
+        f"thinking_chars={len(reasoning or '')}",
+    ]
+    if archive_path is not None:
+        parts.append(f"archive_file={archive_path}")
+    parts.extend(
+        [
+            "",
+            "=== PROMPT ===",
+            prompt,
+            "",
+            "=== REASONING (model thinking; not injected) ===",
+            reasoning or "(empty — enable HAIKESI_LLM_THINKING=1 to capture)",
+            "",
+            "=== RAW_RESPONSE ===",
+            raw_response,
+            "",
+            "=== CHOICES (applied to game) ===",
+            json.dumps(choices, ensure_ascii=False, indent=2),
+            "",
+            "=== REASONS (dev log only; never injected into game) ===",
+            json.dumps(reasons, ensure_ascii=False, indent=2),
+            "",
+            "=== WIRE_INJECTED (choices only; no reasons) ===",
+            wire,
+            "",
+        ]
+    )
+    return "\n".join(parts)
 
 
 def save_decision_analysis_log(
@@ -108,42 +153,53 @@ def save_decision_analysis_log(
     choices: dict[str, Any],
     reasons: dict[str, str],
     wire: str,
+    payload: dict[str, Any] | None = None,
 ) -> Path | None:
-    """Overwrite the single developer analysis txt; never used as inject payload."""
+    """Append per-game decision log + mirror latest to haikesi_last_decision.txt."""
     if not decision_log_enabled():
         return None
     log_dir = last_prompt_path().parent
     log_dir.mkdir(parents=True, exist_ok=True)
+
+    archive_path: Path | None = None
+    if payload is not None:
+        try:
+            from civ_mcp.decision_archive import get_decision_archive
+
+            body = _build_decision_log_body(
+                request_id=request_id,
+                model=model,
+                prompt=prompt,
+                raw_response=raw_response,
+                reasoning=reasoning,
+                choices=choices,
+                reasons=reasons,
+                wire=wire,
+            )
+            archive_path = get_decision_archive().append_decision(
+                payload,
+                body=body,
+                request_id=request_id,
+                model=model,
+            )
+        except OSError as exc:
+            log.warning("Failed to append decision archive: %s", exc)
+
     path = last_decision_path()
-    parts = [
-        f"saved_at={time.strftime('%Y-%m-%d %H:%M:%S')}",
-        f"request_id={request_id}",
-        f"model={model}",
-        f"reason_mode={reason_mode()}",
-        f"thinking_chars={len(reasoning or '')}",
-        "",
-        "=== PROMPT ===",
-        prompt,
-        "",
-        "=== REASONING (model thinking; not injected) ===",
-        reasoning or "(empty — enable HAIKESI_LLM_THINKING=1 to capture)",
-        "",
-        "=== RAW_RESPONSE ===",
-        raw_response,
-        "",
-        "=== CHOICES (applied to game) ===",
-        json.dumps(choices, ensure_ascii=False, indent=2),
-        "",
-        "=== REASONS (dev log only; never injected into game) ===",
-        json.dumps(reasons, ensure_ascii=False, indent=2),
-        "",
-        "=== WIRE_INJECTED (choices only; no reasons) ===",
-        wire,
-        "",
-    ]
-    path.write_text("\n".join(parts), encoding="utf-8")
-    _prune_stale_decision_logs(log_dir, keep=path)
-    return path
+    text = _build_decision_log_body(
+        request_id=request_id,
+        model=model,
+        prompt=prompt,
+        raw_response=raw_response,
+        reasoning=reasoning,
+        choices=choices,
+        reasons=reasons,
+        wire=wire,
+        archive_path=archive_path,
+    )
+    path.write_text(text, encoding="utf-8")
+    _prune_legacy_flat_decision_logs(log_dir)
+    return archive_path or path
 
 
 def sanitize_decision_reason(reason: str, *, max_chars: int = _REASON_MAX_CHARS) -> str:
@@ -849,6 +905,9 @@ def _format_leader_block(
     attitude = _diplo_attitude_block(view.met)
     if attitude:
         parts.append(attitude)
+    synergy = haikesi_lua.build_trait_option_synergy_hints(view, list(ai.get("options") or []))
+    if synergy:
+        parts.append(synergy)
     parts.extend(
         [
             "【视野内可见敌对军事单位（战争迷雾外不可见）】",
@@ -925,6 +984,99 @@ def format_context_summary(context: HaikesiGameContext) -> str:
     return "Context OK: " + ", ".join(parts)
 
 
+def _resolve_game_speed(
+    context: HaikesiGameContext,
+    payload: dict[str, Any] | None = None,
+) -> tuple[int, str, bool]:
+    """Return (cost_multiplier, display_name, used_default)."""
+    payload = payload or {}
+    gs = payload.get("game_speed")
+    if isinstance(gs, dict):
+        mult = int(gs.get("cost_multiplier") or 0)
+        name = str(gs.get("name") or "").strip()
+        if mult > 0 and name and name not in ("Unknown", "未知"):
+            return mult, name, False
+
+    ov = context.overview
+    name = (ov.game_speed_name or "").strip()
+    mult = int(getattr(ov, "speed_cost_multiplier", 0) or 0)
+    if name and name not in ("Unknown", "未知") and mult > 0:
+        return mult, name, False
+
+    is_mp = bool(payload.get("mp")) or any(
+        "联机 LOG 通道" in n or "联机无 FireTuner" in n for n in context.fetch_notes
+    )
+    if is_mp:
+        return (
+            haikesi_lua.DEFAULT_SPEED_MULTIPLIER_ONLINE,
+            "联机",
+            True,
+        )
+    return haikesi_lua.DEFAULT_SPEED_MULTIPLIER_STANDARD, "标准", True
+
+
+def _format_global_setting(
+    context: HaikesiGameContext,
+    *,
+    turn: int,
+    payload: dict[str, Any] | None = None,
+) -> str:
+    ov = context.overview
+    mult, speed, speed_default = _resolve_game_speed(context, payload)
+    era = haikesi_lua.infer_era_label(
+        turn=turn, era_name=ov.era_name or "", cost_multiplier=mult
+    )
+    if speed_default:
+        speed = f"{speed}（默认 Cost×{mult}；CTX 未提供速度）"
+    elif mult != 100:
+        speed = f"{speed}（Cost×{mult}，相对标准速度）"
+    is_mp = any(
+        "联机 LOG 通道" in n or "联机无 FireTuner" in n for n in context.fetch_notes
+    )
+    if is_mp or not ov.difficulty or ov.difficulty in ("Unknown", "未知"):
+        return (
+            f"时代: {era} | 速度: {speed}\n"
+            "（联机/CTX 通常不提供难度；以文明6老玩家常识决策，"
+            "并受所扮演领袖历史性格与议程影响。）"
+        )
+    return f"难度: {ov.difficulty} | 速度: {speed} | 时代: {era}"
+
+
+def _format_human_relic_section(payload: dict[str, Any]) -> str:
+    relic_type = str(payload.get("human_relic") or "")
+    display = haikesi_lua.format_relic_display(relic_type)
+    hint = haikesi_lua.human_relic_strategy_hint(relic_type)
+    if hint:
+        return f"{display}\n策略参考：{hint}"
+    return display
+
+
+def _early_game_rules(
+    turn: int,
+    *,
+    cost_multiplier: int = 100,
+    speed_name: str = "",
+) -> tuple[str, str]:
+    """Return (early_phase_rule, barbarian_turn_window) scaled by game speed."""
+    thresholds = haikesi_lua.early_game_phase_thresholds(cost_multiplier=cost_multiplier)
+    ancient_end = thresholds["ancient_end"]
+    echo_horizon = thresholds["echo_horizon"]
+    barb_end = thresholds["barbarian_caution_end"]
+    barbarian_window = f"T2–T{barb_end}"
+    if turn > ancient_end:
+        return "", barbarian_window
+    speed_hint = ""
+    if speed_name and speed_name != "未知" and cost_multiplier != 100:
+        speed_hint = f"（{speed_name}；阈值按 Cost×{cost_multiplier}/100 相对标准速度缩放）"
+    rule = (
+        f"- 远古早期（约 T1–T{ancient_end}{speed_hint}、单城且军力≤2）："
+        "优先【即时】与资源/百分比产出；"
+        "其次 settler/builder echo；"
+        f"军事 echo 需 {echo_horizon} 回合内可造对应单位才优先，否则视为延迟收益\n"
+    )
+    return rule, barbarian_window
+
+
 def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) -> str:
     ai_blocks = [
         _format_leader_block(
@@ -940,7 +1092,6 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
         if payload.get("invasion_mutex")
         else "本轮无南蛮入侵互斥限制。"
     )
-    human_relic = haikesi_lua.format_relic_display(str(payload.get("human_relic") or ""))
 
     notes_block = ""
     if context.fetch_notes:
@@ -984,22 +1135,32 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
             '  "reasons": {"1": "...", "...": "..."}\n}'
         )
 
-    return f"""你同时代入下列多位文明领袖，为各自选择本轮海克斯。{channel_note}
+    human_relic = _format_human_relic_section(payload)
+    turn = int(payload.get("turn") or 0)
+    speed_mult, speed_name, _ = _resolve_game_speed(context, payload)
+    global_setting = _format_global_setting(context, turn=turn, payload=payload)
+    early_rules, barbarian_window = _early_game_rules(
+        turn, cost_multiplier=speed_mult, speed_name=speed_name
+    )
+
+    return f"""你是文明6资深玩家，同时代入下列多位文明领袖，为各自选择本轮海克斯。{channel_note}
+决策以老玩家常识与当前局面数据为主，并**一定程度**受所扮演历史人物的性格、议程与外交立场影响（勿为角色表演而违背明显最优）。
 
 情报规则（必须遵守）：
 - 每位领袖只能使用**自己区块**内的情报做决策；禁止引用其他领袖区块，也禁止臆造未给出的单位/文明。
 - 未相遇文明、战争迷雾外的敌军对本领袖不存在，不得当作已知信息。
-- 人类本轮海克斯、各文明历史已选海克斯（含效果说明）、全局时代/难度、世界会议决议是本局公开机制信息，各位领袖都可以参考。
+- 人类本轮海克斯、各文明历史已选海克斯（含效果说明）、全局时代/速度、世界会议决议是本局公开机制信息，各位领袖都可以参考。
 - 「历史已选」不是本轮选择：不得据此认定某领袖本轮已选完，也不得照抄历史词条作为本轮 choices。
 - 已相遇文明的科/文/金/军力、双向不满值、对方对你的外交修饰语等为外交界面可见信息，可以比较。
 - 若区块含「已知文明胜利进度排名」：仅可比较榜内文明；未上榜者对本领袖不可见。
 - 若区块含「Real Strategy 战略意图」：将其作为该领袖当前胜利路线倾向；选卡应优先契合主战略（征服→军事/扩张，科技→科研，文化→文化/伟人，宗教→信仰，外交→使者/外交），但若候选与短板/可见威胁明显冲突，可偏离。
+- 若区块含「能力与候选协同提示」：由能力/议程文案自动匹配，供选卡参考（非强制）。
 
 ## 当前回合
-Turn {payload.get("turn")}
+Turn {turn}
 
 ## 全局公开设定
-难度: {context.overview.difficulty or '未知'} | 速度: {context.overview.game_speed_name or '未知'} | 时代: {context.overview.era_name}
+{global_setting}
 
 ## 世界会议（公开）
 {_format_world_congress(context.world_congress)}
@@ -1018,7 +1179,9 @@ Turn {payload.get("turn")}
 - 每位领袖只能从其「候选海克斯」中选 1 个 relic type；必须重新决策，禁止因「历史已选」而照抄、跳过或认定本轮已选完
 - 「历史已选海克斯 / 各文明历史已选」仅为库存说明（名称+效果），不是本轮选项，也不是自动选卡结果
 - {invasion_note}
-- 先在内心做策略推演再选卡（不必写出推演过程）：胜利路线优先级、时代与扩张节奏、产出短板、威胁与外交、与人类海克斯的对抗/跟风
+- NW_AI_BARBARIAN_INVASION 分配：同一 JSON 内至多 1 名领袖；优先分配给触发后净收益最高者（清蛮/军事/干扰领先人类）；{barbarian_window} 且军力≤2 时，除非明确以干扰人类为目标且接受连带干扰其他 AI，否则优先即时产出或扩张类
+- 候选前缀【即时】/【延迟】标注生效时机；勿在远古早期盲选尚无法使用的军事 echo
+{early_rules}- 先在内心做策略推演再选卡（不必写出推演过程）：胜利路线优先级、时代与扩张节奏、产出短板、威胁与外交、与人类海克斯的对抗/跟风
 - 文明6常识（用于解释上下文，勿复述）：早期扩张与基础设施常优先于奇观；战略资源与特色单位窗口很关键；忠诚度差的新城易叛；宗教胜利靠信仰传播与神学战斗；科技靠学院链+航天；文化靠旅游压过对手国内游客；外交靠好感/宗主/世界会议；军事窗口常在特色单位与时代领先时；奢侈品种类比重复拷贝更重要；贸易路线容量是免费产出
 - 决策结合：自身能力与议程、Real Strategy 主战略（若有）、本国万神殿/教义、已知胜利进度排名、对已遇文明的不满与观感、世界会议决议、本国城市与产出短板、已相遇文明对比、可见威胁、人类公开海克斯、候选效果、历史库存（仅作能力背景）
 - 领袖皆有历史原型，决策时除了参考游戏数据和胜利路线战略外，还可以参考个人议程和与文明间的关系、不满来实现个人风味的厌恶表达
@@ -1227,6 +1390,23 @@ async def decide_and_submit_once(
     parsed = json.loads(result)
     if not parsed.get("ok"):
         raise RuntimeError(parsed.get("message", "submit failed"))
+    reasoning = ""
+    if hasattr(client, "_last_reasoning"):
+        reasoning = str(getattr(client, "_last_reasoning") or "")
+    try:
+        save_decision_analysis_log(
+            request_id=request_id,
+            model=model,
+            prompt=prompt,
+            raw_response=raw,
+            reasoning=reasoning,
+            choices=choices,
+            reasons=reasons,
+            wire=wire,
+            payload=payload,
+        )
+    except OSError as exc:
+        log.warning("Failed to save decision analysis log: %s", exc)
     if verbose:
         print(f"Submit OK: {request_id!r}", flush=True)
     return True
@@ -1342,6 +1522,7 @@ async def decide_and_inject_log_channel(
             choices=choices,
             reasons=reasons,
             wire=wire,
+            payload=payload,
         )
         if verbose and analysis_path is not None:
             print(f"Decision analysis log: {analysis_path}", flush=True)

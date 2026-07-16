@@ -981,6 +981,35 @@ local function Haikesi_EnsureExternalAIOptionsStored()
     Haikesi_StoreExternalAIOptionsForAllAIs(requester, countBefore, createdTurn)
 end
 
+-- 对局标识（随机种子+地图+人类位）；watch 据此归档 decision 并在新开档时重置
+local function Haikesi_PrintGameSessionKV(requesterPlayerID)
+    local requester = requesterPlayerID or 0
+    local seed = GameConfiguration.GetValue("GAME_SYNC_RANDOM_SEED") or 0
+    local mapScript = GameConfiguration.GetValue("MAP_SCRIPT") or "Unknown"
+    local mapSize = GameConfiguration.GetValue("MAP_SIZE") or "Unknown"
+    local reqCiv = "Unknown"
+    pcall(function()
+        local reqCfg = PlayerConfigurations[requester]
+        if reqCfg then
+            reqCiv = Locale.Lookup(reqCfg:GetCivilizationShortDescription()):gsub("|", "/")
+        end
+    end)
+    print("GAME_SESSION=" .. tostring(seed) .. "|" .. tostring(mapScript) .. "|"
+        .. tostring(mapSize) .. "|" .. tostring(requester) .. "|" .. reqCiv)
+end
+
+local function Haikesi_PrintGameSpeedKV()
+    pcall(function()
+        local gsIdx = Game.GetGameSpeedType()
+        local gsRow = GameInfo.GameSpeeds[gsIdx]
+        if gsRow then
+            local gsName = Locale.Lookup(gsRow.Name)
+            local gsMult = gsRow.CostMultiplier or 100
+            print("GAME_SPEED=" .. gsName .. "|" .. tostring(gsMult))
+        end
+    end)
+end
+
 -- 结构化 dump：联机无 FireTuner 时由外置 watch 尾 Lua.log 解析（与 GetExternalAIRequest 同字段）
 local function Haikesi_DumpExternalAIRequestToLog(reason)
     if (Game:GetProperty(EXT_AI_PENDING_KEY) or 0) ~= 1 then
@@ -1015,6 +1044,8 @@ local function Haikesi_DumpExternalAIRequestToLog(reason)
     print("HUMAN_RELIC=" .. tostring(humanRelic))
     print("COUNT_BEFORE=" .. tostring(countBefore))
     print("INVASION_MUTEX=" .. tostring(invasionMutex))
+    Haikesi_PrintGameSessionKV(requester)
+    Haikesi_PrintGameSpeedKV()
 
     local viewerIDs = {}
     for _, pAI in ipairs(Haikesi_GetAliveAIPlayers()) do
@@ -1156,6 +1187,8 @@ function Haikesi_GetExternalAIRequest()
     print("HUMAN_RELIC=" .. tostring(humanRelic))
     print("COUNT_BEFORE=" .. tostring(countBefore))
     print("INVASION_MUTEX=" .. tostring(invasionMutex))
+    Haikesi_PrintGameSessionKV(requester)
+    Haikesi_PrintGameSpeedKV()
 
     for _, pAI in ipairs(Haikesi_GetAliveAIPlayers()) do
         local aiID = pAI:GetID()

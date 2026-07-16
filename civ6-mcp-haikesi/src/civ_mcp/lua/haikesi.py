@@ -148,6 +148,33 @@ def _parse_ai_line(line: str) -> dict[str, Any] | None:
         "selected": selected,
     }
 
+
+def parse_game_session_value(value: str) -> dict[str, Any]:
+    """Parse GAME_SESSION=seed|mapScript|mapSize|requester|civ."""
+    parts = (value or "").split("|")
+    while len(parts) < 5:
+        parts.append("")
+    seed, map_script, map_size, requester_raw, civ = parts[:5]
+    requester = int(requester_raw) if requester_raw.lstrip("-").isdigit() else 0
+    return {
+        "seed": seed,
+        "map_script": map_script or "Unknown",
+        "map_size": map_size or "Unknown",
+        "requester": requester,
+        "requester_civ": civ or "Unknown",
+    }
+
+
+def parse_game_speed_value(value: str) -> dict[str, Any]:
+    """Parse GAME_SPEED=显示名|CostMultiplier from Gameplay dump."""
+    parts = (value or "").split("|")
+    name = parts[0].strip() if parts else ""
+    mult = 100
+    if len(parts) >= 2 and str(parts[1]).isdigit():
+        mult = int(parts[1])
+    return {"name": name or "未知", "cost_multiplier": mult}
+
+
 def parse_ai_request_lines(lines: list[str]) -> dict[str, Any]:
     """Parse Haikesi_GetExternalAIRequest() print output into a JSON-serializable dict."""
     cleaned = [ln.strip() for ln in lines if ln.strip() and ln.strip() != SENTINEL]
@@ -183,6 +210,10 @@ def parse_ai_request_lines(lines: list[str]) -> dict[str, Any]:
             result["invasion_mutex"] = value == "1"
         elif key == "MP":
             result["mp"] = value == "1" or value == 1
+        elif key == "GAME_SESSION":
+            result["game_session"] = parse_game_session_value(value)
+        elif key == "GAME_SPEED":
+            result["game_speed"] = parse_game_speed_value(value)
     if "request_id" not in result:
         return {"status": "error", "message": "malformed request payload", "raw": cleaned}
     return result
@@ -363,6 +394,161 @@ def format_relic_inventory_lines(
     return [f"  · {format_relic_display(t, text_xml)}" for t in types]
 
 
+_ECHO_UNIT_LABELS: dict[str, str] = {
+    "SETTLER": "开拓者",
+    "BUILDER": "建造者",
+    "MELEE": "近战",
+    "RANGED": "远程",
+    "LIGHT_CAVALRY": "轻骑兵",
+    "HEAVY_CAVALRY": "重骑兵",
+    "SIEGE": "攻城",
+}
+
+_STATS_YIELD_HINTS: dict[str, str] = {
+    "NW_AI_STATS_1": "文化",
+    "NW_AI_STATS_2": "科技",
+    "NW_AI_STATS_3": "金币",
+    "NW_AI_STATS_4": "信仰",
+    "NW_AI_STATS_5": "食物",
+    "NW_AI_STATS_6": "生产力",
+}
+
+
+def relic_timing_tag(relic_type: str) -> str:
+    """Prompt label: when the hex pays off (instant vs delayed)."""
+    if relic_type == "NW_AI_BARBARIAN_INVASION":
+        return "【即时·全场互斥·触发者免疫】"
+    if relic_type.startswith("NW_AI_ECHO_"):
+        suffix = relic_type.removeprefix("NW_AI_ECHO_")
+        unit = _ECHO_UNIT_LABELS.get(suffix, suffix.replace("_", ""))
+        return f"【延迟·需能生产{unit}】"
+    if relic_type.startswith("NW_AI_STATS_"):
+        yield_hint = _STATS_YIELD_HINTS.get(relic_type, "产出")
+        return f"【即时·全城市{yield_hint}%】"
+    if relic_type == "NW_AI_CELESTIAL_EMPIRE":
+        return "【延迟·需国际商路生效】"
+    if relic_type in get_resource_spawn_map() or "MILK" in relic_type:
+        return "【即时·创建资源/地块】"
+    return "【即时】"
+
+
+# 标准速度（CostMultiplier=100）下的参考回合；其它速度按 multiplier/100 缩放
+_STD_EARLY_ANCIENT_END = 40
+_STD_MID_GAME_END = 100
+_STD_BARBARIAN_CAUTION_END = 15
+_STD_ECHO_HORIZON = 10
+
+# Civ6 GameSpeeds.CostMultiplier（与 Haikesi ScaleTurnForGameSpeed 一致）
+DEFAULT_SPEED_MULTIPLIER_STANDARD = 100
+DEFAULT_SPEED_MULTIPLIER_ONLINE = 50
+DEFAULT_SPEED_MULTIPLIER_QUICK = 67
+
+
+def scale_turn_for_game_speed(standard_turn: int, *, cost_multiplier: int = 100) -> int:
+    """Match Haikesi ScaleTurnForGameSpeed: standardTurn * CostMultiplier / 100."""
+    mult = cost_multiplier if cost_multiplier > 0 else 100
+    return max(1, round(standard_turn * mult / 100))
+
+
+def scrape_ctx_wire_meta(ctx_lines: list[str]) -> dict[str, str]:
+    """Extract ERA/SPEED from raw CTX wire when full overview parse fails (MP)."""
+    meta: dict[str, str] = {}
+    for ln in ctx_lines:
+        if ln.startswith("ERA|"):
+            parts = ln.split("|")
+            if len(parts) >= 2 and parts[1]:
+                meta["era_name"] = parts[1]
+        elif ln.startswith("SPEED|"):
+            parts = ln.split("|")
+            if len(parts) >= 3 and parts[2]:
+                meta["game_speed_name"] = parts[2]
+            if len(parts) >= 4 and str(parts[3]).isdigit():
+                meta["speed_cost_multiplier"] = parts[3]
+    return meta
+
+
+def recover_overview_lines(ctx_lines: list[str]) -> list[str]:
+    """Re-slice overview wire from CTX body when split left ov_lines empty."""
+    view_idx = next(
+        (
+            i
+            for i, ln in enumerate(ctx_lines)
+            if ln.startswith("RST_MOD|") or ln.startswith("VIEWER|")
+        ),
+        len(ctx_lines),
+    )
+    wc_idx = next(
+        (i for i in range(view_idx) if ctx_lines[i].startswith("WC_")),
+        view_idx,
+    )
+    chunk = ctx_lines[:wc_idx]
+    start = next(
+        (i for i, ln in enumerate(chunk) if re.match(r"^\d+\|\d+\|", ln)),
+        None,
+    )
+    if start is None:
+        return []
+    return chunk[start:]
+
+
+def infer_era_label(
+    *,
+    turn: int,
+    era_name: str = "",
+    cost_multiplier: int = 100,
+) -> str:
+    if era_name and era_name not in ("Unknown", "未知"):
+        return era_name
+    ancient_end = scale_turn_for_game_speed(_STD_EARLY_ANCIENT_END, cost_multiplier=cost_multiplier)
+    mid_end = scale_turn_for_game_speed(_STD_MID_GAME_END, cost_multiplier=cost_multiplier)
+    if turn <= ancient_end:
+        return f"远古早期（Turn {turn}；CTX 未提供时代名时的推断）"
+    if turn <= mid_end:
+        return f"古典—中世纪（Turn {turn}；CTX 未提供时代名时的推断）"
+    return f"中后期（Turn {turn}；CTX 未提供时代名时的推断）"
+
+
+def early_game_phase_thresholds(*, cost_multiplier: int = 100) -> dict[str, int]:
+    """Speed-scaled turn windows for prompt heuristics."""
+    return {
+        "ancient_end": scale_turn_for_game_speed(
+            _STD_EARLY_ANCIENT_END, cost_multiplier=cost_multiplier
+        ),
+        "barbarian_caution_end": scale_turn_for_game_speed(
+            _STD_BARBARIAN_CAUTION_END, cost_multiplier=cost_multiplier
+        ),
+        "echo_horizon": scale_turn_for_game_speed(
+            _STD_ECHO_HORIZON, cost_multiplier=cost_multiplier
+        ),
+    }
+
+
+def human_relic_strategy_hint(relic_type: str, text_xml: Path | None = None) -> str:
+    """Structured follow/counter hint from human hex name+effect (keyword-driven)."""
+    if not relic_type:
+        return ""
+    info = get_ai_relic_catalog(text_xml).get(relic_type, {})
+    blob = _strip_civ_icons(
+        f"{info.get('name', '')} {info.get('description', '')}"
+    )
+    if any(k in blob for k in ("港口", "灯塔", "海运", "海岸", "航海", "金币", "商业")):
+        return (
+            "人类倾向：海运/金币成长。可跟风：引国际商路、贸易互利类；"
+            "可对抗：南蛮入侵拖延沿海节奏、或抢军事/扩张窗口。"
+        )
+    if any(k in blob for k in ("科技", "学院", "科研", "太空")):
+        return "人类倾向：科技成长。可跟风：百分比科技/工人改良；可对抗：干扰扩张或军事施压。"
+    if any(k in blob for k in ("文化", "旅游", "巨作", "剧院")):
+        return "人类倾向：文化/旅游。可跟风：文化百分比；可对抗：军事或宗教压力。"
+    if any(k in blob for k in ("信仰", "宗教", "传教")):
+        return "人类倾向：宗教。可跟风：信仰/商路传教；可对抗：抢先知窗口或军事干扰。"
+    if any(k in blob for k in ("单位", "军队", "战斗", "征兵")):
+        return "人类倾向：军事。可跟风：军事 echo/扩张；可对抗：经济/科技长线或外交合纵。"
+    if any(k in blob for k in ("食物", "人口", "农场", "成长")):
+        return "人类倾向：人口/粮食。可跟风：食物百分比或资源创建；可对抗：军事骚扰或抢地。"
+    return "可结合人类词条效果，判断跟风（同类增益）或对抗（干扰其路线）。"
+
+
 def format_option_lines(options: list[str], text_xml: Path | None = None) -> list[str]:
     catalog = get_ai_relic_catalog(text_xml)
     lines: list[str] = []
@@ -372,7 +558,8 @@ def format_option_lines(options: list[str], text_xml: Path | None = None) -> lis
         desc = enrich_relic_description(
             opt, _strip_civ_icons(info.get("description", ""))
         )
-        lines.append(f"- {opt}: {name} — {desc}")
+        tag = relic_timing_tag(opt)
+        lines.append(f"- {tag} {opt}: {name} — {desc}")
     return lines
 
 
@@ -605,6 +792,95 @@ class LeaderView:
     religion: CivReligionBeliefs | None = None
     victory_peers: list[VictoryPeerStat] = field(default_factory=list)
     favor: int = 0  # diplomatic favor (世界会议投票资源)
+
+
+def _leader_trait_corpus(view: LeaderView) -> str:
+    chunks: list[str] = []
+    for name, desc in view.leader_traits + view.civ_traits + view.agendas:
+        chunks.append(name)
+        chunks.append(desc)
+    return _strip_civ_icons(" ".join(chunks))
+
+
+def _rst_strategy_hint(rst: RstStrategyView | None, relic_type: str) -> str | None:
+    if rst is None or not rst.active_strategy or rst.active_strategy == "NONE":
+        return None
+    strat = rst.active_strategy
+    if strat == "CONQUEST" and (
+        "BARBARIAN" in relic_type or relic_type.startswith("NW_AI_ECHO_")
+    ):
+        return "Real Strategy 主战略=征服，军事/混乱类候选偏高"
+    if strat == "SCIENCE" and (
+        relic_type.startswith("NW_AI_STATS_2")
+        or relic_type.startswith("NW_AI_ECHO_BUILDER")
+        or relic_type in get_resource_spawn_map()
+    ):
+        return "Real Strategy 主战略=科技，发展/改良类候选偏高"
+    if strat == "CULTURE" and relic_type.startswith("NW_AI_STATS_1"):
+        return "Real Strategy 主战略=文化，文化产出类候选偏高"
+    if strat == "RELIGION" and (
+        relic_type.startswith("NW_AI_STATS_4") or "CELESTIAL" in relic_type
+    ):
+        return "Real Strategy 主战略=宗教，信仰/商路类候选偏高"
+    if strat == "DIPLO" and "CELESTIAL" in relic_type:
+        return "Real Strategy 主战略=外交，贸易互利类候选偏高"
+    return None
+
+
+def build_trait_option_synergy_hints(
+    view: LeaderView,
+    options: list[str],
+    text_xml: Path | None = None,
+) -> str:
+    """Auto-match leader trait/agenda text to candidate relic types (no civ hardcode)."""
+    corpus = _leader_trait_corpus(view)
+    if not corpus or not options:
+        return ""
+
+    lines: list[str] = []
+    for opt in options:
+        hints: list[str] = []
+        if "BARBARIAN" in opt and any(
+            k in corpus for k in ("蛮族", "哨站", "部落", "肃清", "征集")
+        ):
+            hints.append("能力与蛮族/清营相关；南蛮类需权衡全场连带（触发者免疫）")
+        if "CELESTIAL" in opt and any(
+            k in corpus for k in ("贸易", "商路", "商人", "同盟", "Camp", "牧场")
+        ):
+            hints.append("贸易/同盟特性与国际商路互利协同")
+        if opt.startswith("NW_AI_ECHO_SETTLER") and any(
+            k in corpus for k in ("扩张", "城市", "冻土", "领土", "定居")
+        ):
+            hints.append("扩张/铺城特性与开拓者翻倍协同")
+        if opt.startswith("NW_AI_ECHO_BUILDER") and any(
+            k in corpus for k in ("改良", "建造", "梯田", "山脉", "地块")
+        ):
+            hints.append("改良/地形特性与工人翻倍协同")
+        if opt.startswith("NW_AI_ECHO_") and any(
+            k in corpus for k in ("征集", "雇佣", "军队", "战斗力", "黑军", "骑兵")
+        ):
+            suffix = opt.removeprefix("NW_AI_ECHO_")
+            unit = _ECHO_UNIT_LABELS.get(suffix, "")
+            if unit and unit in corpus:
+                hints.append(f"能力文案提及{unit}，与对应 echo 直接协同")
+        if opt in get_resource_spawn_map() and any(
+            k in corpus for k in ("资源", "奢侈", "食物", "人口", "宜居")
+        ):
+            hints.append("资源/人口特性与即时资源创建协同")
+        rst_hint = _rst_strategy_hint(view.rst, opt)
+        if rst_hint and rst_hint not in hints:
+            hints.append(rst_hint)
+        if hints:
+            catalog = get_ai_relic_catalog(text_xml)
+            short = _strip_civ_icons(catalog.get(opt, {}).get("name", opt))
+            lines.append(f"  · {short}（{opt}）：{'；'.join(hints[:2])}")
+
+    if not lines:
+        return ""
+    return (
+        "【能力与候选协同提示】（由本领袖能力/议程/战略文案自动匹配，供参考）\n"
+        + "\n".join(lines)
+    )
 
 
 def build_leader_views_query(viewer_ids: list[int]) -> str:
