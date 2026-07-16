@@ -50,11 +50,57 @@ local function TriTradeLog(fmt, ...)
     print(string.format("[Haikesi TRI] " .. fmt, ...))
 end
 
+-- 独立 Gameplay VM：不能调用主脚本 local GetSelectedRelicTypeListForPlayer
+local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
+local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
+local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
+
+local function TriTrade_GetRelicTypeFromIndex(index)
+    for row in GameInfo.Haikesi_Relics() do
+        if row.Index == index then
+            return row.RelicType
+        end
+    end
+    return nil
+end
+
+local function TriTrade_GetSelectedRelicTypeList(pPlayer)
+    local relicTypes = {}
+    if pPlayer == nil then
+        return relicTypes
+    end
+    local count = tonumber(pPlayer:GetProperty(RelicsCountPropertyKey) or 0) or 0
+    if count > 0 then
+        for i = 1, count do
+            local relicType = pPlayer:GetProperty(RelicsSlotPropertyPrefix .. i)
+            if relicType ~= nil then
+                table.insert(relicTypes, relicType)
+            end
+        end
+    end
+    if #relicTypes > 0 then
+        return relicTypes
+    end
+    local prop = pPlayer:GetProperty(RelicsPropertyKey) or ""
+    if prop ~= "" then
+        for idxStr in string.gmatch(prop, "[^|]+") do
+            local idx = tonumber(idxStr)
+            if idx ~= nil then
+                local relicType = TriTrade_GetRelicTypeFromIndex(idx)
+                if relicType ~= nil then
+                    table.insert(relicTypes, relicType)
+                end
+            end
+        end
+    end
+    return relicTypes
+end
+
 local function PlayerHasTriangularTradeRelic(pPlayer)
     if pPlayer == nil then return false end
     local prop = pPlayer:GetProperty(TRI_TRADE_PROP_KEY)
     if prop == true or prop == 1 then return true end
-    for _, relicType in ipairs(GetSelectedRelicTypeListForPlayer(pPlayer)) do
+    for _, relicType in ipairs(TriTrade_GetSelectedRelicTypeList(pPlayer)) do
         if relicType == TRIANGULARTRADERUNE then return true end
     end
     return false
@@ -724,7 +770,10 @@ end
 
 local function InitializeTriTrade()
     GameEvents.HaikesiTriTradeComplete.Add(HaikesiTriTradeComplete)
-    ExposedMembers.HaikesiTriTradeCompleteFromUI = Haikesi_TriTradeCompleteFromUI
+    if ExposedMembers ~= nil then
+        ExposedMembers.HaikesiTriTradeCompleteFromUI = Haikesi_TriTradeCompleteFromUI
+        ExposedMembers.Haikesi_ApplyTriangularTradeRelicEffect = Haikesi_ApplyTriangularTradeRelicEffect
+    end
     Haikesi_SyncTriTradeYieldModifiersAll()
     print("[Haikesi TriTrade] GamePlay bridge ready")
 end

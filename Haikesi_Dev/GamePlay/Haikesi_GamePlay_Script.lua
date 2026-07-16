@@ -705,7 +705,13 @@ function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, count
                             or (relicDef ~= nil and relicDef.IsRepeatable == 1)
                         if canApply then
                             local reason = aiReasonsTable and aiReasonsTable[aiIDStr] or nil
-                            if ApplyRelicToPlayer(aiID, aiRelic, true, reason) then
+                            local okApplyOne, applyResult = pcall(
+                                ApplyRelicToPlayer, aiID, aiRelic, true, reason)
+                            if not okApplyOne then
+                                print("[Haikesi GamePlay] AI Player" .. aiID
+                                    .. " ApplyRelic error for " .. tostring(aiRelic)
+                                    .. ": " .. tostring(applyResult))
+                            elseif applyResult then
                                 applied = applied + 1
                                 if aiRelic == BARBARIAN_INVASION_RELIC then
                                     invasionApplied = true
@@ -824,7 +830,12 @@ local function Haikesi_SyncAIRelicCountToHuman(requesterPlayerID, targetCount, u
                         end
 
                         if relic ~= nil then
-                            if ApplyRelicToPlayer(aiID, relic, true, reason) then
+                            local okCatch, catchResult = pcall(
+                                ApplyRelicToPlayer, aiID, relic, true, reason)
+                            if not okCatch then
+                                print("[Haikesi GamePlay] AI Player" .. aiID
+                                    .. " catch-up ApplyRelic error: " .. tostring(catchResult))
+                            elseif catchResult then
                                 totalApplied = totalApplied + 1
                                 if relic == BARBARIAN_INVASION_RELIC then
                                     invasionApplied = true
@@ -1934,9 +1945,24 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     -- 除触发 AI 外，各其他玩家最新城市 5 环尝试生成 3 个遵循原版间距的营地；
     -- 每缺 1 个，在最近的现有营地处补充 3 个蛮族单位；
     -- 若全图无营地，则在该文明所有城市 4 环各生成 3 个蛮族单位
+    -- （实现在独立 Gameplay 脚本，经 ExposedMembers 调用）
     -- ==============================
     if relicType == BARBARIAN_INVASION_RELIC then
-        Haikesi_SpawnBarbarianInvasionCamps(iPlayer)
+        local spawnFn = nil
+        if ExposedMembers ~= nil then
+            spawnFn = ExposedMembers.Haikesi_SpawnBarbarianInvasionCamps
+        end
+        if type(spawnFn) ~= "function" then
+            spawnFn = rawget(_G, "Haikesi_SpawnBarbarianInvasionCamps")
+        end
+        if type(spawnFn) ~= "function" then
+            print("[Haikesi GamePlay] BARBARIAN_INVASION missing spawn fn (ExposedMembers not ready)")
+            return
+        end
+        local okSpawn, errSpawn = pcall(spawnFn, iPlayer)
+        if not okSpawn then
+            print("[Haikesi GamePlay] BARBARIAN_INVASION spawn error: " .. tostring(errSpawn))
+        end
         return
     end
 
@@ -2010,8 +2036,20 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     -- TRIANGULARTRADERUNE 三角贸易（见 Haikesi_TriTrade_GamePlay.lua）
     -- ==============================
     if relicType == 'TRIANGULARTRADERUNE' then
-        if Haikesi_ApplyTriangularTradeRelicEffect ~= nil then
-            Haikesi_ApplyTriangularTradeRelicEffect(iPlayer, pPlayer)
+        local applyTri = nil
+        if ExposedMembers ~= nil then
+            applyTri = ExposedMembers.Haikesi_ApplyTriangularTradeRelicEffect
+        end
+        if type(applyTri) ~= "function" then
+            applyTri = rawget(_G, "Haikesi_ApplyTriangularTradeRelicEffect")
+        end
+        if type(applyTri) == "function" then
+            local okTri, errTri = pcall(applyTri, iPlayer, pPlayer)
+            if not okTri then
+                print("[Haikesi GamePlay] TRIANGULARTRADE apply error: " .. tostring(errTri))
+            end
+        else
+            print("[Haikesi GamePlay] TRIANGULARTRADE missing apply fn (ExposedMembers not ready)")
         end
         return
     end

@@ -37,6 +37,59 @@ local BARBARIAN_HORSE_ARCHER_UNIT = 'UNIT_BARBARIAN_HORSE_ARCHER'
 local BARBARIAN_GALLEY_UNIT = 'UNIT_GALLEY'
 local BARBARIAN_QUADRIREME_UNIT = 'UNIT_QUADRIREME'
 
+-- 本脚本独立 Gameplay VM，不能依赖主脚本 local
+local CityFoundedTurnKey = 'PROP_NW_HAIKESI_CITY_FOUNDED_TURN'
+local CityFoundedSequenceKey = 'PROP_NW_HAIKESI_CITY_FOUNDED_SEQUENCE'
+
+local function PickRandomIndex(maxCount, reason)
+    if maxCount <= 0 then
+        return 0
+    end
+    if TerrainBuilder ~= nil and TerrainBuilder.GetRandomNumber ~= nil then
+        return TerrainBuilder.GetRandomNumber(maxCount, reason)
+    end
+    return Game.GetRandNum(maxCount, reason) or 0
+end
+
+-- 与主脚本同逻辑：按 CityBuilt 跟踪的 turn/sequence 取最新城
+local function GetNewestCityForPlayer(pPlayer)
+    if pPlayer == nil then
+        return nil
+    end
+    local pCities = pPlayer:GetCities()
+    if pCities == nil then
+        return nil
+    end
+    local newestCity = nil
+    local newestTurn = -1
+    local newestSequence = -1
+    local newestCityID = -1
+    for _, pCity in pCities:Members() do
+        if pCity ~= nil then
+            local foundedTurn = tonumber(pCity:GetProperty(CityFoundedTurnKey))
+            local foundedSequence = tonumber(pCity:GetProperty(CityFoundedSequenceKey))
+            local cityID = pCity:GetID()
+            local hasTrackedTurn = foundedTurn ~= nil
+            local newestHasTrackedTurn = newestTurn >= 0
+
+            if (hasTrackedTurn and not newestHasTrackedTurn)
+                or (hasTrackedTurn and newestHasTrackedTurn
+                    and (foundedTurn > newestTurn
+                        or (foundedTurn == newestTurn
+                            and ((foundedSequence or -1) > newestSequence
+                                or ((foundedSequence or -1) == newestSequence
+                                    and cityID > newestCityID)))))
+                or (not hasTrackedTurn and not newestHasTrackedTurn and cityID > newestCityID) then
+                newestTurn = foundedTurn or -1
+                newestSequence = foundedSequence or -1
+                newestCityID = cityID
+                newestCity = pCity
+            end
+        end
+    end
+    return newestCity
+end
+
 local function GetBarbarianCampImprovementIndex()
     local row = GameInfo.Improvements[BARBARIAN_CAMP_IMPROVEMENT]
     if row == nil then
@@ -1102,3 +1155,13 @@ function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
         "[Haikesi GamePlay] BARBARIAN_INVASION total camps=%d units=%d",
         totalCampsSpawned, totalUnitsSpawned))
 end
+
+-- 各 AddGameplayScripts 互不共享 _G；经 ExposedMembers 供主脚本调用
+local function InitializeBarbarianGamePlay()
+    if ExposedMembers ~= nil then
+        ExposedMembers.Haikesi_SpawnBarbarianInvasionCamps = Haikesi_SpawnBarbarianInvasionCamps
+    end
+    print("[Haikesi Barbarian] GamePlay bridge ready (ExposedMembers.Haikesi_SpawnBarbarianInvasionCamps)")
+end
+
+Events.LoadScreenClose.Add(InitializeBarbarianGamePlay)
