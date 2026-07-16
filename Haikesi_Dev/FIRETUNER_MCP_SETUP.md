@@ -380,21 +380,134 @@ civ6-mcp 本身不调用模型 API，因此不需要保存 API Key。模型由 C
 
 也可使用 `run_lua`，`context="haikesi"` 在 `Haikesi_GamePlay_Script` 状态执行调试代码。
 
-### 10.2.1 联机 PVE（主机权威）
+### 10.2.1 联机 PVE（主机权威，无 FireTuner）
+
+引擎联机禁用 FireTuner。共用开关 `NW_HAIKESI_EXTERNAL_AI`，通道自动分支为 **LOG + 手动 Ctrl+V**（watch **不**抢前台、**不** SendInput、**不**提示音）：
+
+```text
+人类选卡 (EXECUTE_SCRIPT)
+  → 各端同建 pending + options
+  → Gameplay dump ===HAIKESI_EXT_AI_REQ_*=== + CTX 到 Lua.log
+  → 主机 watch 尾读 Lua.log → 调大模型
+  → watch publish：系统剪贴板 + Logs/haikesi_extai_apply.txt + logs/haikesi_last_exchange.json（wire 单行）
+  → 主机 pending 横幅 + 输入框出现
+  → 玩家在 ExtAIPayloadEdit 内 Ctrl+V（或从上述文件复制 wire）
+  → OnChange 自动 Apply（Ctrl+V 粘贴 wire）
+  → ClearPending + 追踪面板更新
+```
+
+**wire 格式**（choices only，不含理由）示例：
+
+```text
+4_2_0#1=NW_AI_STATS_5*|2=NW_AI_ECHO_BUILDER*|3=NW_AI_BARBARIAN_INVASION*
+```
+
+> 联机 Gameplay/UI 侧 `io.open` 不可用，**不能**靠游戏内读盘自动应用；主路径是 **EditBox + Ctrl+V**。  
+> 理由（reasons）**永不注入 wire**；开发分析见 `HAIKESI_DECISION_LOG=1` 时的 `haikesi_last_decision.txt`。
+
+#### 联机启动指令（主机，直接进 LOG 通道）
+
+在仓库目录 `G:\Civ6Mods\civ6-mcp-haikesi` 开终端（建议与游戏并列的独立窗口）。**联机务必强制 `log`**，避免先空等 FireTuner：
+
+```powershell
+Set-Location "G:\Civ6Mods\civ6-mcp-haikesi"
+$env:HAIKESI_WATCH_MODE = "log"
+# 可选：显式指定 Lua.log（一般可省略，脚本会找 LocalAppData）
+# $env:HAIKESI_LUA_LOG = "$env:LOCALAPPDATA\Firaxis Games\Sid Meier's Civilization VI\Logs\Lua.log"
+uv run python scripts/haikesi_deepseek_watch.py
+```
+
+启动成功时应看到类似：
+
+```text
+Mode: log | ...
+Channel=LOG tail=...\Logs\Lua.log
+Host UI: pending 时在上方输入框 Ctrl+V（wire 在剪贴板 / apply.txt / decision 日志）
+Watching for pending AI requests...
+```
+
+决策完成后 watch 输出类似：
+
+```text
+★ 决策已发布 request_id='4_2_0' wireLen=...
+archive: ...\Logs\haikesi_extai_apply.txt
+→ 游戏内：上方输入框 Ctrl+V（或从 apply.txt / decision 日志复制）
+→ Ctrl+C 停止 watch 不会删除已发布内容（剪贴板/apply.txt/decision 日志仍在）
+```
+
+API Key / 模型等仍读同目录 `.env`（`DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL` 等）。需要深度思考或决策分析日志时在 `.env` 里设 `HAIKESI_LLM_THINKING` / `HAIKESI_DECISION_LOG`，不必写进启动命令。
+
+通用网关可用：`uv run python scripts/haikesi_llm_watch.py`（同样先设 `$env:HAIKESI_WATCH_MODE = "log"`）。
+
+#### 主机操作顺序（每轮 AI 海克斯）
+
+1. **开局前（一次）**  
+   - 只在**主机**用上一节命令启动 watch（`HAIKESI_WATCH_MODE=log`）  
+   - Civ6 **窗口模式**；Mod 已加载 `Haikesi_TriTrade_Bridge`（屏幕上方 ExtAI 横幅 + 输入框）  
+   - 进联机房 / 开局后再选海克斯即可
+
+2. **人类选完海克斯后**  
+   - 屏幕**上方中央**出现深色横幅 + 输入框：「外部AI决策中… 完成后 Ctrl+V」  
+   - 右侧通知：「AI 决策中…」  
+   - 此时可继续操作；主机无需盯 PowerShell，除非排查问题
+
+3. **watch 决策完成（PowerShell 出现 `Published OK` / `★ 决策已发布`）**  
+   - 看 PowerShell 或 `haikesi_last_exchange.json` 确认 wire 已就绪  
+   - 在下方输入框 **Ctrl+V** 粘贴 wire（粘贴后自动 Apply）
+
+4. **成功标志**  
+   - 游戏内通知：「已同步 N 位领袖（request_id）」  
+   - 横幅消失；可继续游戏  
+   - 追踪面板显示 AI 选卡（联机 wire 不含理由，面板**不**显示大模型 reason 文案）
+
+5. **失败 / 超时 / 剪贴板被覆盖**  
+   - 从 `logs/haikesi_last_exchange.json` 或 `Logs/haikesi_extai_apply.txt` 复制整行 wire，再 Ctrl+V  
+   - 或从 `haikesi_last_decision.txt` 末尾 `WIRE_INJECTED` 段复制（**不要**粘贴整份 JSON / decision 全文）  
+   - 仍失败则等待游戏内确定性回退（不永久卡死）
+
+#### 可选热键（主机，需 pending）
+
+| 组合键 | 作用 |
+|--------|------|
+| Ctrl+Alt+Shift+R | 聚焦下方输入框，便于 Ctrl+V |
+
+#### 持久化与 logs（Ctrl+C 安全）
+
+| 路径 | 内容 |
+|------|------|
+| 系统剪贴板 | 最新 wire（可能被其它程序覆盖） |
+| `Logs/haikesi_extai_apply.txt` | 与剪贴板相同的 wire 归档 |
+| `logs/haikesi_last_exchange.json` | **纯文本** wire 单行（便于打开复制；不是 JSON） |
+| `logs/haikesi_last_prompt.txt` | 最近一次完整 prompt |
+| `logs/haikesi_last_decision.txt` | 开发分析（`HAIKESI_DECISION_LOG=1`：thinking / raw JSON / `WIRE_INJECTED` / reasons） |
+
+**Ctrl+C 停止 watch** 不会删除已发布决策；只要上述文件/剪贴板仍在，随时可 Ctrl+V 落地。
+
+#### 其它说明
+
+- **局势对齐单机**：dump 内嵌 `===HAIKESI_EXT_AI_CTX_*===`（外交/迷雾/胜利进度等与 FireTuner gather 同线）。  
+- **wire 上限**：EditBox/`EXECUTE_SCRIPT` 约 500 字符；watch 编码 wire≤505，**仅含 choices**（无 reasons hex）。  
+- **理由模式**：`HAIKESI_REASON_MODE=off` 不让模型输出 reasons；`short`/`full` 时 reasons **只写入 decision 日志**，不进游戏、不进 wire。  
+- **开发分析日志**：`HAIKESI_DECISION_LOG=1` 覆盖写入 `haikesi_last_decision.txt`；正式游玩请设 `0`。  
+- **logs 只保留最近一次**：`haikesi_last_prompt.txt`、`haikesi_last_exchange.json`；开启分析时另加 `haikesi_last_decision.txt`。  
+- **省 token**：`HAIKESI_REASON_MODE=off` + `HAIKESI_LLM_THINKING=0`；排查时再开 `THINKING=1` + `DECISION_LOG=1`。  
+- **Apply 主路径**：EditBox **Ctrl+V** → 自动 Apply。决策完成无游戏内 Toast，请看 PowerShell `★ 决策已发布` 或 `haikesi_last_exchange.json`。
+
+### 10.2.2 单机 PVE（FireTuner Stage）
+
+单机可开 `EnableTuner=1`，watch 默认 `HAIKESI_WATCH_MODE=auto` 会走 Tuner 通道：
 
 ```text
 人类选卡(EXECUTE_SCRIPT)
-  → 各端同建 pending + options（确定性 salt）
-  → 仅主机人类确认带 TriggerAIRelicRound
-  → 仅主机 FireTuner/MCP：get → submit（OK:staged）
-  → 主机 UI 桥接：EXECUTE_SCRIPT ExtAIApply
-  → 各端同参 Apply + ClearPending
+  → 建 pending + options（确定性 salt）
+  → FireTuner/MCP：get → submit（OK:staged）
+  → Haikesi_TriTrade_Bridge：EXECUTE_SCRIPT ExtAIApply
+  → Apply + ClearPending
 ```
 
-- 联机时 **只在主机** 运行 civ6-mcp / DeepSeek watch。
-- **只有主机选海克斯**才让 AI 跟一轮；客机选卡不触发。
-- 客机开启「外部大模型」开关即可（与主机同配置），但不要连接 FireTuner 提交。
-- 超时未提交时，各端仍按确定性规则同步回退（与单机相同）。
+- 本机运行 `haikesi_deepseek_watch.py` / `haikesi_llm_watch.py`（或 Cursor MCP `submit_haikesi_ai_choices`）。
+- 人类确认海克斯后触发 AI 轮次；超时未 Stage 则确定性回退。
+- 强制 Tuner：`HAIKESI_WATCH_MODE=tuner`（连不上则报错退出，不回退 LOG）。
 
 ### 10.3 命令行烟测（可选）
 
@@ -524,7 +637,8 @@ uv run python scripts/haikesi_deepseek_watch.py
 
 ### 10.7 超时回退
 
-若 1 回合内未通过 MCP 提交，Gameplay 自动使用确定性规则补发 AI 海克斯（`External AI timeout, fallback deterministic`），理由显示为「外部决策超时，依规则自动选定」。
+- **单机 / FireTuner**：若 1 回合内未通过 MCP Stage 提交，Gameplay 自动使用确定性规则补发 AI 海克斯（`External AI timeout, fallback deterministic`），理由显示为「外部决策超时，依规则自动选定」。
+- **联机 LOG 通道**：若 pending 期间未在主机 EditBox 成功 Apply wire，同样会确定性回退；可先查 `haikesi_last_exchange.json` / `apply.txt` 手动 Ctrl+V，避免浪费本轮 LLM 结果。
 
 ### 10.8 常见问题
 
@@ -534,3 +648,7 @@ uv run python scripts/haikesi_deepseek_watch.py
 | `status: none` | 尚未人类确认 / 已提交 / 已超时回退 | 人类再选一次海克斯 |
 | 提交后 `request_id mismatch` | 使用了过期的 request_id | 重新 `get_haikesi_ai_request` |
 | 端口 4318 无监听 | EnableTuner 未开或游戏未运行 | 检查 AppOptions.txt |
+| 联机 watch 已 `Published OK` 但 AI 未选卡 | 未 Ctrl+V 或剪贴板被覆盖 | 从 `haikesi_last_exchange.json` 复制 wire → 输入框 Ctrl+V |
+| 粘贴后无反应 | wire 格式错（粘了 JSON/decision 全文） | 只粘单行 `request_id#1=NW_AI_*|2=...` |
+| 联机追踪面板无决策理由 | wire 仅含 choices，reasons 不进游戏 | 开 `HAIKESI_DECISION_LOG=1` 查 `haikesi_last_decision.txt` |
+| Lua.log 无 `HAIKESI_EXT_AI_REQ` | 未开外部 AI 开关 / 非主机 dump | 确认两开关 + 仅主机人类选卡触发 |

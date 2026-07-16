@@ -120,10 +120,13 @@ local function GetRelicCardDisplayText(pPlayer, slotIndex, relicRow)
             local reason = pPlayer:GetProperty(HAIKESI_RELIC_REASON_PREFIX .. slotIndex)
             if reason ~= nil and reason ~= "" then
                 reason = DecodeMangledHexReason(tostring(reason))
-                local leaderName = GetLeaderDisplayName(pPlayer)
-                local relicName = Locale.Lookup(relicRow.Name) or ""
-                -- 直接拼接：reason 为运行时 UTF-8 字符串，Locale.Lookup 插值在部分环境下会乱码
-                return leaderName .. "觉得" .. reason .. "，故选择" .. relicName
+                -- 截断残留的裸 hex 不当理由显示
+                if reason:match("^[0-9a-fA-F]+$") and #reason >= 16 then
+                    reason = ""
+                end
+                if reason ~= nil and reason ~= "" then
+                    return reason
+                end
             end
         end
         return Locale.Lookup(relicRow.Name) or ""

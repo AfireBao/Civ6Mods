@@ -543,6 +543,238 @@ local function ProcessStagedExtAI()
     print("[Haikesi ExtAI UI] broadcast ExtAIApply len=" .. tostring(#tostring(payload)))
 end
 
+-- ===========================================================================
+-- 联机 ExtAI：watch 写剪贴板 + apply.txt 归档；玩家在 EditBox Ctrl+V 落地
+-- ===========================================================================
+local EXT_AI_PENDING_PROP = "PROP_NW_HAIKESI_EXT_AI_PENDING"
+local g_ExtAILastAutoApply = ""
+local g_ExtAIPendingNotified = false
+
+local function TrimExtAIPayload(text)
+    if text == nil then
+        return ""
+    end
+    text = tostring(text):gsub("^%s+", ""):gsub("%s+$", ""):gsub("[\r\n]", "")
+    return text
+end
+
+local function LooksLikeExtAIApply(text)
+    if text == nil or text == "" then
+        return false
+    end
+    return string.find(text, "^[^#]+#%d+=[%w_]+", 1) ~= nil
+end
+
+local function CanBroadcastExtAI()
+    if Game ~= nil and Game.IsNetworkMultiplayer ~= nil and not Game.IsNetworkMultiplayer() then
+        return true
+    end
+    return IsGameHost()
+end
+
+local function IsExtAIPending()
+    return (Game:GetProperty(EXT_AI_PENDING_PROP) or 0) == 1
+end
+
+local function ExtAINotifType()
+    -- USER_DEFINED_1 在联机右侧通知栏可见；DEFAULT 常无显示
+    if NotificationTypes == nil then
+        return nil
+    end
+    return NotificationTypes.USER_DEFINED_1 or NotificationTypes.DEFAULT
+end
+
+local function FocusExtAIEditBox()
+    if Controls == nil or Controls.ExtAIPayloadEdit == nil then
+        return false
+    end
+    if Controls.ExtAIPayloadEdit.TakeFocus ~= nil then
+        Controls.ExtAIPayloadEdit:TakeFocus()
+        return true
+    end
+    if Controls.ExtAIPayloadEdit.SetFocus ~= nil then
+        Controls.ExtAIPayloadEdit:SetFocus()
+        return true
+    end
+    return false
+end
+
+local function BroadcastExtAIApplyFromMP(payload)
+    if not CanBroadcastExtAI() then
+        print("[Haikesi ExtAI MP] skip apply: not host / no authority")
+        return false
+    end
+    local localPlayer = Game.GetLocalPlayer()
+    if localPlayer == nil or localPlayer < 0 then
+        print("[Haikesi ExtAI MP] skip apply: no local player")
+        return false
+    end
+    local param = {}
+    param['OnStart'] = 'HaikesiSelectRelic'
+    param['ExtAIApply'] = payload
+    UI.RequestPlayerOperation(localPlayer, PlayerOperations.EXECUTE_SCRIPT, param)
+    print("[Haikesi ExtAI MP] EXECUTE_SCRIPT ExtAIApply len=" .. tostring(#payload))
+    return true
+end
+
+local function ApplyExtAIPayload(raw, source)
+    raw = TrimExtAIPayload(raw)
+    if raw == "" then
+        return false
+    end
+    if not LooksLikeExtAIApply(raw) then
+        print("[Haikesi ExtAI MP] payload shape rejected (" .. tostring(source) .. ")")
+        return false
+    end
+    if raw == g_ExtAILastAutoApply then
+        return false
+    end
+    if BroadcastExtAIApplyFromMP(raw) then
+        g_ExtAILastAutoApply = raw
+        if Controls ~= nil and Controls.ExtAIPayloadEdit ~= nil then
+            Controls.ExtAIPayloadEdit:SetText("")
+        end
+        return true
+    end
+    return false
+end
+
+local function ApplyExtAIFromEditBox(source)
+    if Controls == nil or Controls.ExtAIPayloadEdit == nil then
+        print("[Haikesi ExtAI MP] EditBox missing")
+        return
+    end
+    local raw = TrimExtAIPayload(Controls.ExtAIPayloadEdit:GetText())
+    if LooksLikeExtAIApply(raw) then
+        ApplyExtAIPayload(raw, source)
+    end
+end
+
+local function AttachExtAIBannerToHud()
+    if Controls == nil or Controls.ExtAIBanner == nil then
+        print("[Haikesi ExtAI MP] WARN: ExtAIBanner missing, cannot attach to HUD")
+        return false
+    end
+    local hud = ContextPtr:LookUpControl("/InGame/HUD")
+    if hud == nil then
+        hud = ContextPtr:LookUpControl("/InGame/WorldInput")
+    end
+    if hud == nil then
+        print("[Haikesi ExtAI MP] WARN: /InGame/HUD not found")
+        return false
+    end
+    Controls.ExtAIBanner:ChangeParent(hud)
+    -- 提到最前，避免被其它 HUD 挡住
+    if Controls.ExtAIBanner.SetHide ~= nil then
+        Controls.ExtAIBanner:SetHide(true)
+    end
+    print("[Haikesi ExtAI MP] ExtAIBanner ChangeParent → HUD/WorldInput")
+    return true
+end
+
+-- pending 横幅：挂到 HUD 后显示在屏幕上方中央
+local function SetExtAIBannerVisible(visible, statusLocOrText)
+    if Controls == nil then
+        return
+    end
+    if Controls.ExtAIBanner ~= nil then
+        Controls.ExtAIBanner:SetHide(not visible)
+    end
+    if visible and Controls.ExtAIStatusLabel ~= nil and statusLocOrText ~= nil then
+        local text = Locale.Lookup(statusLocOrText)
+        if text == nil or text == "" or string.sub(tostring(text), 1, 4) == "LOC_" then
+            text = "外部AI决策中… 完成后在下方框 Ctrl+V"
+        end
+        Controls.ExtAIStatusLabel:SetText(text)
+    end
+end
+
+local function ShowExtAIToast(title, body)
+    pcall(function()
+        if NotificationManager == nil then
+            return
+        end
+        local localPlayer = Game.GetLocalPlayer()
+        if localPlayer == nil or localPlayer < 0 then
+            return
+        end
+        local nt = ExtAINotifType()
+        if nt == nil then
+            return
+        end
+        NotificationManager.SendNotification(localPlayer, nt, title, body)
+    end)
+    if UI ~= nil and UI.PlaySound ~= nil then
+        pcall(function()
+            UI.PlaySound("Confirm_Caravan_Produce")
+        end)
+    end
+end
+
+local function TickExtAIClipboardBridge()
+    if not CanBroadcastExtAI() then
+        SetExtAIBannerVisible(false)
+        return
+    end
+    if not IsExtAIPending() then
+        g_ExtAIPendingNotified = false
+        SetExtAIBannerVisible(false)
+        return
+    end
+    if Controls == nil or Controls.ExtAIPayloadEdit == nil then
+        return
+    end
+    SetExtAIBannerVisible(true, "LOC_HAIKESI_EXT_AI_BANNER_PENDING")
+    if not g_ExtAIPendingNotified then
+        g_ExtAIPendingNotified = true
+        AttachExtAIBannerToHud()
+        local title = Locale.Lookup("LOC_HAIKESI_EXT_AI_PENDING_NOTIFY_TITLE")
+        if title == nil or title == "" or string.sub(title, 1, 4) == "LOC_" then
+            title = "外部AI海克斯"
+        end
+        local body = Locale.Lookup("LOC_HAIKESI_EXT_AI_PENDING_NOTIFY_BODY")
+        if body == nil or body == "" or string.sub(body, 1, 4) == "LOC_" then
+            body = "AI 决策中。完成后在下方输入框 Ctrl+V 粘贴 wire。"
+        end
+        ShowExtAIToast(title, body)
+        print("[Haikesi ExtAI MP] pending banner (Ctrl+V path)")
+    end
+    local raw = TrimExtAIPayload(Controls.ExtAIPayloadEdit:GetText())
+    if LooksLikeExtAIApply(raw) then
+        ApplyExtAIPayload(raw, "tick")
+    end
+end
+
+local function OnExtAIPayloadChanged()
+    if not IsExtAIPending() then
+        return
+    end
+    ApplyExtAIFromEditBox("changed")
+end
+
+local function OnExtAIInputHandler(pInputStruct)
+    local uiMsg = pInputStruct:GetMessageType()
+    if uiMsg ~= KeyEvents.KeyUp and uiMsg ~= KeyEvents.KeyDown then
+        return false
+    end
+    if not pInputStruct:IsControlDown()
+        or not pInputStruct:IsAltDown()
+        or not pInputStruct:IsShiftDown() then
+        return false
+    end
+    local key = pInputStruct:GetKey()
+    -- R=就绪通知：KeyDown 即触发（SendInput 组合键常无可靠 KeyUp）
+    if key == Keys.R then
+        if uiMsg == KeyEvents.KeyDown then
+            print("[Haikesi ExtAI MP] hotkey R → focus EditBox for Ctrl+V")
+            FocusExtAIEditBox()
+            return true
+        end
+        return true
+    end
+    return false
+end
+
 local function Initialize()
     Events.TurnBegin.Add(function()
         OnTurnPhase("TurnBegin")
@@ -554,6 +786,7 @@ local function Initialize()
     Events.LocalPlayerTurnBegin.Add(ProcessStagedExtAI)
     Events.GameCoreEventPublishComplete.Add(ProcessAssaultNotifyQueue)
     Events.GameCoreEventPublishComplete.Add(ProcessStagedExtAI)
+    Events.GameCoreEventPublishComplete.Add(TickExtAIClipboardBridge)
     RebuildSnapshotsOnLoad()
     -- 读档跳过历史攻城通知队列
     g_AssaultNotifyCursor = #SplitAssaultQueue(
@@ -563,8 +796,29 @@ local function Initialize()
     if ExposedMembers ~= nil then
         ExposedMembers.Haikesi_ExtAIStagedPayload = nil
     end
-    TriTradeLog("UI bridge initialized (TriTrade+BarbNotify+ExtAI)")
-    print("[Haikesi UI] TriTrade/BarbNotify/ExtAI bridge ready")
+
+    ContextPtr:SetInputHandler(OnExtAIInputHandler, true)
+    AttachExtAIBannerToHud()
+    if Controls.ExtAIBanner ~= nil then
+        Controls.ExtAIBanner:SetHide(true)
+    else
+        print("[Haikesi ExtAI MP] WARN: ExtAIBanner missing (XML not loaded?)")
+    end
+    if Controls.ExtAIPayloadEdit ~= nil then
+        if Controls.ExtAIPayloadEdit.RegisterStringChangedCallback ~= nil then
+            Controls.ExtAIPayloadEdit:RegisterStringChangedCallback(OnExtAIPayloadChanged)
+        end
+        if Controls.ExtAIPayloadEdit.RegisterCommitCallback ~= nil then
+            Controls.ExtAIPayloadEdit:RegisterCommitCallback(function()
+                ApplyExtAIFromEditBox("commit")
+            end)
+        end
+    else
+        print("[Haikesi ExtAI MP] WARN: ExtAIPayloadEdit control missing")
+    end
+
+    TriTradeLog("UI bridge initialized (TriTrade+BarbNotify+ExtAI Ctrl+V)")
+    print("[Haikesi UI] TriTrade/BarbNotify/ExtAI bridge ready (EditBox Ctrl+V)")
 end
 
 Events.LoadScreenClose.Add(Initialize)

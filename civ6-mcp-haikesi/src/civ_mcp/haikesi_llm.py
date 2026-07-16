@@ -32,6 +32,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_PROMPT_DIR = _PKG_ROOT / "logs"
 _LAST_PROMPT_FILE = "haikesi_last_prompt.txt"
 _LAST_EXCHANGE_FILE = "haikesi_last_exchange.json"
+_LAST_DECISION_FILE = "haikesi_last_decision.txt"
 
 
 def last_prompt_path() -> Path:
@@ -42,39 +43,107 @@ def last_prompt_path() -> Path:
     return _DEFAULT_PROMPT_DIR / _LAST_PROMPT_FILE
 
 
-def save_last_llm_exchange(
-    *,
-    prompt: str,
-    raw_response: str,
-    request_id: str,
-    model: str,
-    choices: dict[str, Any],
-    reasons: dict[str, str],
-) -> Path:
-    """Persist latest prompt (+ exchange metadata) under logs/ for inspection."""
+def last_exchange_path() -> Path:
+    """File holding the latest ExtAIApply wire (plain text, for copy-paste)."""
+    prompt_path = last_prompt_path()
+    if os.environ.get("HAIKESI_LAST_PROMPT_PATH", "").strip():
+        return prompt_path.with_name(_LAST_EXCHANGE_FILE)
+    return prompt_path.parent / _LAST_EXCHANGE_FILE
+
+
+def save_last_prompt(prompt: str) -> Path:
+    """Persist latest LLM prompt under logs/ for inspection."""
     prompt_path = last_prompt_path()
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text(prompt, encoding="utf-8")
-
-    exchange_path = prompt_path.parent / _LAST_EXCHANGE_FILE
-    if os.environ.get("HAIKESI_LAST_PROMPT_PATH", "").strip():
-        # Custom prompt path: keep exchange next to it with a fixed sibling name.
-        exchange_path = prompt_path.with_name(_LAST_EXCHANGE_FILE)
-    exchange = {
-        "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "request_id": request_id,
-        "model": model,
-        "prompt_chars": len(prompt),
-        "prompt_path": str(prompt_path),
-        "choices": choices,
-        "reasons": reasons,
-        "raw_response": raw_response,
-    }
-    exchange_path.write_text(
-        json.dumps(exchange, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
     return prompt_path
+
+
+def save_last_wire(wire: str) -> Path:
+    """Persist latest ExtAIApply wire (same string as clipboard / apply.txt)."""
+    exchange_path = last_exchange_path()
+    exchange_path.parent.mkdir(parents=True, exist_ok=True)
+    exchange_path.write_text(wire.strip(), encoding="utf-8")
+    return exchange_path
+
+
+def reason_mode() -> str:
+    """off=JSON 不写 reasons；short/full=reasons 仅写入 decision 日志，永不注入游戏。"""
+    raw = (os.environ.get("HAIKESI_REASON_MODE") or "short").strip().lower()
+    if raw in {"off", "0", "none", "false", "no"}:
+        return "off"
+    if raw in {"full", "long", "verbose"}:
+        return "full"
+    return "short"
+
+
+def decision_log_enabled() -> bool:
+    """开发分析：把思考过程写入独立 txt（与注入游戏的 wire 隔离）。"""
+    return _env_flag("HAIKESI_DECISION_LOG", False)
+
+
+def last_decision_path() -> Path:
+    """Fixed path for the single retained decision analysis log."""
+    return last_prompt_path().parent / _LAST_DECISION_FILE
+
+
+def _prune_stale_decision_logs(log_dir: Path, *, keep: Path) -> None:
+    """Remove historical haikesi_decision_* files; only last_decision is retained."""
+    for stale in log_dir.glob("haikesi_decision_*.txt"):
+        if stale.resolve() == keep.resolve():
+            continue
+        try:
+            stale.unlink()
+        except OSError:
+            pass
+
+
+def save_decision_analysis_log(
+    *,
+    request_id: str,
+    model: str,
+    prompt: str,
+    raw_response: str,
+    reasoning: str,
+    choices: dict[str, Any],
+    reasons: dict[str, str],
+    wire: str,
+) -> Path | None:
+    """Overwrite the single developer analysis txt; never used as inject payload."""
+    if not decision_log_enabled():
+        return None
+    log_dir = last_prompt_path().parent
+    log_dir.mkdir(parents=True, exist_ok=True)
+    path = last_decision_path()
+    parts = [
+        f"saved_at={time.strftime('%Y-%m-%d %H:%M:%S')}",
+        f"request_id={request_id}",
+        f"model={model}",
+        f"reason_mode={reason_mode()}",
+        f"thinking_chars={len(reasoning or '')}",
+        "",
+        "=== PROMPT ===",
+        prompt,
+        "",
+        "=== REASONING (model thinking; not injected) ===",
+        reasoning or "(empty — enable HAIKESI_LLM_THINKING=1 to capture)",
+        "",
+        "=== RAW_RESPONSE ===",
+        raw_response,
+        "",
+        "=== CHOICES (applied to game) ===",
+        json.dumps(choices, ensure_ascii=False, indent=2),
+        "",
+        "=== REASONS (dev log only; never injected into game) ===",
+        json.dumps(reasons, ensure_ascii=False, indent=2),
+        "",
+        "=== WIRE_INJECTED (choices only; no reasons) ===",
+        wire,
+        "",
+    ]
+    path.write_text("\n".join(parts), encoding="utf-8")
+    _prune_stale_decision_logs(log_dir, keep=path)
+    return path
 
 
 def sanitize_decision_reason(reason: str, *, max_chars: int = _REASON_MAX_CHARS) -> str:
@@ -181,6 +250,11 @@ def load_deepseek_config() -> HaikesiLLMConfig:
 
 
 _LLM_MAX_TOKENS = int(os.environ.get("HAIKESI_LLM_MAX_TOKENS", "4096"))
+# thinking 开启时推理占用大量 tokens；未显式设置时抬到 8192，降低 content 被截空概率
+_LLM_MAX_TOKENS_THINKING = int(
+    os.environ.get("HAIKESI_LLM_MAX_TOKENS_THINKING")
+    or max(_LLM_MAX_TOKENS, 8192)
+)
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -198,14 +272,19 @@ class _OpenAICompatibleClient:
         self._model = config.model
         # DeepSeek 官方：JSON Output 会偶发空 content；默认关闭，靠 prompt + 解析容错。
         self._json_mode = _env_flag("HAIKESI_LLM_JSON_MODE", False)
-        # DeepSeek V4 thinking 默认 enabled，推理会吃掉 max_tokens 导致 content 为空。
+        # DeepSeek V4 thinking：默认关（省延迟/费用）。开 HAIKESI_LLM_THINKING=1 可提升策略深度。
         self._thinking_enabled = _env_flag("HAIKESI_LLM_THINKING", False)
+        self._thinking_requested = self._thinking_enabled
+        self._last_reasoning = ""
 
     def _build_kwargs(self, prompt: str) -> dict[str, Any]:
+        max_tokens = (
+            _LLM_MAX_TOKENS_THINKING if self._thinking_enabled else _LLM_MAX_TOKENS
+        )
         kwargs: dict[str, Any] = {
             "model": self._model,
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": _LLM_MAX_TOKENS,
+            "max_tokens": max_tokens,
         }
         if self._json_mode:
             kwargs["response_format"] = {"type": "json_object"}
@@ -235,10 +314,11 @@ class _OpenAICompatibleClient:
 
     def complete(self, prompt: str) -> str:
         last_detail = ""
-        # 空 content 时逐步降级：关 json → 关 thinking 已是默认 → 再重试
+        # 空 content 时逐步降级：关 json → 保持 thinking 再试 → 最后关 thinking
+        want_think = self._thinking_requested
         attempts = (
-            (self._json_mode, self._thinking_enabled),
-            (False, self._thinking_enabled),
+            (self._json_mode, want_think),
+            (False, want_think),
             (False, False),
         )
         seen: set[tuple[bool, bool]] = set()
@@ -254,23 +334,32 @@ class _OpenAICompatibleClient:
                 response = self._client.chat.completions.create(**kwargs)
             except Exception as exc:
                 last_detail = str(exc)
-                # 不支持 json_object / thinking 时换下一档
                 log.warning(
-                    "LLM create failed (json=%s thinking=%s): %s",
+                    "LLM create failed (json=%s thinking=%s max_tokens=%s): %s",
                     json_mode,
                     thinking,
+                    kwargs.get("max_tokens"),
                     exc,
                 )
                 continue
             content, finish = self._extract_content(response)
             if content:
+                if want_think and not thinking:
+                    log.warning("LLM fell back to thinking=disabled after empty content")
+                try:
+                    self._last_reasoning = str(
+                        getattr(response.choices[0].message, "reasoning_content", None) or ""
+                    )
+                except Exception:  # noqa: BLE001
+                    self._last_reasoning = ""
                 return content
             reasoning_len = len(
                 getattr(response.choices[0].message, "reasoning_content", None) or ""
             )
             last_detail = (
                 f"empty content finish_reason={finish!r} "
-                f"reasoning_chars={reasoning_len} json={json_mode} thinking={thinking}"
+                f"reasoning_chars={reasoning_len} json={json_mode} thinking={thinking} "
+                f"max_tokens={kwargs.get('max_tokens')}"
             )
             log.warning("LLM empty content; retrying (%s)", last_detail)
         raise RuntimeError(f"LLM returned empty content ({last_detail})")
@@ -693,15 +782,23 @@ def _format_leader_block(
     human_player_id: int,
 ) -> str:
     pid = int(ai["player_id"])
+    selected = list(ai.get("selected") or [])
+    hist_lines = "\n".join(haikesi_lua.format_relic_inventory_lines(selected))
+    hist_block = (
+        "【历史已选海克斯】（过往回合已获得的库存，不是本轮选择；"
+        "本轮必须从上方「候选海克斯」中重新选 1 张，禁止照抄或跳过）\n"
+        + hist_lines
+    )
     if view is None:
         label = ai.get("player_name") or ai.get("civ_label") or str(pid)
         return (
             f"### 领袖 {pid}（{label}）\n"
             "可见情报不足（未能读取该领袖外交/视野数据）。\n"
-            "仅根据候选海克斯与已选海克斯，从自身发展需求选卡。\n"
+            "仅根据候选海克斯与历史库存，从自身发展需求选卡。\n"
             "候选海克斯:\n"
             + "\n".join(haikesi_lua.format_option_lines(ai.get("options", [])))
-            + f"\n已选海克斯: {haikesi_lua.format_relic_type_list(ai.get('selected', []))}"
+            + "\n"
+            + hist_block
         )
 
     title = f"### 领袖 {pid}：{view.civ_name}（{view.leader_name}）"
@@ -756,12 +853,31 @@ def _format_leader_block(
         [
             "【视野内可见敌对军事单位（战争迷雾外不可见）】",
             _threat_table(view),
-            "【候选海克斯】",
+            "【候选海克斯】（本轮三选一，必须从这里选）",
             "\n".join(haikesi_lua.format_option_lines(ai.get("options", []))),
-            f"【已选海克斯】{haikesi_lua.format_relic_type_list(ai.get('selected', []))}",
+            hist_block,
         ]
     )
     return "\n".join(parts)
+
+
+def _format_historical_hexes_public(payload: dict[str, Any]) -> str:
+    """All civs' historical hex inventory with full effect text (public)."""
+    lines: list[str] = []
+    for ai in payload.get("ai_players", []) or []:
+        pid = int(ai.get("player_id", -1))
+        label = (
+            ai.get("civ_label")
+            or ai.get("player_name")
+            or f"领袖{pid}"
+        )
+        selected = haikesi_lua.dedupe_preserve_order(list(ai.get("selected") or []))
+        if not selected:
+            lines.append(f"- {label}：无")
+            continue
+        for relic in selected:
+            lines.append(f"- {label}：{haikesi_lua.format_relic_display(relic)}")
+    return "\n".join(lines) if lines else "- （尚无历史海克斯）"
 
 
 def format_context_summary(context: HaikesiGameContext) -> str:
@@ -834,12 +950,47 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
             + "\n\n"
         )
 
-    return f"""你同时代入下列多位文明领袖，为各自选择本轮海克斯。数据来自真实对局（FireTuner）。
+    channel_note = (
+        "数据来自联机 Lua.log CTX dump（与单机 FireTuner 同线格式）。"
+        if any("联机 LOG 通道" in n or "联机无 FireTuner" in n for n in context.fetch_notes)
+        else "数据来自真实对局（FireTuner）。"
+    )
+
+    mode = reason_mode()
+    if mode == "off":
+        reason_rule = (
+            "- 不要输出 reasons（或给空对象 {}）；只需 choices。"
+            "内心推演即可，勿把分析写进 JSON，以节省输出 token。"
+        )
+        output_fmt = '{\n  "choices": {"1": "NW_AI_...", "...": "NW_AI_..."}\n}'
+    elif mode == "full":
+        reason_rule = (
+            "- reasons 仅供开发日志，不会显示在游戏内；可用 1～2 句带领袖风味的简体中文"
+            "（常用汉字，约 40 字内），第一人称；禁止 emoji、英文双引号 \"、生僻字；"
+            "详细推演过程不必复述（另有 thinking 日志）。"
+        )
+        output_fmt = (
+            '{\n  "choices": {"1": "NW_AI_...", "...": "NW_AI_..."},\n'
+            '  "reasons": {"1": "...", "...": "..."}\n}'
+        )
+    else:
+        reason_rule = (
+            "- reasons 仅供开发日志，不会显示在游戏内；用 1 句带领袖风味的简体中文"
+            "（常用汉字，约 20 字内），第一人称；禁止 emoji、英文双引号 \"、生僻字；"
+            "不要复述效果全文"
+        )
+        output_fmt = (
+            '{\n  "choices": {"1": "NW_AI_...", "...": "NW_AI_..."},\n'
+            '  "reasons": {"1": "...", "...": "..."}\n}'
+        )
+
+    return f"""你同时代入下列多位文明领袖，为各自选择本轮海克斯。{channel_note}
 
 情报规则（必须遵守）：
 - 每位领袖只能使用**自己区块**内的情报做决策；禁止引用其他领袖区块，也禁止臆造未给出的单位/文明。
 - 未相遇文明、战争迷雾外的敌军对本领袖不存在，不得当作已知信息。
-- 人类本轮海克斯、全局时代/难度、世界会议决议是本局公开机制信息，各位领袖都可以参考。
+- 人类本轮海克斯、各文明历史已选海克斯（含效果说明）、全局时代/难度、世界会议决议是本局公开机制信息，各位领袖都可以参考。
+- 「历史已选」不是本轮选择：不得据此认定某领袖本轮已选完，也不得照抄历史词条作为本轮 choices。
 - 已相遇文明的科/文/金/军力、双向不满值、对方对你的外交修饰语等为外交界面可见信息，可以比较。
 - 若区块含「已知文明胜利进度排名」：仅可比较榜内文明；未上榜者对本领袖不可见。
 - 若区块含「Real Strategy 战略意图」：将其作为该领袖当前胜利路线倾向；选卡应优先契合主战略（征服→军事/扩张，科技→科研，文化→文化/伟人，宗教→信仰，外交→使者/外交），但若候选与短板/可见威胁明显冲突，可偏离。
@@ -856,21 +1007,26 @@ Turn {payload.get("turn")}
 ## 人类玩家本轮海克斯（公开）
 {human_relic}
 
+## 各文明历史已选海克斯（公开，含效果说明）
+以下为过往回合已获得的词条库存，供理解局面；与本轮选卡无关，禁止当作「本轮已选定」。
+{_format_historical_hexes_public(payload)}
+
 {notes_block}## 待决策领袖（逐位以该领袖身份选卡）
 {chr(10).join(ai_blocks)}
 
 ## 规则
-- 每位领袖只能从其「候选海克斯」中选 1 个 relic type
+- 每位领袖只能从其「候选海克斯」中选 1 个 relic type；必须重新决策，禁止因「历史已选」而照抄、跳过或认定本轮已选完
+- 「历史已选海克斯 / 各文明历史已选」仅为库存说明（名称+效果），不是本轮选项，也不是自动选卡结果
 - {invasion_note}
-- 决策结合：自身能力与议程、Real Strategy 主战略（若有）、本国万神殿/教义、已知胜利进度排名、对已遇文明的不满与观感、世界会议决议、本国城市与产出短板、已相遇文明对比、可见威胁、人类公开海克斯、候选效果
-- reason 用 1 句规范简体中文（常用汉字，20-40 字），第一人称「我」；禁止 emoji、英文双引号 "、生僻字，不要复述效果全文
+- 先在内心做策略推演再选卡（不必写出推演过程）：胜利路线优先级、时代与扩张节奏、产出短板、威胁与外交、与人类海克斯的对抗/跟风
+- 文明6常识（用于解释上下文，勿复述）：早期扩张与基础设施常优先于奇观；战略资源与特色单位窗口很关键；忠诚度差的新城易叛；宗教胜利靠信仰传播与神学战斗；科技靠学院链+航天；文化靠旅游压过对手国内游客；外交靠好感/宗主/世界会议；军事窗口常在特色单位与时代领先时；奢侈品种类比重复拷贝更重要；贸易路线容量是免费产出
+- 决策结合：自身能力与议程、Real Strategy 主战略（若有）、本国万神殿/教义、已知胜利进度排名、对已遇文明的不满与观感、世界会议决议、本国城市与产出短板、已相遇文明对比、可见威胁、人类公开海克斯、候选效果、历史库存（仅作能力背景）
+- 领袖皆有历史原型，决策时除了参考游戏数据和胜利路线战略外，还可以参考个人议程和与文明间的关系、不满来实现个人风味的厌恶表达
+{reason_rule}
 - 必须输出完整合法 JSON（所有字符串已闭合）；禁止 markdown 代码块
 
 ## 输出格式（仅 JSON，无 markdown）
-{{
-  "choices": {{"1": "NW_AI_...", "...": "NW_AI_..."}},
-  "reasons": {{"1": "...", "...": "..."}}
-}}
+{output_fmt}
 """
 
 
@@ -948,14 +1104,7 @@ def _save_failed_llm_raw(
     error: str,
 ) -> None:
     try:
-        save_last_llm_exchange(
-            prompt=prompt,
-            raw_response=raw_response,
-            request_id=request_id,
-            model=model,
-            choices={},
-            reasons={"_parse_error": error[:200]},
-        )
+        save_last_prompt(prompt)
     except OSError as exc:
         log.warning("Failed to save broken LLM response: %s", exc)
 
@@ -1046,32 +1195,33 @@ async def decide_and_submit_once(
     choices = {str(k): v for k, v in decision.get("choices", {}).items()}
     raw_reasons = {str(k): v for k, v in decision.get("reasons", {}).items()}
     reasons: dict[str, str] = {}
-    for ai_id, raw_reason in raw_reasons.items():
-        if str(ai_id).startswith("_"):
-            continue
-        cleaned = sanitize_decision_reason(str(raw_reason))
-        if cleaned:
-            reasons[ai_id] = cleaned
+    mode = reason_mode()
+    if mode != "off":
+        max_chars = 80 if mode == "full" else 40
+        for ai_id, raw_reason in raw_reasons.items():
+            if str(ai_id).startswith("_"):
+                continue
+            cleaned = sanitize_decision_reason(str(raw_reason), max_chars=max_chars)
+            if cleaned:
+                reasons[ai_id] = cleaned
     if not choices:
         raise RuntimeError("LLM returned empty choices")
 
+    from civ_mcp.extai_log_channel import encode_extai_apply_payload
+
+    wire = encode_extai_apply_payload(request_id, choices, None)
     try:
-        save_last_llm_exchange(
-            prompt=prompt,
-            raw_response=raw,
-            request_id=request_id,
-            model=model,
-            choices=choices,
-            reasons=reasons,
-        )
+        save_last_prompt(prompt)
+        save_last_wire(wire)
     except OSError as exc:
-        log.warning("Failed to save last prompt/exchange: %s", exc)
+        log.warning("Failed to save last prompt/wire: %s", exc)
 
     if verbose:
-        print(f"Submitting {request_id!r} ({len(choices)} choices) ...", flush=True)
+        print(f"Submitting {request_id!r} ({len(choices)} choices, no reasons) ...", flush=True)
 
+    # 游戏内不注入理由；reasons 仅保留在 decision 日志
     submit_lines = await conn.execute_haikesi(
-        haikesi_lua.build_submit_ai_choices_lua(request_id, choices, reasons)
+        haikesi_lua.build_submit_ai_choices_lua(request_id, choices, None)
     )
     result = haikesi_lua.summarize_submit_result(submit_lines)
     parsed = json.loads(result)
@@ -1079,4 +1229,138 @@ async def decide_and_submit_once(
         raise RuntimeError(parsed.get("message", "submit failed"))
     if verbose:
         print(f"Submit OK: {request_id!r}", flush=True)
+    return True
+
+
+def build_log_channel_context(payload: dict[str, Any]) -> HaikesiGameContext:
+    """MP path: parse Lua.log CTX dump with the same parsers as FireTuner gathers."""
+    from civ_mcp.extai_log_channel import context_from_log_payload
+
+    return context_from_log_payload(payload)
+
+
+async def decide_and_inject_log_channel(
+    client: _ChatClient,
+    model: str,
+    payload: dict[str, Any],
+    *,
+    verbose: bool = True,
+) -> bool:
+    """MP path: Lua.log request → LLM → publish wire (clipboard); Ctrl+V in game."""
+    from civ_mcp.extai_log_channel import encode_extai_apply_payload
+    from civ_mcp.extai_mp_inject import inject_extai_apply_payload
+
+    request_id = str(payload.get("request_id", ""))
+    ctx_n = len(payload.get("context_lines") or [])
+    if verbose:
+        print(
+            f"Pending {request_id!r} (LOG channel); "
+            f"CTX lines={ctx_n} ...",
+            flush=True,
+        )
+
+    context = build_log_channel_context(payload)
+    if verbose:
+        print(format_context_summary(context), flush=True)
+
+    # Reuse the same LLM path as decide_and_submit_once (inline subset)
+    prompt = build_decision_prompt(payload, context)
+    if verbose:
+        print(f"Calling {model} (prompt ~{len(prompt)} chars) ...", flush=True)
+    raw = client.complete(prompt)
+    try:
+        decision = parse_llm_json(raw)
+    except json.JSONDecodeError as exc:
+        _save_failed_llm_raw(
+            prompt=prompt,
+            raw_response=raw,
+            request_id=request_id,
+            model=model,
+            error=str(exc),
+        )
+        if verbose:
+            print(f"LLM JSON parse failed ({exc}); retrying once ...", flush=True)
+        repair_prompt = (
+            prompt
+            + "\n\n【重试】你上次输出的 JSON 不合法（字符串未闭合或被截断）。"
+            "请重新输出一个完整合法的 JSON 对象，不要 markdown；"
+            "reasons 内只用中文逗号/句号，禁止英文双引号。"
+        )
+        raw = client.complete(repair_prompt)
+        try:
+            decision = parse_llm_json(raw)
+        except json.JSONDecodeError as exc2:
+            _save_failed_llm_raw(
+                prompt=repair_prompt,
+                raw_response=raw,
+                request_id=request_id,
+                model=model,
+                error=str(exc2),
+            )
+            raise RuntimeError(f"LLM returned invalid JSON after retry: {exc2}") from exc2
+
+    choices = {str(k): v for k, v in decision.get("choices", {}).items()}
+    raw_reasons = {str(k): v for k, v in decision.get("reasons", {}).items()}
+    reasons: dict[str, str] = {}
+    mode = reason_mode()
+    if mode != "off":
+        # 仅写入 decision 日志，不再受联机 wire 字数限制
+        max_chars = 80 if mode == "full" else 40
+        for ai_id, raw_reason in raw_reasons.items():
+            if str(ai_id).startswith("_"):
+                continue
+            cleaned = sanitize_decision_reason(str(raw_reason), max_chars=max_chars)
+            if cleaned:
+                reasons[ai_id] = cleaned
+    if not choices:
+        raise RuntimeError("LLM returned empty choices")
+
+    reasoning = ""
+    if hasattr(client, "_last_reasoning"):
+        reasoning = str(getattr(client, "_last_reasoning") or "")
+
+    # 游戏内只注入选卡；理由仅留在 decision 日志
+    wire = encode_extai_apply_payload(
+        request_id,
+        choices,
+        None,
+        max_wire_len=505,
+    )
+    try:
+        save_last_prompt(prompt)
+        save_last_wire(wire)
+    except OSError as exc:
+        log.warning("Failed to save last prompt/wire: %s", exc)
+
+    try:
+        analysis_path = save_decision_analysis_log(
+            request_id=request_id,
+            model=model,
+            prompt=prompt,
+            raw_response=raw,
+            reasoning=reasoning,
+            choices=choices,
+            reasons=reasons,
+            wire=wire,
+        )
+        if verbose and analysis_path is not None:
+            print(f"Decision analysis log: {analysis_path}", flush=True)
+    except OSError as exc:
+        log.warning("Failed to save decision analysis log: %s", exc)
+
+    from civ_mcp.extai_mp_inject import publish_extai_decision
+
+    if verbose:
+        print(
+            f"Publishing ExtAIApply choices-only wire (len={len(wire)}; "
+            f"reasons→decision log only, mode={mode}) ...",
+            flush=True,
+        )
+    publish_extai_decision(wire, request_id=request_id)
+    if verbose:
+        print(
+            f"Publish OK: {request_id!r} — Ctrl+V in game; "
+            f"Ctrl+C safe (clipboard + apply.txt + decision log)",
+            flush=True,
+        )
     return True

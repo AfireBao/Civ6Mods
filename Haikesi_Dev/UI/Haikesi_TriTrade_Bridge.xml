@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 隐藏桥接 Context：仅挂载 Lua，无可见控件。City:GetTrade 仅 UI 可用。 -->
+<!-- 联机 ExtAI：HUD EditBox + 玩家 Ctrl+V（watch 写剪贴板） -->
 <Context xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="..\..\..\..\..\CivTech\Libs\ForgeUI\ForgeUI_Assets\Controls.xsd"
-         Name="Haikesi_TriTrade_Bridge" Hidden="1">
+         Name="Haikesi_TriTrade_Bridge" Hidden="0">
+    <Box ID="ExtAIBanner" Anchor="C,T" Offset="0,100" Size="560,130"
+         Color="12,18,28,245" ConsumeMouse="1" Hidden="1">
+        <Label ID="ExtAIStatusLabel" Anchor="C,T" Offset="0,12" Style="FontNormal18"
+               Color="255,230,150,255" String="LOC_HAIKESI_EXT_AI_BANNER_PENDING" />
+        <Label ID="ExtAIHintLabel" Anchor="C,T" Offset="0,40" Style="FontNormal14"
+               Color="200,220,255,255" String="LOC_HAIKESI_EXT_AI_BANNER_HINT" />
+        <EditBox ID="ExtAIPayloadEdit" Anchor="C,T" Offset="0,68" Size="520,36"
+                 Style="FontNormal14" MaxCharacters="16000" EditMode="1" ConsumeMouse="1" />
+    </Box>
 </Context>

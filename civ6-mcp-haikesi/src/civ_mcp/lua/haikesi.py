@@ -181,6 +181,8 @@ def parse_ai_request_lines(lines: list[str]) -> dict[str, Any]:
             result["count_before"] = int(value) if value.isdigit() else value
         elif key == "INVASION_MUTEX":
             result["invasion_mutex"] = value == "1"
+        elif key == "MP":
+            result["mp"] = value == "1" or value == 1
     if "request_id" not in result:
         return {"status": "error", "message": "malformed request payload", "raw": cleaned}
     return result
@@ -327,6 +329,18 @@ def format_relic_display(relic_type: str, text_xml: Path | None = None) -> str:
     return f"{relic_type}: {name}"
 
 
+def dedupe_preserve_order(items: list[str]) -> list[str]:
+    """Drop duplicate strings while keeping first occurrence order."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        out.append(item)
+    return out
+
+
 def format_relic_type_list(types: list[str], text_xml: Path | None = None) -> str:
     """Format relic type ids as Chinese display names for prompts/logs."""
     catalog = get_ai_relic_catalog(text_xml)
@@ -337,6 +351,16 @@ def format_relic_type_list(types: list[str], text_xml: Path | None = None) -> st
         name = catalog.get(relic_type, {}).get("name", relic_type)
         labels.append(name)
     return "、".join(labels)
+
+
+def format_relic_inventory_lines(
+    types: list[str], text_xml: Path | None = None
+) -> list[str]:
+    """Full name+effect lines for historical inventory (prompt public section)."""
+    types = dedupe_preserve_order(types)
+    if not types:
+        return ["  （无）"]
+    return [f"  · {format_relic_display(t, text_xml)}" for t in types]
 
 
 def format_option_lines(options: list[str], text_xml: Path | None = None) -> list[str]:
@@ -806,22 +830,37 @@ local function printTraits(vid, leaderType, civType)
   end
 end
 local function printAgendas(vid, leaderType)
-  local hist = {{}}
+  -- 历史议程来自静态表，不依赖 GetAgendaTypes（联机 Gameplay 常拿不到）
+  local seen = {{}}
   if leaderType and leaderType ~= "" then
     for ha in GameInfo.HistoricalAgendas() do
       if ha.LeaderType == leaderType then
         local aDef = GameInfo.Agendas[ha.AgendaType]
-        if aDef then hist[aDef.Index] = true end
+        if aDef then
+          local n = safeLookup(aDef.Name)
+          local d = safeLookup(aDef.Description)
+          if n ~= "" and d ~= "" and not string.find(n, "^LOC_") and not string.find(d, "^LOC_") then
+            print("AGENDA|" .. vid .. "|" .. n .. "|" .. d)
+            seen[aDef.Index] = true
+            seen[ha.AgendaType] = true
+          end
+        end
       end
     end
   end
+  -- 随机议程：仅当 API 可用时补全（领袖自己应知道）
   local okAg, agendas = pcall(function() return Players[vid]:GetAgendaTypes() end)
   if okAg and agendas then
-    for _, agIdx in ipairs(agendas) do
-      if hist[agIdx] then
+    for _, agIdx in pairs(agendas) do
+      if not seen[agIdx] then
         local aDef = GameInfo.Agendas[agIdx]
-        if aDef then
-          print("AGENDA|" .. vid .. "|" .. safeLookup(aDef.Name) .. "|" .. safeLookup(aDef.Description))
+        if aDef and not seen[aDef.Index] then
+          local n = safeLookup(aDef.Name)
+          local d = safeLookup(aDef.Description)
+          if n ~= "" and d ~= "" and not string.find(n, "^LOC_") and not string.find(d, "^LOC_") then
+            print("AGENDA|" .. vid .. "|" .. n .. "|" .. d)
+            seen[aDef.Index] = true
+          end
         end
       end
     end

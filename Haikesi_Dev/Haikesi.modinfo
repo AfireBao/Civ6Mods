@@ -100,7 +100,14 @@
       <Properties>
         <LoadOrder>16796</LoadOrder>
       </Properties>
+      <File>GamePlay/Haikesi_ExtAI_Context.lua</File>
       <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
+    </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_ExtAIInject">
+      <Properties>
+        <LoadOrder>16797</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_ExtAI_Inject.lua</File>
     </AddGameplayScripts>
     <AddGameplayScripts id="Haikesi_PlanterGamePlay">
       <Properties>
@@ -144,6 +151,8 @@
     <File>Data/Haikesi_Relics.sql</File>
     <File>Data/Haikesi_Relic_Prerequisites.sql</File>
     <File>Data/ModCore.sql</File>
+    <File>GamePlay/Haikesi_ExtAI_Context.lua</File>
+    <File>GamePlay/Haikesi_ExtAI_Inject.lua</File>
     <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
     <File>GamePlay/Haikesi_Planter_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Bean_GamePlay.lua</File>

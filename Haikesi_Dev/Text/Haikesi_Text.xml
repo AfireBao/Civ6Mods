@@ -1019,6 +1019,45 @@
         <Replace Tag="LOC_HAIKESI_TRI_TRADE_NOTIFY_TITLE" Language="zh_Hans_CN">
             <Text>三角贸易</Text>
         </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_APPLY_NOTIFY_TITLE" Language="zh_Hans_CN">
+            <Text>外部AI海克斯</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_APPLY_NOTIFY_BODY" Language="zh_Hans_CN">
+            <Text>已同步 {1_Num} 位领袖（{2_RequestId}）。可继续游戏，无需查看外部窗口。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_PENDING_NOTIFY_TITLE" Language="zh_Hans_CN">
+            <Text>外部AI海克斯</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_PENDING_NOTIFY_BODY" Language="zh_Hans_CN">
+            <Text>AI 决策中。完成后在上方输入框 Ctrl+V 粘贴 wire。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_ARM_BUTTON" Language="zh_Hans_CN">
+            <Text>应用AI决策</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_BANNER_PENDING" Language="zh_Hans_CN">
+            <Text>外部AI决策中… 完成后 Ctrl+V</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_BANNER_HINT" Language="zh_Hans_CN">
+            <Text>决策完成后在下方框 Ctrl+V 粘贴 wire（粘贴后自动应用）</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_BANNER_READY" Language="zh_Hans_CN">
+            <Text>决策已完成 — 请在下方框 Ctrl+V</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_BANNER_ARMED" Language="zh_Hans_CN">
+            <Text>请在下方框 Ctrl+V</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_READY_NOTIFY_TITLE" Language="zh_Hans_CN">
+            <Text>外部AI海克斯</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_READY_NOTIFY_BODY" Language="zh_Hans_CN">
+            <Text>决策已写入剪贴板。请在上方输入框 Ctrl+V。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_ARM_NOTIFY_TITLE" Language="zh_Hans_CN">
+            <Text>外部AI海克斯</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_EXT_AI_ARM_NOTIFY_BODY" Language="zh_Hans_CN">
+            <Text>已聚焦。若未自动同步，请在上方输入框按 Ctrl+V。</Text>
+        </Replace>
         <Replace Tag="LOC_HAIKESI_TRI_TRADE_NOTIFY_BODY" Language="zh_Hans_CN">
             <Text>因人口贸易，{1_DestCity}失去{2_Amount}人口，{3_OriginCity}获得{4_Amount}人口</Text>
         </Replace>
@@ -1161,7 +1200,7 @@
             <Text>隐藏</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_PANEL_EXTERNAL_AI_HINT" Language="zh_Hans_CN">
-            <Text>确认选卡后，外部大模型将从各 AI 随机抽出的三张候选海克斯中择一，经 FireTuner 下发。</Text>
+            <Text>确认选卡后，外部大模型将为各 AI 择一海克斯。单机经 FireTuner；联机由主机 watch 读 Lua.log，决策完成后在输入框 Ctrl+V 落地（请运行 watch）。</Text>
         </Replace>
         <Row Tag="LOC_HAIKESI_TRACKER_TITLE" Language="zh_Hans_CN">
             <Text>海克斯追踪</Text>
@@ -1228,7 +1267,7 @@
             <Text>外部大模型 AI 海克斯</Text>
         </Row>
         <Row Tag="LOC_NW_HAIKESI_EXTERNAL_AI_DESC" Language="zh_Hans_CN">
-            <Text>开启后，AI 海克斯由外部大模型经 FireTuner 异步决策；需同时开启「AI 可选海克斯」。超时未提交则使用确定性回退。</Text>
+            <Text>开启后，AI 海克斯由外部大模型异步决策（需同时开启「AI 可选海克斯」）。单机经 FireTuner Stage；联机无 FireTuner 时由主机 watch 尾读 Lua.log，完成后 Ctrl+V 注入 ExtAIApply。超时未提交则确定性回退。</Text>
         </Row>
 
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_STATS_1_NAME" Language="zh_Hans_CN">

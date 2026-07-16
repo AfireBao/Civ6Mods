@@ -407,9 +407,18 @@ local function Haikesi_DecodeExtAIApply(raw)
                     local via = "hex"
                     if decoded == nil then
                         decoded = Haikesi_DecodeMangledHexReason(reasonField)
-                        via = (decoded ~= nil) and "mangled" or "passthrough"
+                        via = (decoded ~= nil) and "mangled" or "drop"
+                        -- 截断后的裸 hex 不再当正文展示（否则追踪面板出现 e69bb4…）
                         if decoded == nil then
-                            decoded = reasonField
+                            decoded = nil
+                            if reasonField:match("^[0-9a-fA-F]+$") and #reasonField >= 16 then
+                                print(string.format(
+                                    "[Haikesi ReasonDBG] drop truncated hex ai=%s len=%d",
+                                    aiIDStr, #reasonField))
+                            else
+                                decoded = reasonField
+                                via = "passthrough"
+                            end
                         end
                     end
                     if decoded ~= nil and decoded ~= "" then
@@ -972,6 +981,70 @@ local function Haikesi_EnsureExternalAIOptionsStored()
     Haikesi_StoreExternalAIOptionsForAllAIs(requester, countBefore, createdTurn)
 end
 
+-- 结构化 dump：联机无 FireTuner 时由外置 watch 尾 Lua.log 解析（与 GetExternalAIRequest 同字段）
+local function Haikesi_DumpExternalAIRequestToLog(reason)
+    if (Game:GetProperty(EXT_AI_PENDING_KEY) or 0) ~= 1 then
+        return
+    end
+    Haikesi_EnsureExternalAIOptionsStored()
+
+    local requestID = Game:GetProperty(EXT_AI_REQUEST_ID_KEY) or ""
+    local requester = Game:GetProperty(EXT_AI_REQUESTER_KEY) or 0
+    local countBefore = Game:GetProperty(EXT_AI_COUNT_BEFORE_KEY) or 0
+    local humanRelic = Game:GetProperty(EXT_AI_HUMAN_RELIC_KEY) or ""
+    local turn = Game.GetCurrentGameTurn()
+    local invasionMutex = 0
+    for _, t in ipairs(AI_RELIC_TYPES) do
+        if t == BARBARIAN_INVASION_RELIC then
+            invasionMutex = 1
+            break
+        end
+    end
+    local mp = 0
+    if Game ~= nil and Game.IsNetworkMultiplayer ~= nil and Game.IsNetworkMultiplayer() then
+        mp = 1
+    end
+
+    print("===HAIKESI_EXT_AI_REQ_BEGIN===")
+    print("DUMP_REASON=" .. tostring(reason or "create"))
+    print("CHANNEL=LOG")
+    print("MP=" .. tostring(mp))
+    print("REQUEST_ID=" .. tostring(requestID))
+    print("TURN=" .. tostring(turn))
+    print("REQUESTER=" .. tostring(requester))
+    print("HUMAN_RELIC=" .. tostring(humanRelic))
+    print("COUNT_BEFORE=" .. tostring(countBefore))
+    print("INVASION_MUTEX=" .. tostring(invasionMutex))
+
+    local viewerIDs = {}
+    for _, pAI in ipairs(Haikesi_GetAliveAIPlayers()) do
+        local aiID = pAI:GetID()
+        table.insert(viewerIDs, aiID)
+        local _, leaderType = GetPlayerConfigTypes(aiID)
+        local civLabel = leaderType or ("Player" .. tostring(aiID))
+        local pConfig = PlayerConfigurations[aiID]
+        local playerName = (pConfig and pConfig:GetPlayerName()) or ""
+        local options = Haikesi_GetStoredExternalAIOptions(aiID)
+        local selectedList = GetSelectedRelicTypeListForPlayer(pAI)
+        print("AI|" .. tostring(aiID) .. "|" .. tostring(civLabel) .. "|"
+            .. table.concat(options, ",") .. "|selected:" .. table.concat(selectedList, ",")
+            .. "|name:" .. tostring(playerName))
+    end
+    -- 与单机 FireTuner gather 同线格式：overview + WC + 各 AI 迷雾/外交视图
+    -- Context 脚本在独立 Gameplay 环境，经 ExposedMembers 调用
+    local dumpFn = Haikesi_DumpExtAIContext
+    if type(dumpFn) ~= "function" and ExposedMembers ~= nil then
+        dumpFn = ExposedMembers.Haikesi_DumpExtAIContext
+    end
+    if type(dumpFn) == "function" then
+        local requester = Game:GetProperty(EXT_AI_REQUESTER_KEY) or 0
+        dumpFn(requester, viewerIDs)
+    else
+        print("[Haikesi GamePlay] WARN: Haikesi_DumpExtAIContext missing (reload ExtAI Context script)")
+    end
+    print("===HAIKESI_EXT_AI_REQ_END===")
+end
+
 local function Haikesi_CreateExternalAIRequest(requesterPlayerID, humanRelic, countBefore)
     local turn = Game.GetCurrentGameTurn()
     local requestID = tostring(turn) .. '_' .. tostring(countBefore) .. '_' .. tostring(requesterPlayerID)
@@ -989,6 +1062,8 @@ local function Haikesi_CreateExternalAIRequest(requesterPlayerID, humanRelic, co
         .. " requester=" .. tostring(requesterPlayerID)
         .. " humanRelic=" .. tostring(humanRelic)
         .. " countBefore=" .. tostring(countBefore))
+    -- 单机/联机均 dump：联机 watch 无 Tuner 时依赖此块；单机可忽略
+    Haikesi_DumpExternalAIRequestToLog("create")
 end
 
 local function Haikesi_ValidateExternalAIChoices(choicesTable)
@@ -1074,6 +1149,7 @@ function Haikesi_GetExternalAIRequest()
         end
     end
 
+    -- FireTuner 轮询格式（无 BEGIN/END 标记）
     print("REQUEST_ID=" .. tostring(requestID))
     print("TURN=" .. tostring(turn))
     print("REQUESTER=" .. tostring(requester))
@@ -1233,6 +1309,28 @@ local function Haikesi_ApplyExternalAIFromNetwork(raw)
     Haikesi_ClearExternalAIRequest()
     print("[Haikesi GamePlay] ExtAIApply applied request_id=" .. tostring(requestID)
         .. " applied=" .. tostring(appliedOrErr) .. " round=" .. tostring(targetRound))
+    -- 主机侧可见通知：免切出看 PowerShell（注入瞬间需保持游戏前台）
+    pcall(function()
+        if NotificationManager == nil or NotificationManager.SendNotification == nil then
+            return
+        end
+        if NotificationTypes == nil then
+            return
+        end
+        -- 固定 DEFAULT（感叹号），避免 USER_DEFINED_1..9 轮换成时代分/村庄等图标
+        local nt = NotificationTypes.DEFAULT or NotificationTypes.USER_DEFINED_1
+        local title = Locale.Lookup("LOC_HAIKESI_EXT_AI_APPLY_NOTIFY_TITLE")
+        if title == nil or title == "" or string.sub(title, 1, 4) == "LOC_" then
+            title = "外部AI海克斯"
+        end
+        local body = Locale.Lookup(
+            "LOC_HAIKESI_EXT_AI_APPLY_NOTIFY_BODY",
+            tostring(appliedOrErr), tostring(requestID))
+        if body == nil or body == "" or string.sub(body, 1, 4) == "LOC_" then
+            body = "已同步 " .. tostring(appliedOrErr) .. " 位领袖 (" .. tostring(requestID) .. ")"
+        end
+        NotificationManager.SendNotification(requester, nt, title, body)
+    end)
     return true
 end
 
@@ -3748,6 +3846,7 @@ function Initialize()
     end
 
     Events.PlayerTurnActivated.Add(OnExternalAICheck)
+    -- ExtAI inject-file 轮询已拆至 GamePlay/Haikesi_ExtAI_Inject.lua（避免本文件寄存器超限）
 
     -- 三角贸易商路扫描在 UI/Haikesi_TriTrade_Bridge（GetTrade 仅 UI）
     GameEvents.HaikesiTriTradeComplete.Add(HaikesiTriTradeComplete)
