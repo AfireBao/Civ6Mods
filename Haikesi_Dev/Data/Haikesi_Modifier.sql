@@ -1682,6 +1682,134 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('PEARLPIGRUNE', 'MODIFIER_NW_JUAN_GRANT');
 
 -- ===========================================================================
+-- 高翔导航 (HIGHFLIGHTNAVRUNE): 首都赠送 1 名「翔」
+-- 翔：可捕获民用支援单位（3D 复用补给车队/医疗兵线）；3 环内交战非友军 -1 移动力
+-- 机制: Varu 同款 ALL_UNITS_ATTACH_MODIFIER + MODIFIER_PLAYER_UNIT_ADJUST_MOVEMENT
+-- 卡面图标暂借 PANDORASBOXRUNE，不改写占位
+-- ===========================================================================
+INSERT OR IGNORE INTO Types (Type, Kind) VALUES
+    ('UNIT_NW_XIANG',              'KIND_UNIT'),
+    ('ABILITY_NW_XIANG',           'KIND_ABILITY'),
+    ('ABILITY_NW_XIANG_ENEMY_SLOW','KIND_ABILITY'),
+    ('TRAIT_NW_XIANG_LOCK',        'KIND_TRAIT');
+
+INSERT OR IGNORE INTO Traits (TraitType, Name, Description, InternalOnly) VALUES
+    ('TRAIT_NW_XIANG_LOCK',
+     'LOC_UNIT_NW_XIANG_NAME',
+     'LOC_UNIT_NW_XIANG_DESCRIPTION',
+     1);
+
+INSERT OR IGNORE INTO Tags (Tag, Vocabulary) VALUES
+    ('CLASS_NW_XIANG', 'ABILITY_CLASS');
+
+INSERT OR IGNORE INTO TypeTags (Type, Tag) VALUES
+    ('UNIT_NW_XIANG',              'CLASS_LANDCIVILIAN'),
+    ('UNIT_NW_XIANG',              'CLASS_NW_XIANG'),
+    ('ABILITY_NW_XIANG',           'CLASS_NW_XIANG');
+
+INSERT OR IGNORE INTO Units (
+    UnitType, Name, Description,
+    Cost, Maintenance, BaseMoves, BaseSightRange, ZoneOfControl,
+    Domain, FormationClass, AdvisorType,
+    PurchaseYield, MustPurchase, TraitType,
+    CanCapture, CanRetreatWhenCaptured
+) VALUES (
+    'UNIT_NW_XIANG',
+    'LOC_UNIT_NW_XIANG_NAME',
+    'LOC_UNIT_NW_XIANG_DESCRIPTION',
+    0, 0, 4, 2, 0,
+    'DOMAIN_LAND', 'FORMATION_CLASS_CIVILIAN', 'ADVISOR_CONQUEST',
+    'YIELD_GOLD', 1, 'TRAIT_NW_XIANG_LOCK',
+    0, 0
+);
+-- 旧存档/误配：翔应可被捕获（非娟式回城）；CanCapture=0 表示不能占城
+UPDATE Units SET CanCapture = 0, CanRetreatWhenCaptured = 0
+    WHERE UnitType = 'UNIT_NW_XIANG';
+
+INSERT OR IGNORE INTO UnitCaptures (CapturedUnitType, BecomesUnitType) VALUES
+    ('UNIT_NW_XIANG', 'UNIT_NW_XIANG');
+
+INSERT OR IGNORE INTO UnitAiInfos (UnitType, AiType) VALUES
+    ('UNIT_NW_XIANG', 'UNITTYPE_CIVILIAN');
+
+INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactive) VALUES
+    ('ABILITY_NW_XIANG',
+     'LOC_UNIT_NW_XIANG_NAME',
+     'LOC_ABILITY_NW_XIANG_DESCRIPTION', 0);
+
+-- 机制: Varu 同款 ALL_UNITS_ATTACH_MODIFIER → 敌单位直接挂 MODIFIER_PLAYER_UNIT_ADJUST_MOVEMENT
+-- 原版不存在 MODIFIER_UNIT_ADJUST_MOVEMENT；GRANT_ABILITY 对敌单位 PLAYER_UNIT 上下文错位（有预览无效果）
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES
+    ('MODIFIER_NW_XIANG_ENEMY_SLOW_MOV', 'MODIFIER_PLAYER_UNIT_ADJUST_MOVEMENT');
+UPDATE Modifiers SET ModifierType = 'MODIFIER_PLAYER_UNIT_ADJUST_MOVEMENT'
+    WHERE ModifierId = 'MODIFIER_NW_XIANG_ENEMY_SLOW_MOV';
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_XIANG_ENEMY_SLOW_MOV', 'Amount', '-1');
+INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text) VALUES
+    ('MODIFIER_NW_XIANG_ENEMY_SLOW_MOV', 'Preview', 'LOC_ABILITY_NW_XIANG_ENEMY_SLOW_DESCRIPTION');
+
+-- 距离: MinDistance=1（Varu 同款；0 对 AT_WAR 无效）；MaxDistance=3
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES
+    ('NW_REQUIRES_XIANG_AT_WAR_AOE', 'REQUIREMENT_PLOT_ADJACENT_TO_OWNER_AT_WAR');
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value) VALUES
+    ('NW_REQUIRES_XIANG_AT_WAR_AOE', 'MinDistance', '1'),
+    ('NW_REQUIRES_XIANG_AT_WAR_AOE', 'MaxDistance', '3');
+UPDATE RequirementArguments SET Value = '1'
+    WHERE RequirementId = 'NW_REQUIRES_XIANG_AT_WAR_AOE' AND Name = 'MinDistance';
+UPDATE RequirementArguments SET Value = '3'
+    WHERE RequirementId = 'NW_REQUIRES_XIANG_AT_WAR_AOE' AND Name = 'MaxDistance';
+
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType, Inverse) VALUES
+    ('NW_REQUIRES_XIANG_NOT_TEAM', 'REQUIREMENT_PLAYER_IS_TEAM_MEMBER', 1);
+
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType) VALUES
+    ('NW_XIANG_ENEMY_AOE_REQUIREMENTS', 'REQUIREMENTSET_TEST_ALL');
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
+    ('NW_XIANG_ENEMY_AOE_REQUIREMENTS', 'NW_REQUIRES_XIANG_AT_WAR_AOE'),
+    ('NW_XIANG_ENEMY_AOE_REQUIREMENTS', 'NW_REQUIRES_XIANG_NOT_TEAM');
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId, SubjectStackLimit) VALUES
+    ('MODIFIER_NW_XIANG_ENEMY_SLOW', 'MODIFIER_ALL_UNITS_ATTACH_MODIFIER', 'NW_XIANG_ENEMY_AOE_REQUIREMENTS', 1);
+UPDATE Modifiers SET ModifierType = 'MODIFIER_ALL_UNITS_ATTACH_MODIFIER',
+    SubjectRequirementSetId = 'NW_XIANG_ENEMY_AOE_REQUIREMENTS',
+    SubjectStackLimit = 1
+    WHERE ModifierId = 'MODIFIER_NW_XIANG_ENEMY_SLOW';
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_XIANG_ENEMY_SLOW', 'ModifierId', 'MODIFIER_NW_XIANG_ENEMY_SLOW_MOV');
+UPDATE ModifierArguments SET Value = 'MODIFIER_NW_XIANG_ENEMY_SLOW_MOV'
+    WHERE ModifierId = 'MODIFIER_NW_XIANG_ENEMY_SLOW' AND Name = 'ModifierId';
+DELETE FROM ModifierArguments
+    WHERE ModifierId = 'MODIFIER_NW_XIANG_ENEMY_SLOW' AND Name = 'AbilityType';
+
+DELETE FROM UnitAbilityModifiers
+    WHERE UnitAbilityType = 'ABILITY_NW_XIANG_ENEMY_SLOW';
+DELETE FROM UnitAbilityModifiers
+    WHERE UnitAbilityType = 'ABILITY_NW_XIANG'
+      AND ModifierId IN ('MODIFIER_NW_XIANG_ENEMY_GRANT', 'MODIFIER_NW_XIANG_ENEMY_SLOW');
+INSERT OR IGNORE INTO UnitAbilityModifiers (UnitAbilityType, ModifierId) VALUES
+    ('ABILITY_NW_XIANG', 'MODIFIER_NW_XIANG_ENEMY_SLOW');
+
+-- 首都赠送 1 名翔
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, RunOnce, Permanent, NewOnly, SubjectStackLimit) VALUES
+    ('MODIFIER_NW_XIANG_GRANT_EFFECT',
+     'MODIFIER_SINGLE_CITY_GRANT_UNIT_IN_CITY', 1, 1, 0, 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_XIANG_GRANT_EFFECT', 'UnitType',            'UNIT_NW_XIANG'),
+    ('MODIFIER_NW_XIANG_GRANT_EFFECT', 'Amount',              '1'),
+    ('MODIFIER_NW_XIANG_GRANT_EFFECT', 'AllowUniqueOverride', 'false');
+
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, SubjectRequirementSetId, SubjectStackLimit) VALUES
+    ('MODIFIER_NW_XIANG_GRANT',
+     'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', 'NW_CITY_HAS_BUILDING_PALACE', 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_XIANG_GRANT', 'ModifierId', 'MODIFIER_NW_XIANG_GRANT_EFFECT');
+
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('HIGHFLIGHTNAVRUNE', 'MODIFIER_NW_XIANG_GRANT');
+
+-- ===========================================================================
 -- 世外桃源 (SHANGRILARUNE): 全城地块 +1 魅力；惊艳（魅力≥4）地块 +1 生产力
 -- 产量侧抄大地女神 GS（CITY_PLOT_YIELDS + PLOT_BREATHTAKING / MinimumAppeal=4）
 -- ===========================================================================

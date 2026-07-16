@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Mod id="7c4e8a2b-9d1f-4e6a-b3c5-8f2d1e0a9b7c" version="2">
   <Properties>
     <Name>[COLOR:ResScienceLabelCS]海克斯大乱斗[ENDCOLOR] V0.9 Dev</Name>
@@ -115,6 +115,18 @@
       </Properties>
       <File>GamePlay/Haikesi_Planter_GamePlay.lua</File>
     </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_BarbarianGamePlay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_Barbarian_GamePlay.lua</File>
+    </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_TriTradeGamePlay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_TriTrade_GamePlay.lua</File>
+    </AddGameplayScripts>
     <AddGameplayScripts id="Haikesi_BeanGamePlay">
       <Properties>
         <LoadOrder>16796</LoadOrder>
@@ -155,11 +167,14 @@
     <File>GamePlay/Haikesi_ExtAI_Inject.lua</File>
     <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
     <File>GamePlay/Haikesi_Planter_GamePlay.lua</File>
+    <File>GamePlay/Haikesi_Barbarian_GamePlay.lua</File>
+    <File>GamePlay/Haikesi_TriTrade_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Bean_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Trigger.lua</File>
     <File>Haikesi.dep</File>
     <File>Platforms/Windows/BLPs/UI/Icons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiExtraIcons.blp</File>
+    <File>Platforms/Windows/BLPs/UI/HaikesiXiangIcons.blp</File>
     <File>Text/Haikesi_Text.xml</File>
     <File>UI/Haikesi_Ability_Panel.lua</File>
     <File>UI/Haikesi_Ability_Panel.xml</File>

@@ -2,7 +2,7 @@
 --[[
 -- Copyright (c) Firaxis Games 2018
 -- Haikesi: recognize all PROMOTION_CLASS_ROCK_BAND units (not only UNIT_ROCK_BAND);
---          show Juan (UNIT_NW_JUAN) AOE range like Great Generals (AreaHighlightRadius).
+--          show Juan (UNIT_NW_JUAN) / Xiang (UNIT_NW_XIANG) AOE range like Great Generals.
 --]]
 
 -- ===========================================================================
@@ -10,8 +10,9 @@
 -- ===========================================================================
 include("SelectedUnit");
 
--- Must match Haikesi_Modifier.sql NW_REQUIRES_JUAN_WITHIN_3 MaxDistance
+-- Must match Haikesi_Modifier.sql NW_REQUIRES_JUAN_WITHIN_3 / NW_REQUIRES_XIANG_AT_WAR_AOE MaxDistance
 local JUAN_AOE_RADIUS = 3;
+local XIANG_AOE_RADIUS = 3;
 
 -- ===========================================================================
 local function IsRockBandPromotionUnit(unitTypeIndex)
@@ -77,6 +78,10 @@ function RealizeGreatPersonLens(kUnit)
 			elseif sUnitType == "UNIT_NW_JUAN" then
 				-- Juan is not a Great Person; draw 0-3 aura with the same Great People lens
 				local areaHighlightPlots = CollectAreaHighlightPlots(kUnit, JUAN_AOE_RADIUS);
+				UILens.SetLayerHexesArea(m_HexColoringGreatPeople, playerID, areaHighlightPlots, {});
+				UILens.ToggleLayerOn(m_HexColoringGreatPeople);
+			elseif sUnitType == "UNIT_NW_XIANG" then
+				local areaHighlightPlots = CollectAreaHighlightPlots(kUnit, XIANG_AOE_RADIUS);
 				UILens.SetLayerHexesArea(m_HexColoringGreatPeople, playerID, areaHighlightPlots, {});
 				UILens.ToggleLayerOn(m_HexColoringGreatPeople);
 			elseif (kUnitArchaeology ~= nil and unitInfo ~= nil and unitInfo.ExtractsArtifacts == true) then

@@ -717,6 +717,16 @@
             <Text>工头喊了一嗓子</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_HIGHFLIGHTNAVRUNE_NAME" Language="zh_Hans_CN">
+            <Text>高翔导航</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HIGHFLIGHTNAVRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>获得一坨翔</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_HIGHFLIGHTNAVRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>导航已更新，请沿气味指引前进。</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_NAME" Language="zh_Hans_CN">
             <Text>世外桃源</Text>
         </Replace>
@@ -765,6 +775,22 @@
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_JUAN_MOVEMENT_DESCRIPTION" Language="zh_Hans_CN">
             <Text>+1 [ICON_Movement] 移动力（来自附近的娟）。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_UNIT_NW_XIANG_NAME" Language="zh_Hans_CN">
+            <Text>翔</Text>
+        </Replace>
+        <Replace Tag="LOC_UNIT_NW_XIANG_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>特殊支援单位，可被敌方捕获。周围 3 个单元格内与己方交战的非友军单位 -1 [ICON_Movement] 移动力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_XIANG_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>周围 3 个单元格内与己方交战的非友军单位 -1 [ICON_Movement] 移动力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_XIANG_ENEMY_SLOW_NAME" Language="zh_Hans_CN">
+            <Text>高翔迟滞</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_XIANG_ENEMY_SLOW_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>-1 [ICON_Movement] 移动力（来自附近交战中的翔）。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_PANDORASBOXRUNE_NAME" Language="zh_Hans_CN">
