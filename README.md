@@ -21,7 +21,7 @@
 
 2. **工具侧（`civ6-mcp-haikesi`）**  
    - **单机**：FireTuner 轮询 → 调模型 → Stage → UI 广播 `ExtAIApply`。  
-   - **联机**（引擎禁 FireTuner）：尾 `Lua.log` 结构化 dump（含与单机对齐的领袖局势 CTX）→ 调模型 → 主机热键注入（`HAIKESI_WATCH_MODE=auto|log`）。  
+   - **联机**（引擎禁 FireTuner）：尾 `Lua.log` 结构化 dump（含与单机对齐的领袖局势 CTX）→ 调模型 → 主机在 ExtAI 输入框 Ctrl+V 落地（选卡/`LuaEvents` 事件驱动，非每帧轮询；`HAIKESI_WATCH_MODE=auto|log`）。  
    亦可由 Cursor Agent 经 MCP 半自动调试（单机 Tuner）。
 
 密钥仅放在本地 `.env`（已 `.gitignore`），仓库只保留 [`.env.example`](civ6-mcp-haikesi/.env.example)。
@@ -64,6 +64,10 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-18 | **联机 ExtAI 事件驱动**：去掉每帧 `GameCoreEventPublishComplete` 轮询，改为选卡/`LuaEvents`/EditBox 粘贴驱动；减轻后期卡顿与横幅丢失。 |
+| 2026-07-18 | **联机 CTX 补全**：Gameplay dump 用 `HasTech`/`HasCivic` 计数与 UI 军力缓存；关系/不满经 UI 外交缓存 + Script 侧 `GetDiplomaticState` 回退，避免交战仍显示中立、不满全 0。 |
+| 2026-07-18 | **南蛮入侵补兵**：缺营时仅在该城 5 环内已有蛮寨均分补兵；环内无可用寨则在该城 4 环生成 6 单位（不再扫全图老寨叠兵）。 |
+| 2026-07-18 | **种地仙人**：解锁回合 `MinTurn` 改为 0（开局即可进入棱彩池）。 |
 | 2026-07-16 | **玩家海克斯「高翔导航」**：首都获赠特殊单位「翔」；3 环内与己方交战的非友军单位 -1 移动力；可捕获；模型复用补给车队。 |
 | 2026-07-16 | **联机外部大模型 AI 海克斯**：人类选卡后主机 watch 调模型；决策写入剪贴板与 exchange.json；手动 Ctrl+V 落地；局势上下文与单机对齐。 |
 | 2026-07-15 | **玩家海克斯「憨豆特工」**：首都获得特殊间谍「憨豆」；进攻任务成功时间谍等级 -4；该间谍在己方领土且最近城市有反间谍时，该城 +3 宜居。 |

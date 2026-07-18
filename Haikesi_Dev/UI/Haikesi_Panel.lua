@@ -612,11 +612,21 @@ local function OnConfirm()
                 print("[Haikesi] 主机下发 AI 海克斯选择")
             end
         else
-            print("[Haikesi] 主机触发外部 AI 海克斯轮次（待 FireTuner Stage）")
+            print("[Haikesi] 主机触发外部 AI 海克斯轮次（事件驱动 pending UI）")
+            -- dump 前温热 UI 军力/外交缓存
+            pcall(function()
+                LuaEvents.Haikesi_ExtAIWarmCache()
+            end)
         end
     end
 
     UI.RequestPlayerOperation(Game.GetLocalPlayer(), PlayerOperations.EXECUTE_SCRIPT, param)
+
+    if Network.IsGameHost() and externalAIEnabled and Haikesi_IsConfigEnabled('NW_HAIKESI_AI_RELIC') then
+        pcall(function()
+            LuaEvents.Haikesi_ExtAIPendingUI()
+        end)
+    end
 
     LuaEvents.Haikesi_ClearPendingSelection()
     UI.PlaySound("Confirm_Dedication")

@@ -61,9 +61,11 @@ end
 
 local function Initialize()
     Events.LoadScreenClose.Add(OnLoadScreenClose)
-    Events.GameCoreEventPublishComplete.Add(ProcessStagedExtAI)
     Events.LocalPlayerTurnBegin.Add(ProcessStagedExtAI)
-    print("[Haikesi ExtAI UI] host broadcast bridge ready")
+    if LuaEvents ~= nil then
+        LuaEvents.Haikesi_ExtAIStagedUI.Add(ProcessStagedExtAI)
+    end
+    print("[Haikesi ExtAI UI] host broadcast bridge ready (event-driven)")
 end
 
 Initialize()

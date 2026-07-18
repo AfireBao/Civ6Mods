@@ -8,6 +8,7 @@ local INVASION_CAMP_DISTANCE = 5
 local INVASION_CAMPS_PER_PLAYER = 3
 local INVASION_UNITS_PER_MISSING_CAMP = 3
 local INVASION_NO_CAMP_UNIT_DISTANCE = 4
+local INVASION_NO_CAMP_UNITS = 6
 local INVASION_FALLBACK_UNIT_RADIUS = 3
 -- 补兵成功后：50% 令该氏族对目标城市发动原版攻城行动（煽动近似）
 local INVASION_REINFORCE_ASSAULT_CHANCE = 50
@@ -691,16 +692,19 @@ local function PlaceBarbarianCampAtPlot(pPlot, iBarbCampIndex)
     return false, nil
 end
 
-local function GatherBarbarianCampsSorted(centerX, centerY, iBarbCampIndex)
+local function GatherBarbarianCampsSorted(centerX, centerY, iBarbCampIndex, maxDist)
     local camps = {}
     for plotIndex = 0, Map.GetPlotCount() - 1 do
         local pPlot = Map.GetPlotByIndex(plotIndex)
         if pPlot ~= nil and pPlot:GetImprovementType() == iBarbCampIndex then
-            table.insert(camps, {
-                plot = pPlot,
-                dist = Map.GetPlotDistance(centerX, centerY, pPlot:GetX(), pPlot:GetY()),
-                index = plotIndex,
-            })
+            local dist = Map.GetPlotDistance(centerX, centerY, pPlot:GetX(), pPlot:GetY())
+            if maxDist == nil or dist <= maxDist then
+                table.insert(camps, {
+                    plot = pPlot,
+                    dist = dist,
+                    index = plotIndex,
+                })
+            end
         end
     end
     table.sort(camps, function(a, b)
@@ -1055,25 +1059,6 @@ local function SpawnBarbarianCampsAtDistance(
     return spawnedCamps, totalCandidates
 end
 
-local function SpawnBarbarianUnitsForAllCities(pPlayer, distance, countPerCity)
-    local totalSpawned = 0
-    local pCities = pPlayer:GetCities()
-    if pCities == nil then return 0 end
-
-    for _, pCity in pCities:Members() do
-        if pCity ~= nil then
-            local spawned = SpawnBarbarianUnitsAtCityDistance(
-                pCity:GetX(), pCity:GetY(), distance, countPerCity)
-            totalSpawned = totalSpawned + spawned
-            print(string.format(
-                "[Haikesi GamePlay] BARBARIAN_INVASION no camps: player=%d city=%d "
-                    .. "city(%d,%d) ring=%d units=%d",
-                pPlayer:GetID(), pCity:GetID(), pCity:GetX(), pCity:GetY(), distance, spawned))
-        end
-    end
-    return totalSpawned
-end
-
 function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
     local iBarbCampIndex = GetBarbarianCampImprovementIndex()
     if iBarbCampIndex == nil then
@@ -1115,27 +1100,40 @@ function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
 
                 totalCampsSpawned = totalCampsSpawned + spawnedCampCount
 
-                -- 补兵仅在建营失败/不足时：按缺营数均分到已有蛮寨；无营则在城市环上生成
+                -- 补兵：仅在该城 5 环内已有蛮寨均分；环内无可用寨则本城 4 环生成固定部队
                 if missingCampCount > 0 then
                     local requestedUnits = missingCampCount * INVASION_UNITS_PER_MISSING_CAMP
                     local campPlots, campMeta = GatherBarbarianCampsSorted(
-                        centerX, centerY, iBarbCampIndex)
-                    if #campPlots > 0 then
+                        centerX, centerY, iBarbCampIndex, INVASION_CAMP_DISTANCE)
+                    local ringEligible = 0
+                    for _, pCamp in ipairs(campPlots) do
+                        local iTribe = EnsureTribeIndexAtCamp(pCamp)
+                        if iTribe ~= nil and iTribe >= 0 then
+                            ringEligible = ringEligible + 1
+                        end
+                    end
+                    if ringEligible > 0 then
                         spawnedUnits = SpawnBarbarianUnitsDistributed(
                             campPlots, requestedUnits, pPlayer:GetID(), pCity:GetID(),
                             triggeringAIPlayerID)
                         local nearest = campMeta[1]
                         print(string.format(
                             "[Haikesi GamePlay] BARBARIAN_INVASION targetPlayer=%d city(%d,%d) "
-                                .. "missingCamps=%d eligibleCamps=%d nearest(%d,%d) dist=%d "
-                                .. "units=%d/%d (distributed)",
-                            pPlayer:GetID(), centerX, centerY, missingCampCount, #campPlots,
+                                .. "missingCamps=%d ringCamps=%d tribeCamps=%d nearest(%d,%d) dist=%d "
+                                .. "units=%d/%d (ring<=%d)",
+                            pPlayer:GetID(), centerX, centerY, missingCampCount,
+                            #campPlots, ringEligible,
                             nearest.plot:GetX(), nearest.plot:GetY(), nearest.dist,
-                            spawnedUnits, requestedUnits))
+                            spawnedUnits, requestedUnits, INVASION_CAMP_DISTANCE))
                     else
-                        spawnedUnits = SpawnBarbarianUnitsForAllCities(
-                            pPlayer, INVASION_NO_CAMP_UNIT_DISTANCE,
-                            INVASION_UNITS_PER_MISSING_CAMP)
+                        spawnedUnits = SpawnBarbarianUnitsAtCityDistance(
+                            centerX, centerY,
+                            INVASION_NO_CAMP_UNIT_DISTANCE, INVASION_NO_CAMP_UNITS)
+                        print(string.format(
+                            "[Haikesi GamePlay] BARBARIAN_INVASION targetPlayer=%d city(%d,%d) "
+                                .. "missingCamps=%d no ring tribe camp → ring=%d units=%d/%d",
+                            pPlayer:GetID(), centerX, centerY, missingCampCount,
+                            INVASION_NO_CAMP_UNIT_DISTANCE, spawnedUnits, INVASION_NO_CAMP_UNITS))
                     end
                     totalUnitsSpawned = totalUnitsSpawned + spawnedUnits
                 end

@@ -133,7 +133,7 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_
 
 -- ===========================================================================
 -- 三、混乱干扰系列（对其他文明施压/捣乱；可扩展）
--- 南蛮入侵：最新城市 5 环尝试生成 3 营地；每缺 1 个在最近营地补 3 战士；无营地则所有城市 4 环各补 3 战士
+-- 南蛮入侵：最新城市 5 环尝试生成 3 营地；每缺 1 个仅在该城 5 环内已有营地补 3 战士；环内无可用寨则该城 4 环生成 6 战士
 -- ===========================================================================
 INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
     ('NW_AI_BARBARIAN_INVASION', 'LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_NAME', 'LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 1);

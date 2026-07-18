@@ -445,6 +445,11 @@ local function Haikesi_StageExtAIPayload(payload)
     ExposedMembers.Haikesi_ExtAIStagedPayload = payload
     ExposedMembers.Haikesi_ExtAIStagedSeq =
         (tonumber(ExposedMembers.Haikesi_ExtAIStagedSeq) or 0) + 1
+    pcall(function()
+        if LuaEvents ~= nil and LuaEvents.Haikesi_ExtAIStagedUI ~= nil then
+            LuaEvents.Haikesi_ExtAIStagedUI()
+        end
+    end)
     return true
 end
 
@@ -875,6 +880,11 @@ local function Haikesi_ClearExternalAIRequest()
     Game:SetProperty(EXT_AI_COUNT_BEFORE_KEY, nil)
     Game:SetProperty(EXT_AI_HUMAN_RELIC_KEY, nil)
     Game:SetProperty(EXT_AI_CREATED_TURN_KEY, nil)
+    pcall(function()
+        if LuaEvents ~= nil and LuaEvents.Haikesi_ExtAIClearedUI ~= nil then
+            LuaEvents.Haikesi_ExtAIClearedUI()
+        end
+    end)
 end
 
 local function Haikesi_ParseCommaList(value)
@@ -1074,6 +1084,11 @@ local function Haikesi_CreateExternalAIRequest(requesterPlayerID, humanRelic, co
         .. " countBefore=" .. tostring(countBefore))
     -- 单机/联机均 dump：联机 watch 无 Tuner 时依赖此块；单机可忽略
     Haikesi_DumpExternalAIRequestToLog("create")
+    pcall(function()
+        if LuaEvents ~= nil and LuaEvents.Haikesi_ExtAIPendingUI ~= nil then
+            LuaEvents.Haikesi_ExtAIPendingUI()
+        end
+    end)
 end
 
 local function Haikesi_ValidateExternalAIChoices(choicesTable)
