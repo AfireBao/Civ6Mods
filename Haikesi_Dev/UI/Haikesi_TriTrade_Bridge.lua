@@ -541,14 +541,18 @@ local function ProcessStagedExtAI()
     g_LastExtAIBroadcastSeq = seq
     local localPlayer = Game.GetLocalPlayer()
     if localPlayer == nil or localPlayer < 0 then
-        print("[Haikesi ExtAI UI] broadcast skip: no local player")
+        localPlayer = tonumber(Game:GetProperty("PROP_NW_HAIKESI_EXT_AI_REQUESTER") or -1)
+    end
+    if localPlayer == nil or localPlayer < 0 then
+        print("[Haikesi ExtAI UI] broadcast skip: no local player (human→AI/observer?)")
         return
     end
     local param = {}
     param['OnStart'] = 'HaikesiSelectRelic'
     param['ExtAIApply'] = tostring(payload)
     UI.RequestPlayerOperation(localPlayer, PlayerOperations.EXECUTE_SCRIPT, param)
-    print("[Haikesi ExtAI UI] broadcast ExtAIApply len=" .. tostring(#tostring(payload)))
+    print("[Haikesi ExtAI UI] broadcast ExtAIApply len=" .. tostring(#tostring(payload))
+        .. " via P" .. tostring(localPlayer))
 end
 
 -- ===========================================================================
@@ -556,10 +560,16 @@ end
 -- 不再挂 GameCoreEventPublishComplete 每帧轮询
 -- ===========================================================================
 local EXT_AI_PENDING_PROP = "PROP_NW_HAIKESI_EXT_AI_PENDING"
+local EXT_AI_REQUESTER_PROP = "PROP_NW_HAIKESI_EXT_AI_REQUESTER"
 local EXT_AI_UI_MIL_PROP_PREFIX = "PROP_NW_HAIKESI_UI_MIL_"
 local EXT_AI_UI_DIP_PROP_PREFIX = "PROP_NW_HAIKESI_UI_DIP_"
 local g_ExtAILastAutoApply = ""
 local g_ExtAIPendingNotified = false
+-- 本端已成功 apply，但 Game pending 属性偶发晚清：先藏横幅且禁止重弹
+local g_ExtAIUiConsumed = false
+-- EXECUTE_SCRIPT 后 Game prop 偶发晚一拍；短重试拉横幅（与 LLM/exchange 无关）
+local g_ExtAIBannerRetryFrames = 0
+local EXT_AI_BANNER_RETRY_MAX = 90
 
 local function ShortDiploStateFromIndex(idx)
     if idx == nil then
@@ -573,14 +583,16 @@ local function ShortDiploStateFromIndex(idx)
     return states[(tonumber(idx) or -1) + 1]
 end
 
--- GetMilitaryStrength / GetDiplomaticStateIndex / GetGrievancesAgainst 仅 UI；
--- 仅在回合初 / 选卡前 / pending 时刷新，写入 Game 属性供 Gameplay CTX dump
+-- 军力/旅游/内游/外交VP/支持度 / 关系不满：仅 UI 可靠；
+-- 军力与外交条一致用 GetMilitaryStrengthWithoutTreasury（含国库版会偏高）
+-- 仅在回合初 / 选卡前 / pending 时刷新，写入 ExposedMembers + Game 属性
 local function RefreshExtAIMilitaryCache()
     local okAll, errAll = pcall(function()
         if Game == nil then
             return
         end
         local cache = {}
+        local vstatCache = {}
         local majors = nil
         pcall(function()
             majors = PlayerManager.GetAliveMajors()
@@ -593,23 +605,96 @@ local function RefreshExtAIMilitaryCache()
             if pPlayer ~= nil then
                 local pid = pPlayer:GetID()
                 table.insert(ids, pid)
-                local mil = 0
+                -- mil/techs/civics：失败时不写缓存（避免假 0 盖住 Gameplay 回退）
+                local mil = nil
+                local techs, civics = nil, nil
+                -- 与 WorldRankings 文化页一致：旅业绩=GetTourism，国内游客=Staycationers，国际游客=GetTouristsTo
+                local diploVP, tourism, stay, favor, visiting = 0, 0, 0, 0, 0
                 pcall(function()
                     local st = pPlayer.GetStats and pPlayer:GetStats() or nil
-                    if st ~= nil and st.GetMilitaryStrength ~= nil then
-                        mil = tonumber(st:GetMilitaryStrength()) or 0
+                    if st ~= nil then
+                        -- 与 DiplomacyRibbon / WorldRankings 征服榜同一 API
+                        if st.GetMilitaryStrengthWithoutTreasury ~= nil then
+                            mil = tonumber(st:GetMilitaryStrengthWithoutTreasury())
+                        elseif st.GetMilitaryStrength ~= nil then
+                            mil = tonumber(st:GetMilitaryStrength())
+                        end
+                        if st.GetDiplomaticVictoryPoints ~= nil then
+                            diploVP = tonumber(st:GetDiplomaticVictoryPoints()) or 0
+                        end
+                        if st.GetTourism ~= nil then
+                            tourism = math.floor(tonumber(st:GetTourism()) or 0)
+                        end
                     end
                 end)
-                cache[pid] = mil
+                pcall(function()
+                    local cul = pPlayer.GetCulture and pPlayer:GetCulture() or nil
+                    if cul ~= nil then
+                        if cul.GetStaycationers ~= nil then
+                            stay = tonumber(cul:GetStaycationers()) or 0
+                        end
+                        if cul.GetTouristsTo ~= nil then
+                            visiting = tonumber(cul:GetTouristsTo()) or 0
+                        end
+                        if cul.GetNumCivicsCompleted ~= nil then
+                            civics = tonumber(cul:GetNumCivicsCompleted())
+                        elseif cul.HasCivic ~= nil then
+                            local n = 0
+                            for row in GameInfo.Civics() do
+                                if cul:HasCivic(row.Index) then
+                                    n = n + 1
+                                end
+                            end
+                            civics = n
+                        end
+                    end
+                end)
+                pcall(function()
+                    local te = pPlayer.GetTechs and pPlayer:GetTechs() or nil
+                    if te ~= nil then
+                        if te.GetNumTechsResearched ~= nil then
+                            techs = tonumber(te:GetNumTechsResearched())
+                        elseif te.HasTech ~= nil then
+                            local n = 0
+                            for row in GameInfo.Technologies() do
+                                if te:HasTech(row.Index) then
+                                    n = n + 1
+                                end
+                            end
+                            techs = n
+                        end
+                    end
+                end)
+                pcall(function()
+                    if pPlayer.GetFavor ~= nil then
+                        favor = tonumber(pPlayer:GetFavor()) or 0
+                    end
+                end)
+                if mil ~= nil then
+                    cache[pid] = mil
+                end
+                -- diploVP;tourism;stay;favor;visiting;techs;civics（空段=未知）
+                vstatCache[pid] = tostring(diploVP) .. ";" .. tostring(tourism)
+                    .. ";" .. tostring(stay) .. ";" .. tostring(favor)
+                    .. ";" .. tostring(visiting)
+                    .. ";" .. (techs ~= nil and tostring(techs) or "")
+                    .. ";" .. (civics ~= nil and tostring(civics) or "")
                 pcall(function()
                     if Game.SetProperty ~= nil then
-                        Game:SetProperty(EXT_AI_UI_MIL_PROP_PREFIX .. tostring(pid), mil)
+                        if mil ~= nil then
+                            Game:SetProperty(EXT_AI_UI_MIL_PROP_PREFIX .. tostring(pid), mil)
+                        end
+                        Game:SetProperty(
+                            "PROP_NW_HAIKESI_UI_VSTAT_" .. tostring(pid),
+                            vstatCache[pid])
                     end
                 end)
             end
         end
+        local dipCache = {}
         if ExposedMembers ~= nil then
             ExposedMembers.Haikesi_UIMilitaryByPlayer = cache
+            ExposedMembers.Haikesi_UIVstatByPlayer = vstatCache
         end
         for _, fromId in ipairs(ids) do
             local pFrom = Players[fromId]
@@ -634,21 +719,41 @@ local function RefreshExtAIMilitaryCache()
                                 relScore = tonumber(pAI:GetDiplomaticScore(towardId)) or 0
                             end
                         end)
+                        -- Score API 偶发恒 0：用修饰语合计回填
+                        if relScore == 0 and pAI ~= nil and pAI.GetDiplomaticModifiers ~= nil then
+                            pcall(function()
+                                local mods = pAI:GetDiplomaticModifiers(towardId)
+                                if mods ~= nil then
+                                    local sum = 0
+                                    for _, mod in ipairs(mods) do
+                                        sum = sum + (tonumber(mod.Score) or 0)
+                                    end
+                                    if sum ~= 0 then
+                                        relScore = sum
+                                    end
+                                end
+                            end)
+                        end
                         pcall(function()
                             if pDiplo ~= nil and pDiplo.GetGrievancesAgainst ~= nil then
                                 griev = tonumber(pDiplo:GetGrievancesAgainst(towardId)) or 0
                             end
                         end)
+                        local packed = tostring(stateName) .. ";" .. tostring(relScore) .. ";" .. tostring(griev)
+                        dipCache[tostring(fromId) .. "_" .. tostring(towardId)] = packed
                         pcall(function()
                             if Game.SetProperty ~= nil then
                                 Game:SetProperty(
                                     EXT_AI_UI_DIP_PROP_PREFIX .. tostring(fromId) .. "_" .. tostring(towardId),
-                                    tostring(stateName) .. ";" .. tostring(relScore) .. ";" .. tostring(griev))
+                                    packed)
                             end
                         end)
                     end
                 end
             end
+        end
+        if ExposedMembers ~= nil then
+            ExposedMembers.Haikesi_UIDipByPair = dipCache
         end
     end)
     if not okAll then
@@ -660,15 +765,58 @@ local function TrimExtAIPayload(text)
     if text == nil then
         return ""
     end
-    text = tostring(text):gsub("^%s+", ""):gsub("%s+$", ""):gsub("[\r\n]", "")
-    return text
+    text = tostring(text)
+    -- 剪贴板常见污染：BOM、零宽字符、包裹引号、换行
+    text = text:gsub("^\239\187\191", "") -- UTF-8 BOM
+    text = text:gsub("[\r\n\t]", "")
+    text = text:gsub("^[%s\"'“”‘’]+", ""):gsub("[%s\"'“”‘’]+$", "")
+    text = text:gsub("%z", "")
+    -- 只保留 wire 本体。条目形如 id=RELIC*hex，多 AI 用 | 连接；
+    -- request_id 可为 turn_count_requester 或 turn_count_requester_seq。
+    -- 4 段 request_id（含重选序号）优先；兼容旧 3 段
+    local wire = string.match(text, "(%d+_%d+_%d+_%d+#[%w_=*|]+)")
+    if wire == nil then
+        wire = string.match(text, "(%d+_%d+_%d+#[%w_=*|]+)")
+    end
+    if wire ~= nil then
+        wire = wire:gsub("[^%w_=*|#%.%-]+$", "")
+        return wire
+    end
+    return text:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function CountExtAIWireChoices(text)
+    if text == nil or text == "" then
+        return 0
+    end
+    local body = string.match(tostring(text), "^[^#]+#(.+)$")
+    if body == nil or body == "" then
+        return 0
+    end
+    local n = 0
+    for _ in string.gmatch(body, "%d+=[%w_]+%*") do
+        n = n + 1
+    end
+    return n
+end
+
+local function ExpectedExtAIChoiceCount()
+    local ids = Game:GetProperty("PROP_NW_HAIKESI_EXT_AI_OPTION_IDS")
+    if ids == nil or tostring(ids) == "" then
+        return 0
+    end
+    local n = 0
+    for _ in string.gmatch(tostring(ids), "[^,]+") do
+        n = n + 1
+    end
+    return n
 end
 
 local function LooksLikeExtAIApply(text)
     if text == nil or text == "" then
         return false
     end
-    return string.find(text, "^[^#]+#%d+=[%w_]+", 1) ~= nil
+    return string.find(text, "^[%w_.%-]+#%d+=[%w_]+", 1) ~= nil
 end
 
 local function CanBroadcastExtAI()
@@ -705,22 +853,87 @@ local function FocusExtAIEditBox()
     return false
 end
 
+-- 托管给 AI / 观战后 GetLocalPlayer 常为 -1，仍需用原席位发 EXECUTE_SCRIPT
+local function ResolveExtAIExecutePlayer()
+    local localPlayer = Game.GetLocalPlayer()
+    if localPlayer ~= nil and localPlayer >= 0 then
+        return localPlayer
+    end
+    local requester = tonumber(Game:GetProperty(EXT_AI_REQUESTER_PROP) or -1)
+    if requester ~= nil and requester >= 0 and Players[requester] ~= nil then
+        print("[Haikesi ExtAI MP] localPlayer invalid; use requester P" .. tostring(requester))
+        return requester
+    end
+    local netId = nil
+    pcall(function()
+        if Network ~= nil and Network.GetLocalPlayerID ~= nil then
+            netId = Network.GetLocalPlayerID()
+        end
+    end)
+    if netId ~= nil and netId >= 0 then
+        print("[Haikesi ExtAI MP] localPlayer invalid; use Network.GetLocalPlayerID P" .. tostring(netId))
+        return netId
+    end
+    return nil
+end
+
 local function BroadcastExtAIApplyFromMP(payload)
     if not CanBroadcastExtAI() then
         print("[Haikesi ExtAI MP] skip apply: not host / no authority")
         return false
     end
-    local localPlayer = Game.GetLocalPlayer()
+    local localPlayer = ResolveExtAIExecutePlayer()
     if localPlayer == nil or localPlayer < 0 then
-        print("[Haikesi ExtAI MP] skip apply: no local player")
+        print("[Haikesi ExtAI MP] skip apply: no local player (human→AI/observer?)")
         return false
     end
     local param = {}
     param['OnStart'] = 'HaikesiSelectRelic'
     param['ExtAIApply'] = payload
     UI.RequestPlayerOperation(localPlayer, PlayerOperations.EXECUTE_SCRIPT, param)
-    print("[Haikesi ExtAI MP] EXECUTE_SCRIPT ExtAIApply len=" .. tostring(#payload))
+    print("[Haikesi ExtAI MP] EXECUTE_SCRIPT ExtAIApply len=" .. tostring(#payload)
+        .. " via P" .. tostring(localPlayer))
     return true
+end
+
+-- watch 写入 Logs/haikesi_extai_apply.txt；UI Context 可读盘（Gameplay 通常不能）
+local function ReadExtAIWireFromApplyFile()
+    local paths = {}
+    pcall(function()
+        local la = os.getenv("LOCALAPPDATA")
+        if la ~= nil and la ~= "" then
+            table.insert(paths, la .. "\\Firaxis Games\\Sid Meier's Civilization VI\\Logs\\haikesi_extai_apply.txt")
+        end
+    end)
+    pcall(function()
+        local up = os.getenv("USERPROFILE")
+        if up ~= nil and up ~= "" then
+            table.insert(paths, up .. "\\Documents\\My Games\\Sid Meier's Civilization VI\\Logs\\haikesi_extai_apply.txt")
+            table.insert(paths, up .. "\\文档\\My Games\\Sid Meier's Civilization VI\\Logs\\haikesi_extai_apply.txt")
+            table.insert(paths, up .. "\\OneDrive\\Documents\\My Games\\Sid Meier's Civilization VI\\Logs\\haikesi_extai_apply.txt")
+        end
+    end)
+    if io == nil or io.open == nil then
+        return nil
+    end
+    for _, path in ipairs(paths) do
+        local ok, text = pcall(function()
+            local f = io.open(path, "r")
+            if f == nil then
+                return nil
+            end
+            local body = f:read("*a")
+            f:close()
+            return body
+        end)
+        if ok and text ~= nil then
+            local raw = TrimExtAIPayload(text)
+            if LooksLikeExtAIApply(raw) then
+                return raw, path
+            end
+        end
+    end
+    return nil
 end
 
 local function ApplyExtAIPayload(raw, source)
@@ -729,34 +942,100 @@ local function ApplyExtAIPayload(raw, source)
         return false
     end
     if not LooksLikeExtAIApply(raw) then
-        print("[Haikesi ExtAI MP] payload shape rejected (" .. tostring(source) .. ")")
+        print("[Haikesi ExtAI MP] payload shape rejected (" .. tostring(source) .. ") len="
+            .. tostring(#raw))
         return false
     end
-    if raw == g_ExtAILastAutoApply then
+    -- 粘贴未完成 / 旧 Trim 截断：条目数不足时拒绝，避免只生效第一个 AI 并清 pending
+    local gotN = CountExtAIWireChoices(raw)
+    local expectN = ExpectedExtAIChoiceCount()
+    if gotN < 1 then
+        print("[Haikesi ExtAI MP] payload has 0 choices (" .. tostring(source) .. ") len="
+            .. tostring(#raw))
         return false
     end
-    if BroadcastExtAIApplyFromMP(raw) then
+    if expectN > 0 and gotN < expectN then
+        print(string.format(
+            "[Haikesi ExtAI MP] incomplete wire (%s): choices=%d expected=%d len=%d — wait full paste/apply.txt",
+            tostring(source), gotN, expectN, #raw))
+        return false
+    end
+    -- 仍 pending 时允许重贴同一 wire（上次广播可能 Gameplay 拒收 / 无席位）
+    if raw == g_ExtAILastAutoApply and not IsExtAIPending() then
+        print("[Haikesi ExtAI MP] skip duplicate wire (already applied, no pending)")
+        return false
+    end
+    local pendingId = Game:GetProperty("PROP_NW_HAIKESI_EXT_AI_REQUEST_ID")
+    local wireId = string.match(raw, "^([^#]+)#")
+    print(string.format(
+        "[Haikesi ExtAI MP] apply try source=%s wireId=%s pendingId=%s pending=%s len=%d choices=%d/%d",
+        tostring(source), tostring(wireId), tostring(pendingId),
+        tostring(IsExtAIPending()), #raw, gotN, expectN))
+
+    -- 联机：先 EXECUTE_SCRIPT 广播；主机再直调 Gameplay 兜底（脚本未进时仍能落地）
+    local broadcastOk = BroadcastExtAIApplyFromMP(raw)
+    local localOk = false
+    pcall(function()
+        if not CanBroadcastExtAI() then
+            return
+        end
+        local fn = ExposedMembers and ExposedMembers.Haikesi_ApplyExtAIWire
+        if type(fn) == "function" and IsExtAIPending() then
+            localOk = fn(raw) == true
+            print("[Haikesi ExtAI MP] ExposedMembers.Haikesi_ApplyExtAIWire => "
+                .. tostring(localOk))
+        end
+    end)
+    if not broadcastOk and not localOk and IsExtAIPending() then
+        return false
+    end
+
+    -- 直调成功或 pending 已清：立刻藏横幅（Gameplay→UI 的 Cleared 事件常丢）
+    local pendingGone = (not IsExtAIPending()) or localOk
+    if pendingGone then
         g_ExtAILastAutoApply = raw
         if Controls ~= nil and Controls.ExtAIPayloadEdit ~= nil then
             Controls.ExtAIPayloadEdit:SetText("")
         end
-        -- 粘贴已发出：先藏横幅（Gameplay 清 pending 后还会再发 Cleared）
+        g_ExtAIUiConsumed = true
         g_ExtAIPendingNotified = false
+        g_ExtAIBannerRetryFrames = 0
         SetExtAIBannerVisible(false)
-        return true
+        print("[Haikesi ExtAI MP] apply OK + banner hidden (" .. tostring(source) .. ")")
+    else
+        print("[Haikesi ExtAI MP] apply sent but still pending — check Lua.log ExtAIApply* ("
+            .. tostring(source) .. ")")
+        FocusExtAIEditBox()
     end
-    return false
+    return true
 end
 
 local function ApplyExtAIFromEditBox(source)
     if Controls == nil or Controls.ExtAIPayloadEdit == nil then
         print("[Haikesi ExtAI MP] EditBox missing")
-        return
+        return false
     end
     local raw = TrimExtAIPayload(Controls.ExtAIPayloadEdit:GetText())
     if LooksLikeExtAIApply(raw) then
-        ApplyExtAIPayload(raw, source)
+        return ApplyExtAIPayload(raw, source)
     end
+    return false
+end
+
+local function TryApplyExtAIAnySource(source)
+    if not IsExtAIPending() and not g_ExtAIPendingNotified then
+        return false
+    end
+    if ApplyExtAIFromEditBox(source .. ":edit") then
+        return true
+    end
+    local fileWire, path = ReadExtAIWireFromApplyFile()
+    if fileWire ~= nil then
+        print("[Haikesi ExtAI MP] loaded apply.txt: " .. tostring(path))
+        return ApplyExtAIPayload(fileWire, source .. ":file")
+    end
+    print("[Haikesi ExtAI MP] no wire in EditBox/apply.txt (" .. tostring(source) .. ")")
+    return false
 end
 
 local function AttachExtAIBannerToHud()
@@ -826,45 +1105,163 @@ local function ShowExtAIToast(title, body)
     end
 end
 
+local function OnExtAIClearedUI(source)
+    g_ExtAIPendingNotified = false
+    g_ExtAIUiConsumed = false
+    g_ExtAIBannerRetryFrames = 0
+    SetExtAIBannerVisible(false)
+    print("[Haikesi ExtAI MP] pending cleared (" .. tostring(source or "event") .. ")")
+end
+
+local function ShowExtAIPendingBannerNow(source)
+    RefreshExtAIMilitaryCache()
+    if not CanBroadcastExtAI() then
+        SetExtAIBannerVisible(false)
+        return false
+    end
+    if not IsExtAIPending() then
+        return false
+    end
+    -- 已消费成功、等 Game prop 同步：禁止横幅重弹
+    if g_ExtAIUiConsumed then
+        SetExtAIBannerVisible(false)
+        return false
+    end
+    g_ExtAIBannerRetryFrames = 0
+    -- 新 pending：允许重贴上一局同内容的 exchange
+    g_ExtAILastAutoApply = ""
+    if Controls == nil or Controls.ExtAIPayloadEdit == nil then
+        print("[Haikesi ExtAI MP] pending UI skip: EditBox missing (" .. tostring(source) .. ")")
+        return false
+    end
+    AttachExtAIBannerToHud()
+    SetExtAIBannerVisible(true, "LOC_HAIKESI_EXT_AI_BANNER_PENDING")
+    if not g_ExtAIPendingNotified then
+        g_ExtAIPendingNotified = true
+        local title = Locale.Lookup("LOC_HAIKESI_EXT_AI_PENDING_NOTIFY_TITLE")
+        if title == nil or title == "" or string.sub(tostring(title), 1, 4) == "LOC_" then
+            title = "外部AI海克斯"
+        end
+        local body = Locale.Lookup("LOC_HAIKESI_EXT_AI_PENDING_NOTIFY_BODY")
+        if body == nil or body == "" or string.sub(tostring(body), 1, 4) == "LOC_" then
+            body = "AI 决策中。完成后在下方输入框 Ctrl+V 粘贴 wire。"
+        end
+        ShowExtAIToast(title, body)
+        local rid = Game:GetProperty("PROP_NW_HAIKESI_EXT_AI_REQUEST_ID") or "?"
+        print("[Haikesi ExtAI MP] pending banner (" .. tostring(source or "event")
+            .. ") request_id=" .. tostring(rid))
+    end
+    FocusExtAIEditBox()
+    ApplyExtAIFromEditBox("pending")
+    return true
+end
+
 -- 选卡确认 / Gameplay 建 pending / 读档恢复：显示横幅（粘贴靠 EditBox 回调）
+-- 横幅与 LLM 并行：pending 一建就显示，不必等 exchange 生成
 local function OnExtAIPendingUI(source)
     local ok, err = pcall(function()
-        RefreshExtAIMilitaryCache()
-        if not CanBroadcastExtAI() then
-            SetExtAIBannerVisible(false)
+        if ShowExtAIPendingBannerNow(source) then
             return
         end
-        if Controls == nil or Controls.ExtAIPayloadEdit == nil then
-            print("[Haikesi ExtAI MP] pending UI skip: EditBox missing (" .. tostring(source) .. ")")
+        if IsExtAIPending() then
             return
         end
-        AttachExtAIBannerToHud()
-        SetExtAIBannerVisible(true, "LOC_HAIKESI_EXT_AI_BANNER_PENDING")
-        if not g_ExtAIPendingNotified then
-            g_ExtAIPendingNotified = true
-            local title = Locale.Lookup("LOC_HAIKESI_EXT_AI_PENDING_NOTIFY_TITLE")
-            if title == nil or title == "" or string.sub(tostring(title), 1, 4) == "LOC_" then
-                title = "外部AI海克斯"
-            end
-            local body = Locale.Lookup("LOC_HAIKESI_EXT_AI_PENDING_NOTIFY_BODY")
-            if body == nil or body == "" or string.sub(tostring(body), 1, 4) == "LOC_" then
-                body = "AI 决策中。完成后在下方输入框 Ctrl+V 粘贴 wire。"
-            end
-            ShowExtAIToast(title, body)
-            print("[Haikesi ExtAI MP] pending banner (" .. tostring(source or "event") .. ")")
-        end
-        FocusExtAIEditBox()
-        ApplyExtAIFromEditBox("pending")
+        -- pending 尚未回写：短重试（watch 已能看到 dump 时常见）
+        g_ExtAIBannerRetryFrames = EXT_AI_BANNER_RETRY_MAX
+        print("[Haikesi ExtAI MP] pending not visible yet — retry banner ("
+            .. tostring(source) .. ", frames=" .. tostring(EXT_AI_BANNER_RETRY_MAX) .. ")")
     end)
     if not ok then
         print("[Haikesi ExtAI MP] OnExtAIPendingUI error: " .. tostring(err))
     end
 end
 
-local function OnExtAIClearedUI(source)
-    g_ExtAIPendingNotified = false
-    SetExtAIBannerVisible(false)
-    print("[Haikesi ExtAI MP] pending cleared (" .. tostring(source or "event") .. ")")
+local g_ExtAIApplyFilePollCooldown = 0
+local g_ExtAILastEditBoxSeen = ""
+local g_ExtAIEditRetryCooldown = 0
+
+local function TickExtAIBannerRetry()
+    -- pending 已清：强制收横幅（不依赖跨 Context LuaEvent）
+    if not IsExtAIPending() then
+        if g_ExtAIPendingNotified or g_ExtAIUiConsumed then
+            OnExtAIClearedUI("tick")
+        else
+            -- 状态已空但横幅仍露着（Cleared 丢事件）时兜底藏起
+            pcall(function()
+                if Controls ~= nil and Controls.ExtAIBanner ~= nil
+                    and Controls.ExtAIBanner.IsHidden ~= nil
+                    and not Controls.ExtAIBanner:IsHidden() then
+                    SetExtAIBannerVisible(false)
+                end
+            end)
+        end
+        g_ExtAIEditRetryCooldown = 0
+        return
+    end
+    -- 已消费：保持隐藏，不再轮询粘贴/文件
+    if g_ExtAIUiConsumed then
+        SetExtAIBannerVisible(false)
+        g_ExtAIEditRetryCooldown = 0
+        g_ExtAIBannerRetryFrames = 0
+        return
+    end
+    if g_ExtAIBannerRetryFrames > 0 then
+        g_ExtAIBannerRetryFrames = g_ExtAIBannerRetryFrames - 1
+        if IsExtAIPending() then
+            pcall(function()
+                ShowExtAIPendingBannerNow("retry")
+            end)
+        elseif g_ExtAIBannerRetryFrames <= 0 then
+            print("[Haikesi ExtAI MP] banner retry exhausted (still no pending) — "
+                .. "Ctrl+Alt+Shift+R 聚焦，或 Ctrl+Alt+Shift+V")
+        end
+    end
+    -- pending：轮询 EditBox（Civ6 粘贴常不触发 OnChange）+ apply.txt
+    if g_ExtAIApplyFilePollCooldown > 0 then
+        g_ExtAIApplyFilePollCooldown = g_ExtAIApplyFilePollCooldown - 1
+        return
+    end
+    g_ExtAIApplyFilePollCooldown = 15 -- ~0.5s
+    pcall(function()
+        -- 1) EditBox：内容变化立刻试；失败则降频重试
+        if Controls ~= nil and Controls.ExtAIPayloadEdit ~= nil then
+            local raw = TrimExtAIPayload(Controls.ExtAIPayloadEdit:GetText())
+            local changed = (raw ~= g_ExtAILastEditBoxSeen)
+            if changed then
+                g_ExtAILastEditBoxSeen = raw
+                g_ExtAIEditRetryCooldown = 0
+                if #raw > 0 then
+                    print(string.format(
+                        "[Haikesi ExtAI MP] EditBox poll len=%d head=%s look=%s",
+                        #raw, string.sub(raw, 1, 64),
+                        tostring(LooksLikeExtAIApply(raw))))
+                end
+            end
+            if LooksLikeExtAIApply(raw) then
+                if changed or g_ExtAIEditRetryCooldown <= 0 then
+                    ApplyExtAIPayload(raw, changed and "editpoll" or "editretry")
+                    g_ExtAIEditRetryCooldown = 8 -- 再失败约 4s 后重试
+                    if not IsExtAIPending() then
+                        return
+                    end
+                else
+                    g_ExtAIEditRetryCooldown = g_ExtAIEditRetryCooldown - 1
+                end
+            end
+        end
+        -- 2) apply.txt
+        local fileWire = ReadExtAIWireFromApplyFile()
+        if fileWire == nil then
+            return
+        end
+        local pendingId = tostring(
+            Game:GetProperty("PROP_NW_HAIKESI_EXT_AI_REQUEST_ID") or "")
+        local wireId = string.match(fileWire, "^([^#]+)#") or ""
+        if pendingId ~= "" and wireId ~= pendingId then
+            return
+        end
+        ApplyExtAIPayload(fileWire, "filepoll")
+    end)
 end
 
 local function OnExtAIWarmCacheUI()
@@ -891,11 +1288,22 @@ local function OnExtAIInputHandler(pInputStruct)
     local key = pInputStruct:GetKey()
     if key == Keys.R then
         if uiMsg == KeyEvents.KeyDown then
-            print("[Haikesi ExtAI MP] hotkey R → focus EditBox for Ctrl+V")
+            print("[Haikesi ExtAI MP] hotkey R → show banner + focus EditBox")
             if IsExtAIPending() or g_ExtAIPendingNotified then
                 SetExtAIBannerVisible(true, "LOC_HAIKESI_EXT_AI_BANNER_PENDING")
             end
             FocusExtAIEditBox()
+            return true
+        end
+        return true
+    end
+    if key == Keys.V then
+        if uiMsg == KeyEvents.KeyDown then
+            print("[Haikesi ExtAI MP] hotkey V → apply EditBox / apply.txt")
+            if IsExtAIPending() then
+                SetExtAIBannerVisible(true, "LOC_HAIKESI_EXT_AI_BANNER_PENDING")
+            end
+            TryApplyExtAIAnySource("hotkeyV")
             return true
         end
         return true
@@ -908,9 +1316,9 @@ local function Initialize()
         OnTurnPhase("TurnBegin")
         RefreshExtAIMilitaryCache()
         ProcessStagedExtAI()
-        if g_ExtAIPendingNotified and not IsExtAIPending() then
+        if not IsExtAIPending() and (g_ExtAIPendingNotified or g_ExtAIUiConsumed) then
             OnExtAIClearedUI("TurnBegin")
-        elseif IsExtAIPending() and not g_ExtAIPendingNotified then
+        elseif IsExtAIPending() and not g_ExtAIPendingNotified and not g_ExtAIUiConsumed then
             OnExtAIPendingUI("TurnBegin")
         end
     end)
@@ -921,14 +1329,17 @@ local function Initialize()
         OnLocalPlayerTurnBegin()
         RefreshExtAIMilitaryCache()
         ProcessStagedExtAI()
-        if g_ExtAIPendingNotified and not IsExtAIPending() then
+        if not IsExtAIPending() and (g_ExtAIPendingNotified or g_ExtAIUiConsumed) then
             OnExtAIClearedUI("LocalPlayerTurnBegin")
-        elseif IsExtAIPending() and not g_ExtAIPendingNotified then
+        elseif IsExtAIPending() and not g_ExtAIPendingNotified and not g_ExtAIUiConsumed then
             OnExtAIPendingUI("LocalPlayerTurnBegin")
         end
     end)
-    -- 攻城通知：队列为空时极早返回（与 ExtAI 解耦，不再每帧跑 ExtAI）
-    Events.GameCoreEventPublishComplete.Add(ProcessAssaultNotifyQueue)
+    -- 攻城通知 + ExtAI 横幅短重试（仅 retry>0 时干活）
+    Events.GameCoreEventPublishComplete.Add(function()
+        ProcessAssaultNotifyQueue()
+        TickExtAIBannerRetry()
+    end)
 
     if LuaEvents ~= nil then
         LuaEvents.Haikesi_ExtAIWarmCache.Add(OnExtAIWarmCacheUI)
@@ -939,6 +1350,10 @@ local function Initialize()
             OnExtAIClearedUI("LuaEvent")
         end)
         LuaEvents.Haikesi_ExtAIStagedUI.Add(ProcessStagedExtAI)
+    end
+    -- Gameplay dump 前经 ExposedMembers 同步刷缓存（跨 Context 比 LuaEvents 可靠）
+    if ExposedMembers ~= nil then
+        ExposedMembers.Haikesi_RefreshExtAIUICache = RefreshExtAIMilitaryCache
     end
 
     RebuildSnapshotsOnLoad()
@@ -972,13 +1387,13 @@ local function Initialize()
     else
         print("[Haikesi ExtAI MP] WARN: ExtAIPayloadEdit control missing")
     end
-
     if IsExtAIPending() then
         OnExtAIPendingUI("load")
     end
 
     TriTradeLog("UI bridge initialized (TriTrade+BarbNotify+ExtAI event-driven)")
-    print("[Haikesi UI] TriTrade/BarbNotify/ExtAI bridge ready (event-driven Ctrl+V)")
+    print("[Haikesi UI] TriTrade/BarbNotify/ExtAI ready (Ctrl+V / apply.txt / Ctrl+Alt+Shift+V)")
 end
+
 
 Events.LoadScreenClose.Add(Initialize)

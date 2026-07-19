@@ -1067,7 +1067,12 @@ end
 
 local function Haikesi_CreateExternalAIRequest(requesterPlayerID, humanRelic, countBefore)
     local turn = Game.GetCurrentGameTurn()
-    local requestID = tostring(turn) .. '_' .. tostring(countBefore) .. '_' .. tostring(requesterPlayerID)
+    -- 同回合重选/读档重测：追加全局序号，避免 request_id 碰撞导致 watch/归档互相覆盖
+    local seq = tonumber(Game:GetProperty('PROP_NW_HAIKESI_EXT_AI_SEQ') or 0) or 0
+    seq = seq + 1
+    Game:SetProperty('PROP_NW_HAIKESI_EXT_AI_SEQ', seq)
+    local requestID = tostring(turn) .. '_' .. tostring(countBefore)
+        .. '_' .. tostring(requesterPlayerID) .. '_' .. tostring(seq)
     Haikesi_ClearExternalAIOptions()
     Game:SetProperty(EXT_AI_PENDING_KEY, 1)
     Game:SetProperty(EXT_AI_REQUEST_ID_KEY, requestID)
@@ -1082,6 +1087,15 @@ local function Haikesi_CreateExternalAIRequest(requesterPlayerID, humanRelic, co
         .. " requester=" .. tostring(requesterPlayerID)
         .. " humanRelic=" .. tostring(humanRelic)
         .. " countBefore=" .. tostring(countBefore))
+    -- 先让 UI 刷军力/关系/不满缓存，再 dump（Gameplay 读 ExposedMembers / Game prop）
+    pcall(function()
+        local warmFn = ExposedMembers and ExposedMembers.Haikesi_RefreshExtAIUICache
+        if type(warmFn) == "function" then
+            warmFn()
+        elseif LuaEvents ~= nil and LuaEvents.Haikesi_ExtAIWarmCache ~= nil then
+            LuaEvents.Haikesi_ExtAIWarmCache()
+        end
+    end)
     -- 单机/联机均 dump：联机 watch 无 Tuner 时依赖此块；单机可忽略
     Haikesi_DumpExternalAIRequestToLog("create")
     pcall(function()
@@ -1094,6 +1108,19 @@ end
 local function Haikesi_ValidateExternalAIChoices(choicesTable)
     if choicesTable == nil or next(choicesTable) == nil then
         return false, "empty choices"
+    end
+
+    -- UI Trim 曾截断 wire 只剩 1 个 AI：拒绝并保留 pending，避免半应用
+    local optionIds = Haikesi_ParseCommaList(Game:GetProperty(EXT_AI_OPTION_IDS_KEY) or "")
+    if #optionIds > 0 then
+        local choiceCount = 0
+        for _ in pairs(choicesTable) do
+            choiceCount = choiceCount + 1
+        end
+        if choiceCount < #optionIds then
+            return false, "incomplete choices: got " .. tostring(choiceCount)
+                .. " expected " .. tostring(#optionIds)
+        end
     end
 
     local invasionCount = 0
@@ -1259,8 +1286,8 @@ function Haikesi_SubmitExternalAIChoices(requestID, choicesTable, reasonsTable)
     return true
 end
 
--- EXECUTE_SCRIPT 广播落地：各端同参 Apply（pending 已清则幂等忽略）
-local function Haikesi_ApplyExternalAIFromNetwork(raw)
+-- EXECUTE_SCRIPT / ExposedMembers 落地：各端同参 Apply（pending 已清则幂等忽略）
+function Haikesi_ApplyExternalAIFromNetwork(raw)
     local requestID, choicesTable, reasonsTable = Haikesi_DecodeExtAIApply(raw)
     if requestID == nil or choicesTable == nil then
         print("[Haikesi GamePlay] ExtAIApply decode failed")
@@ -1319,9 +1346,11 @@ local function Haikesi_ApplyExternalAIFromNetwork(raw)
         pRequester:SetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT', countBefore)
     end
     if aiSyncedTo >= targetRound then
-        print("[Haikesi GamePlay] ExtAIApply skip: AI already at round " .. tostring(targetRound))
-        Haikesi_ClearExternalAIRequest()
-        return false
+        -- 读档重放常见：AI 已有本轮牌。仍尝试 Apply（内部会对已达轮次的 AI skip），
+        -- 并清 pending，避免横幅卡死、wire「粘了却不消费」。
+        print("[Haikesi GamePlay] ExtAIApply note: AI syncedTo="
+            .. tostring(aiSyncedTo) .. " >= target=" .. tostring(targetRound)
+            .. " — still try apply then clear pending")
     end
     local okApply, appliedOrErr = pcall(
         Haikesi_ApplyAIChoicesForRound,
@@ -1332,10 +1361,14 @@ local function Haikesi_ApplyExternalAIFromNetwork(raw)
         -- 不清除 pending，留给超时/下次选卡补齐；避免半写入后丢请求
         return false
     end
-    pRequester:SetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT', targetRound)
+    local appliedN = tonumber(appliedOrErr) or 0
+    if aiSyncedTo < targetRound or appliedN > 0 then
+        pRequester:SetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT', targetRound)
+    end
     Haikesi_ClearExternalAIRequest()
     print("[Haikesi GamePlay] ExtAIApply applied request_id=" .. tostring(requestID)
-        .. " applied=" .. tostring(appliedOrErr) .. " round=" .. tostring(targetRound))
+        .. " applied=" .. tostring(appliedOrErr) .. " round=" .. tostring(targetRound)
+        .. " wasSyncedTo=" .. tostring(aiSyncedTo))
     -- 主机侧可见通知：免切出看 PowerShell（注入瞬间需保持游戏前台）
     pcall(function()
         if NotificationManager == nil or NotificationManager.SendNotification == nil then
@@ -1487,8 +1520,10 @@ function HaikesiSelectRelic(iPlayer, param)
         or param.TriggerAIRelicRound == "1")
     if pPlayer:IsHuman() and aiRelicConfig and hostTriggeredAIRound then
         if aiSyncedTo == targetRound then
+            -- 读档后常见：上轮 ExtAI/超时已把 AI 推到本轮，人类再选不会新建 pending
             print("[Haikesi GamePlay] AI already synced to select round " .. tostring(targetRound)
-                .. " (Player" .. iPlayer .. "), skip")
+                .. " (Player" .. iPlayer .. "), skip ExtAI — "
+                .. "load an earlier save or AI already received this round")
         elseif externalAIEnabled then
             -- 上一轮挂起未提交时先确定性补齐，再挂起本轮（防覆盖丢轮）
             if (Game:GetProperty(EXT_AI_PENDING_KEY) or 0) == 1 then
@@ -1507,8 +1542,15 @@ function HaikesiSelectRelic(iPlayer, param)
             end
             local pendingCount = tonumber(Game:GetProperty(EXT_AI_COUNT_BEFORE_KEY) or -1)
             if (Game:GetProperty(EXT_AI_PENDING_KEY) or 0) == 1 and pendingCount == countBefore then
+                -- 读档/重选：pending 仍在则重 dump，让 watch 再吃一块（同 request_id）
                 print("[Haikesi GamePlay] External AI request already pending for select count "
-                    .. tostring(countBefore) .. " (Player" .. iPlayer .. ")")
+                    .. tostring(countBefore) .. " (Player" .. iPlayer .. ") — redump for watch")
+                Haikesi_DumpExternalAIRequestToLog("redump")
+                pcall(function()
+                    if LuaEvents ~= nil and LuaEvents.Haikesi_ExtAIPendingUI ~= nil then
+                        LuaEvents.Haikesi_ExtAIPendingUI()
+                    end
+                end)
             else
                 -- 挂起前先把 AI 对齐到 countBefore，避免 LLM 落地时再混进确定性补齐
                 if aiSyncedTo < countBefore then
@@ -2155,7 +2197,8 @@ function Initialize()
     -- 外部 AI：主机 FireTuner Stage → UI 广播；初始化暂存槽
     ExposedMembers.Haikesi_ExtAIStagedPayload = nil
     ExposedMembers.Haikesi_ExtAIStagedSeq = 0
-    print("[Haikesi GamePlay] ExtAI ExposedMembers stage slot ready")
+    ExposedMembers.Haikesi_ApplyExtAIWire = Haikesi_ApplyExternalAIFromNetwork
+    print("[Haikesi GamePlay] ExtAI ExposedMembers stage/apply ready")
 
     -- 种地仙人种植已拆至 Haikesi_Planter_GamePlay.lua（避免主脚本 local 寄存器溢出）
 

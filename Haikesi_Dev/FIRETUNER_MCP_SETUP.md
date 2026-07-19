@@ -403,7 +403,7 @@ civ6-mcp 本身不调用模型 API，因此不需要保存 API Key。模型由 C
 ```
 
 > 联机 Gameplay/UI 侧 `io.open` 不可用，**不能**靠游戏内读盘自动应用；主路径是 **EditBox + Ctrl+V**。  
-> 理由（reasons）**永不注入 wire**；开发分析见 `HAIKESI_DECISION_LOG=1` 时的 `haikesi_last_decision.txt`。
+> 理由（reasons）**永不注入 wire**；开发分析见 `HAIKESI_DECISION_LOG=1` 时的 `haikesi_last_decision.md`。
 
 #### 联机启动指令（主机，直接进 LOG 通道）
 
@@ -462,7 +462,7 @@ API Key / 模型等仍读同目录 `.env`（`DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL
 
 5. **失败 / 超时 / 剪贴板被覆盖**  
    - 从 `logs/haikesi_last_exchange.json` 或 `Logs/haikesi_extai_apply.txt` 复制整行 wire，再 Ctrl+V  
-   - 或从 `haikesi_last_decision.txt` 末尾 `WIRE_INJECTED` 段复制（**不要**粘贴整份 JSON / decision 全文）  
+   - 或从 `haikesi_last_decision.md` 末尾 `Wire Injected` 段复制（**不要**粘贴整份 JSON / decision 全文）  
    - 仍失败则等待游戏内确定性回退（不永久卡死）
 
 #### 可选热键（主机，需 pending）
@@ -479,8 +479,8 @@ API Key / 模型等仍读同目录 `.env`（`DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL
 | `Logs/haikesi_extai_apply.txt` | 与剪贴板相同的 wire 归档 |
 | `logs/haikesi_last_exchange.json` | **纯文本** wire 单行（便于打开复制；不是 JSON） |
 | `logs/haikesi_last_prompt.txt` | 最近一次完整 prompt |
-| `logs/haikesi_last_decision.txt` | 最近一次 decision 镜像（快速查看） |
-| `logs/decisions/<对局>/` | 整场归档（`HAIKESI_DECISION_LOG=1`）：`session.json`、`index.jsonl`、每轮 `request_id.txt`；**新开档**（`GAME_SESSION` 随机种子变化）自动新建文件夹 |
+| `logs/haikesi_last_decision.md` | 最近一次 decision 镜像（Markdown / GFM 表格） |
+| `logs/decisions/<对局>/` | 整场归档（`HAIKESI_DECISION_LOG=1`）：`session.json`、`index.jsonl`、每轮 `request_id.md`；**新开档**（`GAME_SESSION` 随机种子变化）自动新建文件夹 |
 
 **Ctrl+C 停止 watch** 不会删除已发布决策；只要上述文件/剪贴板仍在，随时可 Ctrl+V 落地。
 
@@ -489,8 +489,8 @@ API Key / 模型等仍读同目录 `.env`（`DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL
 - **局势对齐单机**：dump 内嵌 `===HAIKESI_EXT_AI_CTX_*===`（外交/迷雾/胜利进度等与 FireTuner gather 同线）。  
 - **wire 上限**：EditBox/`EXECUTE_SCRIPT` 约 500 字符；watch 编码 wire≤505，**仅含 choices**（无 reasons hex）。  
 - **理由模式**：`HAIKESI_REASON_MODE=off` 不让模型输出 reasons；`short`/`full` 时 reasons **只写入 decision 日志**，不进游戏、不进 wire。  
-- **开发分析日志**：`HAIKESI_DECISION_LOG=1` 写入 `logs/decisions/<对局>/` 并镜像 `haikesi_last_decision.txt`；正式游玩请设 `0`。
-- **logs 只保留最近一次**：`haikesi_last_prompt.txt`、`haikesi_last_exchange.json`、`haikesi_last_decision.txt`（镜像）；decision 整场历史在 `logs/decisions/` 各对局文件夹内。  
+- **开发分析日志**：`HAIKESI_DECISION_LOG=1` 写入 `logs/decisions/<对局>/` 并镜像 `haikesi_last_decision.md`；正式游玩请设 `0`。
+- **logs 只保留最近一次**：`haikesi_last_prompt.txt`、`haikesi_last_exchange.json`、`haikesi_last_decision.md`（镜像）；decision 整场历史在 `logs/decisions/` 各对局文件夹内。  
 - **省 token**：`HAIKESI_REASON_MODE=off` + `HAIKESI_LLM_THINKING=0`；排查时再开 `THINKING=1` + `DECISION_LOG=1`。  
 - **Apply 主路径**：EditBox **Ctrl+V** → 自动 Apply。决策完成无游戏内 Toast，请看 PowerShell `★ 决策已发布` 或 `haikesi_last_exchange.json`。
 
@@ -651,5 +651,5 @@ uv run python scripts/haikesi_deepseek_watch.py
 | 端口 4318 无监听 | EnableTuner 未开或游戏未运行 | 检查 AppOptions.txt |
 | 联机 watch 已 `Published OK` 但 AI 未选卡 | 未 Ctrl+V 或剪贴板被覆盖 | 从 `haikesi_last_exchange.json` 复制 wire → 输入框 Ctrl+V |
 | 粘贴后无反应 | wire 格式错（粘了 JSON/decision 全文） | 只粘单行 `request_id#1=NW_AI_*|2=...` |
-| 联机追踪面板无决策理由 | wire 仅含 choices，reasons 不进游戏 | 开 `HAIKESI_DECISION_LOG=1` 查 `haikesi_last_decision.txt` |
+| 联机追踪面板无决策理由 | wire 仅含 choices，reasons 不进游戏 | 开 `HAIKESI_DECISION_LOG=1` 查 `haikesi_last_decision.md` |
 | Lua.log 无 `HAIKESI_EXT_AI_REQ` | 未开外部 AI 开关 / 非主机 dump | 确认两开关 + 仅主机人类选卡触发 |

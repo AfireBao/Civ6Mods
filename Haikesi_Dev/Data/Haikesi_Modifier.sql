@@ -1892,10 +1892,12 @@ INSERT OR IGNORE INTO Units (
     0, 4, 1, 3, 0,
     'DOMAIN_LAND', 'FORMATION_CLASS_CIVILIAN', 'PROMOTION_CLASS_SPY', 'ADVISOR_TECHNOLOGY',
     0, 'YIELD_GOLD', 1, 'TRAIT_NW_BEAN_LOCK',
-    1, 0, 2, 1, 1
+    1, 3, 2, 1, 1
 );
--- NumRandomChoices=0：减少随机名干扰；类型名=特工，实例名由 UI NAME_UNIT → LOC_UNIT_NW_BEAN_INSTANCE_NAME（憨豆）
-UPDATE Units SET NumRandomChoices = 0 WHERE UnitType = 'UNIT_NW_BEAN';
+-- NumRandomChoices=3：与原版 UNIT_SPY 相同，走单位面板「随机三选一」晋升 UI。
+-- 若为 0 会打开 UnitPromotionPopup 晋升树；间谍晋升无 Column，卡片会叠到负 X 被裁切（界面错乱）。
+-- 实例名「憨豆」与 NumRandomChoices 无关，由 Haikesi_Bean_Bridge / UnitPanel 处理。
+UPDATE Units SET NumRandomChoices = 3 WHERE UnitType = 'UNIT_NW_BEAN';
 
 -- 原版间谍挂在 UnitAiInfos（非 UnitAiTypes；后者只有 AiType 定义）
 INSERT OR IGNORE INTO UnitAiInfos (UnitType, AiType)

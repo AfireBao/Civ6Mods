@@ -285,68 +285,89 @@ local function shortDiploState(raw)
   end
   return nil
 end
+local function readUiDipPacked(fromId, towardId)
+  local key = tostring(fromId) .. "_" .. tostring(towardId)
+  if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIDipByPair ~= nil then
+    local packed = ExposedMembers.Haikesi_UIDipByPair[key]
+    if packed ~= nil and tostring(packed) ~= "" then
+      return tostring(packed)
+    end
+  end
+  local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_DIP_" .. key)
+  if prop ~= nil and tostring(prop) ~= "" then
+    return tostring(prop)
+  end
+  return nil
+end
 local function resolveDiploStateName(fromId, towardId, atWar)
   -- fromId 对 towardId 的观感（与旧逻辑：对方 AI 看 viewer 一致 → 调用处传 tid, vid）
+  -- 交战/同盟以 Script Diplomacy 为准（Index API 在 Gameplay 常空/恒 0）
   local name = nil
   pcall(function()
-    local ai = Players[fromId]:GetDiplomaticAI()
-    if ai == nil then return end
-    if ai.GetDiplomaticStateIndex ~= nil then
-      local idx = ai:GetDiplomaticStateIndex(towardId)
-      if idx ~= nil then
-        local row = GameInfo.DiplomaticStates[idx]
-        if row and row.StateType then
-          name = shortDiploState(row.StateType)
-        end
-        if name == nil then
-          name = states[(tonumber(idx) or -1) + 1]
+    local d = Players[fromId]:GetDiplomacy()
+    if d == nil then return end
+    if atWar or (d.IsAtWarWith and d:IsAtWarWith(towardId)) then
+      name = "WAR"
+    elseif d.HasAllied and d:HasAllied(towardId) then
+      name = "ALLIED"
+    elseif d.HasDeclaredFriendship and d:HasDeclaredFriendship(towardId) then
+      name = "DECLARED_FRIEND"
+    end
+  end)
+  if name == nil then
+    local packed = readUiDipPacked(fromId, towardId)
+    if packed ~= nil then
+      local st = string.match(packed, "^([^;]*);")
+      name = shortDiploState(st) or st
+    end
+  end
+  if name == nil then
+    pcall(function()
+      local ai = Players[fromId]:GetDiplomaticAI()
+      if ai == nil then return end
+      if ai.GetDiplomaticStateIndex ~= nil then
+        local idx = ai:GetDiplomaticStateIndex(towardId)
+        if idx ~= nil then
+          local row = GameInfo.DiplomaticStates[idx]
+          if row and row.StateType then
+            name = shortDiploState(row.StateType)
+          end
+          if name == nil then
+            name = states[(tonumber(idx) or -1) + 1]
+          end
         end
       end
-    end
-    if name == nil and ai.GetDiplomaticState ~= nil then
-      local st = ai:GetDiplomaticState(towardId)
-      name = shortDiploState(st)
-      if name == nil and st ~= nil then
-        local row = GameInfo.DiplomaticStates[st]
-        if row and row.StateType then
-          name = shortDiploState(row.StateType)
-        else
-          for r in GameInfo.DiplomaticStates() do
-            if r.Hash == st or r.Index == st then
-              name = shortDiploState(r.StateType)
-              break
+      if name == nil and ai.GetDiplomaticState ~= nil then
+        local st = ai:GetDiplomaticState(towardId)
+        name = shortDiploState(st)
+        if name == nil and st ~= nil then
+          local row = GameInfo.DiplomaticStates[st]
+          if row and row.StateType then
+            name = shortDiploState(row.StateType)
+          else
+            for r in GameInfo.DiplomaticStates() do
+              if r.Hash == st or r.Index == st then
+                name = shortDiploState(r.StateType)
+                break
+              end
             end
           end
         end
       end
-    end
-  end)
-  if name == nil then
-    local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_DIP_" .. tostring(fromId) .. "_" .. tostring(towardId))
-    if prop ~= nil and tostring(prop) ~= "" then
-      local st, sc, gr = string.match(tostring(prop), "^([^;]*);([^;]*);([^;]*)$")
-      name = shortDiploState(st) or st
-    end
-  end
-  if name == nil or name == "" then
-    pcall(function()
-      local d = Players[fromId]:GetDiplomacy()
-      if d == nil then return end
-      if atWar or (d.IsAtWarWith and d:IsAtWarWith(towardId)) then
-        name = "WAR"
-      elseif d.HasAllied and d:HasAllied(towardId) then
-        name = "ALLIED"
-      elseif d.HasDeclaredFriendship and d:HasDeclaredFriendship(towardId) then
-        name = "DECLARED_FRIEND"
-      end
     end)
   end
-  if (name == nil or name == "NEUTRAL") and atWar then
+  if atWar then
     name = "WAR"
   end
   return name or "NEUTRAL"
 end
 local function resolveGrievances(fromId, towardId)
+  -- GetGrievancesAgainst 仅 UI；Gameplay 直调常 nil → 优先读 UI 缓存
+  local packed = readUiDipPacked(fromId, towardId)
+  if packed ~= nil then
+    local _, _, gr = string.match(packed, "^([^;]*);([^;]*);([^;]*)$")
+    if gr ~= nil then return tonumber(gr) or 0 end
+  end
   local g = nil
   pcall(function()
     local d = Players[fromId]:GetDiplomacy()
@@ -355,14 +376,18 @@ local function resolveGrievances(fromId, towardId)
     end
   end)
   if g ~= nil then return tonumber(g) or 0 end
-  local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_DIP_" .. tostring(fromId) .. "_" .. tostring(towardId))
-  if prop ~= nil and tostring(prop) ~= "" then
-    local _, _, gr = string.match(tostring(prop), "^([^;]*);([^;]*);([^;]*)$")
-    if gr ~= nil then return tonumber(gr) or 0 end
-  end
   return 0
 end
 local function resolveRelScore(fromId, towardId)
+  -- GetDiplomaticScore 在 Gameplay 常恒 0；优先 UI 缓存，避免挡住真实分数
+  local packed = readUiDipPacked(fromId, towardId)
+  if packed ~= nil then
+    local _, sc, _ = string.match(packed, "^([^;]*);([^;]*);([^;]*)$")
+    if sc ~= nil then
+      local n = tonumber(sc)
+      if n ~= nil then return n end
+    end
+  end
   local score = 0
   local got = false
   pcall(function()
@@ -383,11 +408,6 @@ local function resolveRelScore(fromId, towardId)
     end
   end)
   if got then return score end
-  local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_DIP_" .. tostring(fromId) .. "_" .. tostring(towardId))
-  if prop ~= nil and tostring(prop) ~= "" then
-    local _, sc, _ = string.match(tostring(prop), "^([^;]*);([^;]*);([^;]*)$")
-    if sc ~= nil then return tonumber(sc) or 0 end
-  end
   return 0
 end
 local function safeLookup(key)
@@ -469,37 +489,57 @@ local function printFaith(vid)
     end
   end)
 end
--- GetNumTechsResearched / GetNumCivicsCompleted / GetMilitaryStrength 仅 UI 可用。
--- Gameplay（联机 Lua.log CTX）改用 Has* 计数；军力读 UI 桥缓存。
+-- GetNumTechsResearched / 军力·旅游·外交VP 在 Gameplay 常空；优先 UI 缓存。
+-- 军力：失败返回 -1（未知），禁止用假 0 冒充「无军队」。
 local function countTechsResearched(p)
-  local n = 0
+  local n = nil
   pcall(function()
     local te = p:GetTechs()
-    for row in GameInfo.Technologies() do
-      if te:HasTech(row.Index) then n = n + 1 end
+    if te == nil then return end
+    if te.GetNumTechsResearched ~= nil then
+      n = tonumber(te:GetNumTechsResearched())
+      return
     end
+    local c = 0
+    for row in GameInfo.Technologies() do
+      if te:HasTech(row.Index) then c = c + 1 end
+    end
+    n = c
   end)
   return n
 end
 local function countCivicsCompleted(p)
-  local n = 0
+  local n = nil
   pcall(function()
     local cu = p:GetCulture()
-    for row in GameInfo.Civics() do
-      if cu:HasCivic(row.Index) then n = n + 1 end
+    if cu == nil then return end
+    if cu.GetNumCivicsCompleted ~= nil then
+      n = tonumber(cu:GetNumCivicsCompleted())
+      return
     end
+    local c = 0
+    for row in GameInfo.Civics() do
+      if cu:HasCivic(row.Index) then c = c + 1 end
+    end
+    n = c
   end)
   return n
 end
-local function resolveMilitaryStrength(pid, p)
-  local mil = nil
-  pcall(function()
-    local st = p:GetStats()
-    mil = st:GetMilitaryStrength()
-  end)
-  if mil ~= nil then
-    return tonumber(mil) or 0
+local function readUiVstatPacked(pid)
+  if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIVstatByPlayer ~= nil then
+    local packed = ExposedMembers.Haikesi_UIVstatByPlayer[pid]
+    if packed ~= nil and tostring(packed) ~= "" then
+      return tostring(packed)
+    end
   end
+  local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_VSTAT_" .. tostring(pid))
+  if prop ~= nil and tostring(prop) ~= "" then
+    return tostring(prop)
+  end
+  return nil
+end
+local function resolveMilitaryStrength(pid, p)
+  -- 优先 UI 缓存（仅在 UI 成功读到时写入；缺键=未知）
   if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIMilitaryByPlayer ~= nil then
     local cached = ExposedMembers.Haikesi_UIMilitaryByPlayer[pid]
     if cached ~= nil then
@@ -507,7 +547,21 @@ local function resolveMilitaryStrength(pid, p)
     end
   end
   local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_MIL_" .. tostring(pid))
-  return tonumber(prop) or 0
+  if prop ~= nil then
+    local n = tonumber(prop)
+    if n ~= nil then return n end
+  end
+  local mil = nil
+  pcall(function()
+    local st = p:GetStats()
+    if st.GetMilitaryStrengthWithoutTreasury ~= nil then
+      mil = st:GetMilitaryStrengthWithoutTreasury()
+    elseif st.GetMilitaryStrength ~= nil then
+      mil = st:GetMilitaryStrength()
+    end
+  end)
+  if mil == nil then return -1 end
+  return tonumber(mil) or -1
 end
 local function printVStat(vid, tid, civName)
   pcall(function()
@@ -515,18 +569,46 @@ local function printVStat(vid, tid, civName)
     if not p then return end
     local st = p:GetStats()
     local sciVP, sciNeed, diploVP, tourism = 0, 50, 0, 0
-    local milStr, techs, civics, relCities, stay = 0, 0, 0, 0, 0
+    local milStr, techs, civics, relCities, stay, visiting = -1, -1, -1, 0, 0, 0
     local score, spaceports, holds = 0, 0, 1
     pcall(function() score = p:GetScore() end)
     pcall(function() sciVP = st:GetScienceVictoryPoints() or 0 end)
     pcall(function() sciNeed = st:GetScienceVictoryPointsTotalNeeded() or 50 end)
     pcall(function() diploVP = st:GetDiplomaticVictoryPoints() or 0 end)
     pcall(function() tourism = st:GetTourism() or 0 end)
-    milStr = resolveMilitaryStrength(tid, p)
-    techs = countTechsResearched(p)
-    civics = countCivicsCompleted(p)
-    pcall(function() relCities = st:GetNumCitiesFollowingReligion() or 0 end)
     pcall(function() stay = p:GetCulture():GetStaycationers() or 0 end)
+    pcall(function() visiting = p:GetCulture():GetTouristsTo() or 0 end)
+    -- packed: diplo;tourism;stay;favor;visiting[;techs;civics]（后两段可空=未知）
+    local packed = readUiVstatPacked(tid)
+    if packed ~= nil then
+      local parts = {}
+      local start = 1
+      while true do
+        local i = string.find(packed, ";", start, true)
+        if not i then
+          table.insert(parts, string.sub(packed, start))
+          break
+        end
+        table.insert(parts, string.sub(packed, start, i - 1))
+        start = i + 1
+      end
+      if parts[1] ~= nil then diploVP = tonumber(parts[1]) or diploVP end
+      if parts[2] ~= nil then tourism = tonumber(parts[2]) or tourism end
+      if parts[3] ~= nil then stay = tonumber(parts[3]) or stay end
+      if parts[5] ~= nil and parts[5] ~= "" then visiting = tonumber(parts[5]) or visiting end
+      if parts[6] ~= nil and parts[6] ~= "" then techs = tonumber(parts[6]) or techs end
+      if parts[7] ~= nil and parts[7] ~= "" then civics = tonumber(parts[7]) or civics end
+    end
+    milStr = resolveMilitaryStrength(tid, p)
+    if techs < 0 then
+      local n = countTechsResearched(p)
+      if n ~= nil then techs = n else techs = -1 end
+    end
+    if civics < 0 then
+      local n = countCivicsCompleted(p)
+      if n ~= nil then civics = n else civics = -1 end
+    end
+    pcall(function() relCities = st:GetNumCitiesFollowingReligion() or 0 end)
     pcall(function()
       for _, city in p:GetCities():Members() do
         for _, d in city:GetDistricts():Members() do
@@ -544,8 +626,9 @@ local function printVStat(vid, tid, civName)
     end)
     print("VSTAT|" .. vid .. "|" .. tid .. "|" .. civName
       .. "|" .. score .. "|" .. sciVP .. "|" .. sciNeed .. "|" .. diploVP
-      .. "|" .. tourism .. "|" .. milStr .. "|" .. techs .. "|" .. civics
-      .. "|" .. relCities .. "|" .. spaceports .. "|" .. holds .. "|" .. stay)
+      .. "|" .. math.floor(tonumber(tourism) or 0) .. "|" .. milStr .. "|" .. techs .. "|" .. civics
+      .. "|" .. relCities .. "|" .. spaceports .. "|" .. holds .. "|" .. stay
+      .. "|" .. visiting)
   end)
 end
 local hashName = {}
@@ -583,6 +666,25 @@ local function empireStats(pid)
   local mil = resolveMilitaryStrength(pid, p)
   local techs = countTechsResearched(p)
   local civics = countCivicsCompleted(p)
+  if techs == nil then techs = -1 end
+  if civics == nil then civics = -1 end
+  -- VIEWER 也吃 UI 科技/市政缓存（Gameplay 遍历 HasTech 常失败→假 0）
+  local packed = readUiVstatPacked(pid)
+  if packed ~= nil then
+    local parts = {}
+    local start = 1
+    while true do
+      local i = string.find(packed, ";", start, true)
+      if not i then
+        table.insert(parts, string.sub(packed, start))
+        break
+      end
+      table.insert(parts, string.sub(packed, start, i - 1))
+      start = i + 1
+    end
+    if parts[6] ~= nil and parts[6] ~= "" then techs = tonumber(parts[6]) or techs end
+    if parts[7] ~= nil and parts[7] ~= "" then civics = tonumber(parts[7]) or civics end
+  end
   local faith = 0
   pcall(function() faith = p:GetReligion():GetFaithYield() end)
   local research, civic = "无", "无"
@@ -683,6 +785,15 @@ for _, vid in ipairs(viewers) do
     local score, cities, pop, sci, cul, gold, mil, techs, civics, faith, research, civic = empireStats(vid)
     local favor = 0
     pcall(function() favor = Players[vid]:GetFavor() or 0 end)
+    -- GetFavor 在 Gameplay 常 0；外交条 Favor 来自 UI 缓存第四段
+    if (tonumber(favor) or 0) == 0 then
+      local packed = readUiVstatPacked(vid)
+      if packed ~= nil then
+        local _, _, _, f = string.match(
+          packed, "^([^;]*);([^;]*);([^;]*);([^;]*);?([^;]*)$")
+        if f ~= nil then favor = tonumber(f) or 0 end
+      end
+    end
     print("VIEWER|" .. vid .. "|" .. civName .. "|" .. leaderName
       .. "|" .. score .. "|" .. cities .. "|" .. pop
       .. "|" .. string.format("%.1f", sci) .. "|" .. string.format("%.1f", cul) .. "|" .. string.format("%.1f", gold)
@@ -812,11 +923,21 @@ for _, vid in ipairs(viewers) do
       for pid = 0, 63 do
         if pid ~= vid and Players[pid] and Players[pid]:IsAlive() then
           local ownerName = "Barbarian"
+          local isMinor = 0
           if pid ~= 63 then
             local ocfg = PlayerConfigurations[pid]
             if ocfg then ownerName = safeLookup(ocfg:GetCivilizationShortDescription()) end
             if ownerName == "" then ownerName = "Player" .. tostring(pid) end
+            pcall(function()
+              if Players[pid]:IsMinor() then isMinor = 1 end
+            end)
           end
+          local atWar = 0
+          pcall(function()
+            if pid ~= 63 and pDiplo ~= nil and pDiplo:IsAtWarWith(pid) then
+              atWar = 1
+            end
+          end)
           for _, bu in Players[pid]:GetUnits():Members() do
             local bx, by = bu:GetX(), bu:GetY()
             if bx ~= -9999 then
@@ -835,7 +956,7 @@ for _, vid in ipairs(viewers) do
                   end
                   local agg = threatAgg[pid]
                   if not agg then
-                    agg = {name=ownerName, count=0, dist=999}
+                    agg = {name=ownerName, count=0, dist=999, war=atWar, minor=isMinor}
                     threatAgg[pid] = agg
                   end
                   agg.count = agg.count + 1
@@ -848,7 +969,8 @@ for _, vid in ipairs(viewers) do
       end
     end
     for pid, agg in pairs(threatAgg) do
-      print("THREAT|" .. vid .. "|" .. pid .. "|" .. agg.name .. "|" .. agg.count .. "|" .. agg.dist)
+      print("THREAT|" .. vid .. "|" .. pid .. "|" .. agg.name .. "|" .. agg.count
+        .. "|" .. agg.dist .. "|" .. tostring(agg.war or 0) .. "|" .. tostring(agg.minor or 0))
     end
   end
 end

@@ -32,6 +32,7 @@ def test_decision_archive_new_session_on_seed_change(tmp_path):
         model="test-model",
     )
     assert path_a.is_file()
+    assert path_a.suffix == ".md"
     assert (tmp_path / "index.jsonl").exists() is False
     assert (path_a.parent / "index.jsonl").is_file()
 
@@ -67,3 +68,28 @@ def test_decision_archive_reuses_session(tmp_path):
     assert len(index_lines) == 2
     session = json.loads((p1.parent / "session.json").read_text(encoding="utf-8"))
     assert session["decision_count"] == 2
+
+
+def test_decision_archive_keeps_same_turn_reselects(tmp_path):
+    """同 request_id、不同 human_relic 的重测应保留各自文件，不互相覆盖。"""
+    reset_decision_archive_cache()
+    archive = DecisionArchive(tmp_path)
+    payload = {
+        "turn": 110,
+        "requester": 0,
+        "human_relic": "BLADEWALTZRUNE",
+        "game_session": parse_game_session_value("700|Map|STD|0|Aztec"),
+    }
+    p1 = archive.append_decision(
+        payload, body="blade", request_id="110_10_0_1", model="m"
+    )
+    payload["human_relic"] = "ETERNALBANDRUNE"
+    p2 = archive.append_decision(
+        payload, body="band", request_id="110_10_0_2", model="m"
+    )
+    assert p1 != p2
+    assert p1.is_file() and p2.is_file()
+    assert "BLADEWALTZRUNE" in p1.name
+    assert "ETERNALBANDRUNE" in p2.name
+    assert p1.read_text(encoding="utf-8") == "blade"
+    assert p2.read_text(encoding="utf-8") == "band"

@@ -311,12 +311,15 @@ def get_resource_spawn_map(spawn_sql: Path | None = None) -> dict[str, str]:
 
 
 def format_resource_tile_yield_note(resource_type: str) -> str:
-    """Chinese note for base tile yields of a luxury/strategic resource."""
+    """Chinese note: yields are the luxury's vanilla benefits, not an extra hex bonus."""
     yields = _RESOURCE_TILE_YIELDS.get(resource_type)
     if not yields:
         return ""
     parts = [f"{name}+{amount}" for name, amount in yields]
-    return f"该资源地块收益：{'、'.join(parts)}；并提供奢侈品宜居。"
+    return (
+        "以下为该奢侈品本身的原版固有收益（非本词条额外加成）："
+        f"{'、'.join(parts)}；需改良后收获，并提供奢侈品宜居。"
+    )
 
 
 def enrich_relic_description(
@@ -333,7 +336,9 @@ def enrich_relic_description(
     note = format_resource_tile_yield_note(resource_type)
     if not note:
         return desc
-    # Avoid duplicating when XML already contains the yield phrase.
+    # XML 已写明「原版固有收益」或已含产量+宜居时，不再追加
+    if "原版固有收益" in desc or "奢侈品本身" in desc:
+        return desc
     if any(token in desc for token, _ in _RESOURCE_TILE_YIELDS.get(resource_type, [])):
         if "宜居" in desc or "地块" in desc:
             return desc
@@ -343,7 +348,8 @@ def enrich_relic_description(
 
 
 def _strip_civ_icons(text: str) -> str:
-    return re.sub(r"\s*\[ICON_[^\]]+\]\s*", "", text or "").strip()
+    # CTX/Localization 常见 [ICON_Gold] / [Icon_Faith] 混写
+    return re.sub(r"\s*\[ICON_[^\]]+\]\s*", "", text or "", flags=re.IGNORECASE).strip()
 
 
 def format_relic_display(relic_type: str, text_xml: Path | None = None) -> str:
@@ -379,7 +385,7 @@ def format_relic_type_list(types: list[str], text_xml: Path | None = None) -> st
         return "无"
     labels: list[str] = []
     for relic_type in types:
-        name = catalog.get(relic_type, {}).get("name", relic_type)
+        name = _strip_civ_icons(catalog.get(relic_type, {}).get("name", relic_type))
         labels.append(name)
     return "、".join(labels)
 
@@ -401,6 +407,7 @@ _ECHO_UNIT_LABELS: dict[str, str] = {
     "RANGED": "远程",
     "LIGHT_CAVALRY": "轻骑兵",
     "HEAVY_CAVALRY": "重骑兵",
+    "ANTI_CAVALRY": "抗骑兵",
     "SIEGE": "攻城",
 }
 
@@ -414,8 +421,11 @@ _STATS_YIELD_HINTS: dict[str, str] = {
 }
 
 
-def relic_timing_tag(relic_type: str) -> str:
-    """Prompt label: when the hex pays off (instant vs delayed)."""
+def relic_timing_tag(relic_type: str, *, cities: int | None = None) -> str:
+    """Prompt label: when the hex pays off (instant vs delayed).
+
+    cities: 当前城市数；0 城时资源创建会空放（Gameplay skip），必须醒目标出。
+    """
     if relic_type == "NW_AI_BARBARIAN_INVASION":
         return "【即时·全场互斥·触发者免疫】"
     if relic_type.startswith("NW_AI_ECHO_"):
@@ -428,7 +438,9 @@ def relic_timing_tag(relic_type: str) -> str:
     if relic_type == "NW_AI_CELESTIAL_EMPIRE":
         return "【延迟·需国际商路生效】"
     if relic_type in get_resource_spawn_map() or "MILK" in relic_type:
-        return "【即时·创建资源/地块】"
+        if cities is not None and cities <= 0:
+            return "【空放·当前0城无落点·勿选】"
+        return "【条件即时·需已有城市·落在最新城3环】"
     return "【即时】"
 
 
@@ -531,7 +543,16 @@ def human_relic_strategy_hint(relic_type: str, text_xml: Path | None = None) -> 
     blob = _strip_civ_icons(
         f"{info.get('name', '')} {info.get('description', '')}"
     )
-    if any(k in blob for k in ("港口", "灯塔", "海运", "海岸", "航海", "金币", "商业")):
+    # 建造者/种植类必须先于「单位」匹配（种地仙人描述含「该单位为特殊建造者」）
+    if any(
+        k in blob
+        for k in ("建造者", "改良", "种植", "种地", "农场", "伐木", "矿山", "收获资源")
+    ):
+        return (
+            "人类倾向：基建/地块开发。可跟风：工人 echo、食物/生产力百分比；"
+            "可对抗：军事骚扰或抢扩张窗口。勿仅因文案出现「单位」二字判为军事。"
+        )
+    if any(k in blob for k in ("港口", "灯塔", "海运", "海岸", "航海", "商业")):
         return (
             "人类倾向：海运/金币成长。可跟风：引国际商路、贸易互利类；"
             "可对抗：南蛮入侵拖延沿海节奏、或抢军事/扩张窗口。"
@@ -542,14 +563,24 @@ def human_relic_strategy_hint(relic_type: str, text_xml: Path | None = None) -> 
         return "人类倾向：文化/旅游。可跟风：文化百分比；可对抗：军事或宗教压力。"
     if any(k in blob for k in ("信仰", "宗教", "传教")):
         return "人类倾向：宗教。可跟风：信仰/商路传教；可对抗：抢先知窗口或军事干扰。"
-    if any(k in blob for k in ("单位", "军队", "战斗", "征兵")):
+    if any(k in blob for k in ("军队", "战斗", "征兵", "战士", "骑兵", "军事单位")):
         return "人类倾向：军事。可跟风：军事 echo/扩张；可对抗：经济/科技长线或外交合纵。"
-    if any(k in blob for k in ("食物", "人口", "农场", "成长")):
+    if any(k in blob for k in ("食物", "人口", "成长")):
         return "人类倾向：人口/粮食。可跟风：食物百分比或资源创建；可对抗：军事骚扰或抢地。"
-    return "可结合人类词条效果，判断跟风（同类增益）或对抗（干扰其路线）。"
+    if any(k in blob for k in ("金币", "金锭", "商路")):
+        return "人类倾向：经济/金币。可跟风：金币百分比或贸易互利；可对抗：军事施压。"
+    return (
+        "人类倾向：不明（文案未匹配常见路线）。"
+        "请只根据效果正文判断跟风/对抗/忽略，勿臆造军事或科技倾向。"
+    )
 
 
-def format_option_lines(options: list[str], text_xml: Path | None = None) -> list[str]:
+def format_option_lines(
+    options: list[str],
+    text_xml: Path | None = None,
+    *,
+    cities: int | None = None,
+) -> list[str]:
     catalog = get_ai_relic_catalog(text_xml)
     lines: list[str] = []
     for opt in options:
@@ -558,7 +589,7 @@ def format_option_lines(options: list[str], text_xml: Path | None = None) -> lis
         desc = enrich_relic_description(
             opt, _strip_civ_icons(info.get("description", ""))
         )
-        tag = relic_timing_tag(opt)
+        tag = relic_timing_tag(opt, cities=cities)
         lines.append(f"- {tag} {opt}: {name} — {desc}")
     return lines
 
@@ -719,6 +750,8 @@ class VisibleThreatAgg:
     owner_name: str
     count: int
     nearest_dist: int
+    is_at_war: bool = False
+    is_minor: bool = False  # 城邦等非主要文明
 
 
 @dataclass
@@ -731,14 +764,15 @@ class VictoryPeerStat:
     science_vp: int = 0
     science_needed: int = 50
     diplo_vp: int = 0
-    tourism: int = 0
+    tourism: int = 0  # 每回合旅游业绩（WorldRankings 行李箱）
     mil: int = 0
     techs: int = 0
     civics: int = 0
     rel_cities: int = 0
     spaceports: int = 0
     holds_own_capital: bool = True
-    staycationers: int = 0
+    staycationers: int = 0  # 国内游客
+    visiting_tourists: int = 0  # 国际游客累计（GetTouristsTo）
 
 
 @dataclass
@@ -863,10 +897,12 @@ def build_trait_option_synergy_hints(
             unit = _ECHO_UNIT_LABELS.get(suffix, "")
             if unit and unit in corpus:
                 hints.append(f"能力文案提及{unit}，与对应 echo 直接协同")
-        if opt in get_resource_spawn_map() and any(
-            k in corpus for k in ("资源", "奢侈", "食物", "人口", "宜居")
+        if (
+            opt in get_resource_spawn_map()
+            and int(view.cities or 0) > 0
+            and any(k in corpus for k in ("资源", "奢侈", "食物", "人口", "宜居"))
         ):
-            hints.append("资源/人口特性与即时资源创建协同")
+            hints.append("资源/人口特性与资源生成协同（需已有城市）")
         rst_hint = _rst_strategy_hint(view.rst, opt)
         if rst_hint and rst_hint not in hints:
             hints.append(rst_hint)
@@ -878,7 +914,9 @@ def build_trait_option_synergy_hints(
     if not lines:
         return ""
     return (
-        "【能力与候选协同提示】（由本领袖能力/议程/战略文案自动匹配，供参考）\n"
+        "【能力与候选协同提示·弱提示可忽略】"
+        "（自动匹配；贴脸威胁/交战/生存压力时优先局面，可完全忽略本段；"
+        "已有≥3种不同奢侈时资源创建类提示失效）\n"
         + "\n".join(lines)
     )
 
@@ -909,68 +947,89 @@ local function shortDiploState(raw)
   end
   return nil
 end
+local function readUiDipPacked(fromId, towardId)
+  local key = tostring(fromId) .. "_" .. tostring(towardId)
+  if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIDipByPair ~= nil then
+    local packed = ExposedMembers.Haikesi_UIDipByPair[key]
+    if packed ~= nil and tostring(packed) ~= "" then
+      return tostring(packed)
+    end
+  end
+  local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_DIP_" .. key)
+  if prop ~= nil and tostring(prop) ~= "" then
+    return tostring(prop)
+  end
+  return nil
+end
 local function resolveDiploStateName(fromId, towardId, atWar)
   -- fromId 对 towardId 的观感（与旧逻辑：对方 AI 看 viewer 一致 → 调用处传 tid, vid）
+  -- 交战/同盟以 Script Diplomacy 为准（Index API 在 Gameplay 常空/恒 0）
   local name = nil
   pcall(function()
-    local ai = Players[fromId]:GetDiplomaticAI()
-    if ai == nil then return end
-    if ai.GetDiplomaticStateIndex ~= nil then
-      local idx = ai:GetDiplomaticStateIndex(towardId)
-      if idx ~= nil then
-        local row = GameInfo.DiplomaticStates[idx]
-        if row and row.StateType then
-          name = shortDiploState(row.StateType)
-        end
-        if name == nil then
-          name = states[(tonumber(idx) or -1) + 1]
+    local d = Players[fromId]:GetDiplomacy()
+    if d == nil then return end
+    if atWar or (d.IsAtWarWith and d:IsAtWarWith(towardId)) then
+      name = "WAR"
+    elseif d.HasAllied and d:HasAllied(towardId) then
+      name = "ALLIED"
+    elseif d.HasDeclaredFriendship and d:HasDeclaredFriendship(towardId) then
+      name = "DECLARED_FRIEND"
+    end
+  end)
+  if name == nil then
+    local packed = readUiDipPacked(fromId, towardId)
+    if packed ~= nil then
+      local st = string.match(packed, "^([^;]*);")
+      name = shortDiploState(st) or st
+    end
+  end
+  if name == nil then
+    pcall(function()
+      local ai = Players[fromId]:GetDiplomaticAI()
+      if ai == nil then return end
+      if ai.GetDiplomaticStateIndex ~= nil then
+        local idx = ai:GetDiplomaticStateIndex(towardId)
+        if idx ~= nil then
+          local row = GameInfo.DiplomaticStates[idx]
+          if row and row.StateType then
+            name = shortDiploState(row.StateType)
+          end
+          if name == nil then
+            name = states[(tonumber(idx) or -1) + 1]
+          end
         end
       end
-    end
-    if name == nil and ai.GetDiplomaticState ~= nil then
-      local st = ai:GetDiplomaticState(towardId)
-      name = shortDiploState(st)
-      if name == nil and st ~= nil then
-        local row = GameInfo.DiplomaticStates[st]
-        if row and row.StateType then
-          name = shortDiploState(row.StateType)
-        else
-          for r in GameInfo.DiplomaticStates() do
-            if r.Hash == st or r.Index == st then
-              name = shortDiploState(r.StateType)
-              break
+      if name == nil and ai.GetDiplomaticState ~= nil then
+        local st = ai:GetDiplomaticState(towardId)
+        name = shortDiploState(st)
+        if name == nil and st ~= nil then
+          local row = GameInfo.DiplomaticStates[st]
+          if row and row.StateType then
+            name = shortDiploState(row.StateType)
+          else
+            for r in GameInfo.DiplomaticStates() do
+              if r.Hash == st or r.Index == st then
+                name = shortDiploState(r.StateType)
+                break
+              end
             end
           end
         end
       end
-    end
-  end)
-  if name == nil then
-    local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_DIP_" .. tostring(fromId) .. "_" .. tostring(towardId))
-    if prop ~= nil and tostring(prop) ~= "" then
-      local st, sc, gr = string.match(tostring(prop), "^([^;]*);([^;]*);([^;]*)$")
-      name = shortDiploState(st) or st
-    end
-  end
-  if name == nil or name == "" then
-    pcall(function()
-      local d = Players[fromId]:GetDiplomacy()
-      if d == nil then return end
-      if atWar or (d.IsAtWarWith and d:IsAtWarWith(towardId)) then
-        name = "WAR"
-      elseif d.HasAllied and d:HasAllied(towardId) then
-        name = "ALLIED"
-      elseif d.HasDeclaredFriendship and d:HasDeclaredFriendship(towardId) then
-        name = "DECLARED_FRIEND"
-      end
     end)
   end
-  if (name == nil or name == "NEUTRAL") and atWar then
+  if atWar then
     name = "WAR"
   end
   return name or "NEUTRAL"
 end
 local function resolveGrievances(fromId, towardId)
+  -- GetGrievancesAgainst 仅 UI；Gameplay 直调常 nil → 优先读 UI 缓存
+  local packed = readUiDipPacked(fromId, towardId)
+  if packed ~= nil then
+    local _, _, gr = string.match(packed, "^([^;]*);([^;]*);([^;]*)$")
+    if gr ~= nil then return tonumber(gr) or 0 end
+  end
   local g = nil
   pcall(function()
     local d = Players[fromId]:GetDiplomacy()
@@ -979,14 +1038,18 @@ local function resolveGrievances(fromId, towardId)
     end
   end)
   if g ~= nil then return tonumber(g) or 0 end
-  local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_DIP_" .. tostring(fromId) .. "_" .. tostring(towardId))
-  if prop ~= nil and tostring(prop) ~= "" then
-    local _, _, gr = string.match(tostring(prop), "^([^;]*);([^;]*);([^;]*)$")
-    if gr ~= nil then return tonumber(gr) or 0 end
-  end
   return 0
 end
 local function resolveRelScore(fromId, towardId)
+  -- GetDiplomaticScore 在 Gameplay 常恒 0；优先 UI 缓存，避免挡住真实分数
+  local packed = readUiDipPacked(fromId, towardId)
+  if packed ~= nil then
+    local _, sc, _ = string.match(packed, "^([^;]*);([^;]*);([^;]*)$")
+    if sc ~= nil then
+      local n = tonumber(sc)
+      if n ~= nil then return n end
+    end
+  end
   local score = 0
   local got = false
   pcall(function()
@@ -1007,11 +1070,6 @@ local function resolveRelScore(fromId, towardId)
     end
   end)
   if got then return score end
-  local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_DIP_" .. tostring(fromId) .. "_" .. tostring(towardId))
-  if prop ~= nil and tostring(prop) ~= "" then
-    local _, sc, _ = string.match(tostring(prop), "^([^;]*);([^;]*);([^;]*)$")
-    if sc ~= nil then return tonumber(sc) or 0 end
-  end
   return 0
 end
 local function safeLookup(key)
@@ -1093,37 +1151,57 @@ local function printFaith(vid)
     end
   end)
 end
--- GetNumTechsResearched / GetNumCivicsCompleted / GetMilitaryStrength 仅 UI 可用。
--- Gameplay（联机 Lua.log CTX）改用 Has* 计数；军力读 UI 桥缓存。
+-- GetNumTechsResearched / 军力·旅游·外交VP 在 Gameplay 常空；优先 UI 缓存。
+-- 军力：失败返回 -1（未知），禁止用假 0 冒充「无军队」。
 local function countTechsResearched(p)
-  local n = 0
+  local n = nil
   pcall(function()
     local te = p:GetTechs()
-    for row in GameInfo.Technologies() do
-      if te:HasTech(row.Index) then n = n + 1 end
+    if te == nil then return end
+    if te.GetNumTechsResearched ~= nil then
+      n = tonumber(te:GetNumTechsResearched())
+      return
     end
+    local c = 0
+    for row in GameInfo.Technologies() do
+      if te:HasTech(row.Index) then c = c + 1 end
+    end
+    n = c
   end)
   return n
 end
 local function countCivicsCompleted(p)
-  local n = 0
+  local n = nil
   pcall(function()
     local cu = p:GetCulture()
-    for row in GameInfo.Civics() do
-      if cu:HasCivic(row.Index) then n = n + 1 end
+    if cu == nil then return end
+    if cu.GetNumCivicsCompleted ~= nil then
+      n = tonumber(cu:GetNumCivicsCompleted())
+      return
     end
+    local c = 0
+    for row in GameInfo.Civics() do
+      if cu:HasCivic(row.Index) then c = c + 1 end
+    end
+    n = c
   end)
   return n
 end
-local function resolveMilitaryStrength(pid, p)
-  local mil = nil
-  pcall(function()
-    local st = p:GetStats()
-    mil = st:GetMilitaryStrength()
-  end)
-  if mil ~= nil then
-    return tonumber(mil) or 0
+local function readUiVstatPacked(pid)
+  if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIVstatByPlayer ~= nil then
+    local packed = ExposedMembers.Haikesi_UIVstatByPlayer[pid]
+    if packed ~= nil and tostring(packed) ~= "" then
+      return tostring(packed)
+    end
   end
+  local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_VSTAT_" .. tostring(pid))
+  if prop ~= nil and tostring(prop) ~= "" then
+    return tostring(prop)
+  end
+  return nil
+end
+local function resolveMilitaryStrength(pid, p)
+  -- 优先 UI 缓存（仅在 UI 成功读到时写入；缺键=未知）
   if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIMilitaryByPlayer ~= nil then
     local cached = ExposedMembers.Haikesi_UIMilitaryByPlayer[pid]
     if cached ~= nil then
@@ -1131,7 +1209,21 @@ local function resolveMilitaryStrength(pid, p)
     end
   end
   local prop = Game:GetProperty("PROP_NW_HAIKESI_UI_MIL_" .. tostring(pid))
-  return tonumber(prop) or 0
+  if prop ~= nil then
+    local n = tonumber(prop)
+    if n ~= nil then return n end
+  end
+  local mil = nil
+  pcall(function()
+    local st = p:GetStats()
+    if st.GetMilitaryStrengthWithoutTreasury ~= nil then
+      mil = st:GetMilitaryStrengthWithoutTreasury()
+    elseif st.GetMilitaryStrength ~= nil then
+      mil = st:GetMilitaryStrength()
+    end
+  end)
+  if mil == nil then return -1 end
+  return tonumber(mil) or -1
 end
 local function printVStat(vid, tid, civName)
   pcall(function()
@@ -1139,18 +1231,46 @@ local function printVStat(vid, tid, civName)
     if not p then return end
     local st = p:GetStats()
     local sciVP, sciNeed, diploVP, tourism = 0, 50, 0, 0
-    local milStr, techs, civics, relCities, stay = 0, 0, 0, 0, 0
+    local milStr, techs, civics, relCities, stay, visiting = -1, -1, -1, 0, 0, 0
     local score, spaceports, holds = 0, 0, 1
     pcall(function() score = p:GetScore() end)
     pcall(function() sciVP = st:GetScienceVictoryPoints() or 0 end)
     pcall(function() sciNeed = st:GetScienceVictoryPointsTotalNeeded() or 50 end)
     pcall(function() diploVP = st:GetDiplomaticVictoryPoints() or 0 end)
     pcall(function() tourism = st:GetTourism() or 0 end)
-    milStr = resolveMilitaryStrength(tid, p)
-    techs = countTechsResearched(p)
-    civics = countCivicsCompleted(p)
-    pcall(function() relCities = st:GetNumCitiesFollowingReligion() or 0 end)
     pcall(function() stay = p:GetCulture():GetStaycationers() or 0 end)
+    pcall(function() visiting = p:GetCulture():GetTouristsTo() or 0 end)
+    -- packed: diplo;tourism;stay;favor;visiting[;techs;civics]（后两段可空=未知）
+    local packed = readUiVstatPacked(tid)
+    if packed ~= nil then
+      local parts = {{}}
+      local start = 1
+      while true do
+        local i = string.find(packed, ";", start, true)
+        if not i then
+          table.insert(parts, string.sub(packed, start))
+          break
+        end
+        table.insert(parts, string.sub(packed, start, i - 1))
+        start = i + 1
+      end
+      if parts[1] ~= nil then diploVP = tonumber(parts[1]) or diploVP end
+      if parts[2] ~= nil then tourism = tonumber(parts[2]) or tourism end
+      if parts[3] ~= nil then stay = tonumber(parts[3]) or stay end
+      if parts[5] ~= nil and parts[5] ~= "" then visiting = tonumber(parts[5]) or visiting end
+      if parts[6] ~= nil and parts[6] ~= "" then techs = tonumber(parts[6]) or techs end
+      if parts[7] ~= nil and parts[7] ~= "" then civics = tonumber(parts[7]) or civics end
+    end
+    milStr = resolveMilitaryStrength(tid, p)
+    if techs < 0 then
+      local n = countTechsResearched(p)
+      if n ~= nil then techs = n else techs = -1 end
+    end
+    if civics < 0 then
+      local n = countCivicsCompleted(p)
+      if n ~= nil then civics = n else civics = -1 end
+    end
+    pcall(function() relCities = st:GetNumCitiesFollowingReligion() or 0 end)
     pcall(function()
       for _, city in p:GetCities():Members() do
         for _, d in city:GetDistricts():Members() do
@@ -1168,8 +1288,9 @@ local function printVStat(vid, tid, civName)
     end)
     print("VSTAT|" .. vid .. "|" .. tid .. "|" .. civName
       .. "|" .. score .. "|" .. sciVP .. "|" .. sciNeed .. "|" .. diploVP
-      .. "|" .. tourism .. "|" .. milStr .. "|" .. techs .. "|" .. civics
-      .. "|" .. relCities .. "|" .. spaceports .. "|" .. holds .. "|" .. stay)
+      .. "|" .. math.floor(tonumber(tourism) or 0) .. "|" .. milStr .. "|" .. techs .. "|" .. civics
+      .. "|" .. relCities .. "|" .. spaceports .. "|" .. holds .. "|" .. stay
+      .. "|" .. visiting)
   end)
 end
 local hashName = {{}}
@@ -1207,6 +1328,25 @@ local function empireStats(pid)
   local mil = resolveMilitaryStrength(pid, p)
   local techs = countTechsResearched(p)
   local civics = countCivicsCompleted(p)
+  if techs == nil then techs = -1 end
+  if civics == nil then civics = -1 end
+  -- VIEWER 也吃 UI 科技/市政缓存（Gameplay 遍历 HasTech 常失败→假 0）
+  local packed = readUiVstatPacked(pid)
+  if packed ~= nil then
+    local parts = {{}}
+    local start = 1
+    while true do
+      local i = string.find(packed, ";", start, true)
+      if not i then
+        table.insert(parts, string.sub(packed, start))
+        break
+      end
+      table.insert(parts, string.sub(packed, start, i - 1))
+      start = i + 1
+    end
+    if parts[6] ~= nil and parts[6] ~= "" then techs = tonumber(parts[6]) or techs end
+    if parts[7] ~= nil and parts[7] ~= "" then civics = tonumber(parts[7]) or civics end
+  end
   local faith = 0
   pcall(function() faith = p:GetReligion():GetFaithYield() end)
   local research, civic = "无", "无"
@@ -1307,6 +1447,15 @@ for _, vid in ipairs(viewers) do
     local score, cities, pop, sci, cul, gold, mil, techs, civics, faith, research, civic = empireStats(vid)
     local favor = 0
     pcall(function() favor = Players[vid]:GetFavor() or 0 end)
+    -- GetFavor 在 Gameplay 常 0；外交条 Favor 来自 UI 缓存第四段
+    if (tonumber(favor) or 0) == 0 then
+      local packed = readUiVstatPacked(vid)
+      if packed ~= nil then
+        local _, _, _, f = string.match(
+          packed, "^([^;]*);([^;]*);([^;]*);([^;]*);?([^;]*)$")
+        if f ~= nil then favor = tonumber(f) or 0 end
+      end
+    end
     print("VIEWER|" .. vid .. "|" .. civName .. "|" .. leaderName
       .. "|" .. score .. "|" .. cities .. "|" .. pop
       .. "|" .. string.format("%.1f", sci) .. "|" .. string.format("%.1f", cul) .. "|" .. string.format("%.1f", gold)
@@ -1436,11 +1585,21 @@ for _, vid in ipairs(viewers) do
       for pid = 0, 63 do
         if pid ~= vid and Players[pid] and Players[pid]:IsAlive() then
           local ownerName = "Barbarian"
+          local isMinor = 0
           if pid ~= 63 then
             local ocfg = PlayerConfigurations[pid]
             if ocfg then ownerName = safeLookup(ocfg:GetCivilizationShortDescription()) end
             if ownerName == "" then ownerName = "Player" .. tostring(pid) end
+            pcall(function()
+              if Players[pid]:IsMinor() then isMinor = 1 end
+            end)
           end
+          local atWar = 0
+          pcall(function()
+            if pid ~= 63 and pDiplo ~= nil and pDiplo:IsAtWarWith(pid) then
+              atWar = 1
+            end
+          end)
           for _, bu in Players[pid]:GetUnits():Members() do
             local bx, by = bu:GetX(), bu:GetY()
             if bx ~= -9999 then
@@ -1459,7 +1618,7 @@ for _, vid in ipairs(viewers) do
                   end
                   local agg = threatAgg[pid]
                   if not agg then
-                    agg = {{name=ownerName, count=0, dist=999}}
+                    agg = {{name=ownerName, count=0, dist=999, war=atWar, minor=isMinor}}
                     threatAgg[pid] = agg
                   end
                   agg.count = agg.count + 1
@@ -1472,7 +1631,8 @@ for _, vid in ipairs(viewers) do
       end
     end
     for pid, agg in pairs(threatAgg) do
-      print("THREAT|" .. vid .. "|" .. pid .. "|" .. agg.name .. "|" .. agg.count .. "|" .. agg.dist)
+      print("THREAT|" .. vid .. "|" .. pid .. "|" .. agg.name .. "|" .. agg.count
+        .. "|" .. agg.dist .. "|" .. tostring(agg.war or 0) .. "|" .. tostring(agg.minor or 0))
     end
   end
 end
@@ -1567,6 +1727,7 @@ def parse_leader_views(lines: list[str]) -> tuple[dict[int, LeaderView], bool | 
                     spaceports=int(float(p[13] or 0)),
                     holds_own_capital=p[14] != "0",
                     staycationers=int(float(p[15] if len(p) > 15 else 0)),
+                    visiting_tourists=int(float(p[16] if len(p) > 16 else 0)),
                 )
             )
             continue
@@ -1700,6 +1861,8 @@ def parse_leader_views(lines: list[str]) -> tuple[dict[int, LeaderView], bool | 
                         owner_name=p[3],
                         count=int(float(p[4] or 0)),
                         nearest_dist=int(float(p[5] or 999)),
+                        is_at_war=(len(p) > 6 and p[6] == "1"),
+                        is_minor=(len(p) > 7 and p[7] == "1"),
                     )
                 )
     return views, rst_available

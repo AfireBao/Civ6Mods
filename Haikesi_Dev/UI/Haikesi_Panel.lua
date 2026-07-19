@@ -622,6 +622,7 @@ local function OnConfirm()
 
     UI.RequestPlayerOperation(Game.GetLocalPlayer(), PlayerOperations.EXECUTE_SCRIPT, param)
 
+    -- 选卡后立刻请 UI 拉横幅（桥接内会确认 pending=1，并短重试，避免 EXECUTE_SCRIPT 尚未回写）
     if Network.IsGameHost() and externalAIEnabled and Haikesi_IsConfigEnabled('NW_HAIKESI_AI_RELIC') then
         pcall(function()
             LuaEvents.Haikesi_ExtAIPendingUI()

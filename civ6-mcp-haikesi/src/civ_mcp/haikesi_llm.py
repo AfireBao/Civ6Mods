@@ -32,7 +32,7 @@ _PKG_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_PROMPT_DIR = _PKG_ROOT / "logs"
 _LAST_PROMPT_FILE = "haikesi_last_prompt.txt"
 _LAST_EXCHANGE_FILE = "haikesi_last_exchange.json"
-_LAST_DECISION_FILE = "haikesi_last_decision.txt"
+_LAST_DECISION_FILE = "haikesi_last_decision.md"
 
 
 def last_prompt_path() -> Path:
@@ -78,7 +78,7 @@ def reason_mode() -> str:
 
 
 def decision_log_enabled() -> bool:
-    """开发分析：把思考过程写入独立 txt（与注入游戏的 wire 隔离）。"""
+    """开发分析：把思考过程写入独立 md（与注入游戏的 wire 隔离）。"""
     return _env_flag("HAIKESI_DECISION_LOG", False)
 
 
@@ -88,12 +88,116 @@ def last_decision_path() -> Path:
 
 
 def _prune_legacy_flat_decision_logs(log_dir: Path) -> None:
-    """Remove obsolete flat haikesi_decision_*.txt files (pre-archive layout)."""
-    for stale in log_dir.glob("haikesi_decision_*.txt"):
-        try:
-            stale.unlink()
-        except OSError:
-            pass
+    """Remove obsolete flat / txt decision mirrors (pre-md layout)."""
+    for pattern in (
+        "haikesi_decision_*.txt",
+        "haikesi_decision_*.md",
+        "haikesi_last_decision.txt",
+    ):
+        for stale in log_dir.glob(pattern):
+            try:
+                stale.unlink()
+            except OSError:
+                pass
+
+
+_TABLE_SEP_RE = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$")
+
+
+def _is_table_separator(line: str) -> bool:
+    s = line.strip()
+    return bool(s) and _TABLE_SEP_RE.fullmatch(s) is not None
+
+
+def _is_pipe_table_row(line: str) -> bool:
+    s = line.strip()
+    if not s or s.startswith(("```", "#", "-", "*", "【", ">")):
+        return False
+    if _is_table_separator(s):
+        return False
+    # 已是 GFM 数据/表头行
+    if s.startswith("|") and s.count("|") >= 3:
+        return True
+    # 明文表：至少 3 列；排除「国力/战略」等散文里的 a | b
+    if " | " not in s:
+        return False
+    cells = [c.strip() for c in s.split(" | ")]
+    if len(cells) < 3:
+        return False
+    head = cells[0]
+    if re.match(r"^分数\d", head):
+        return False
+    if ":" in head or "：" in head:
+        return False
+    if head.startswith(("主战略", "时代", "难度", "速度")):
+        return False
+    return True
+
+
+def _table_cells(row: str) -> list[str]:
+    return [c.strip().replace("\n", " ") for c in row.strip().strip("|").split("|")]
+
+
+def _emit_gfm_table(out: list[str], header_row: str, body_rows: list[str], *, more_after: bool) -> None:
+    """Append one GFM table with mandatory blank lines (Cursor/GFM preview)."""
+    header_cells = _table_cells(header_row)
+    ncols = max(len(header_cells), 1)
+    if out and out[-1].strip() != "":
+        out.append("")
+    out.append("| " + " | ".join(header_cells) + " |")
+    out.append("| " + " | ".join("---" for _ in range(ncols)) + " |")
+    for row in body_rows:
+        cells = _table_cells(row)
+        if len(cells) < ncols:
+            cells = cells + [""] * (ncols - len(cells))
+        elif len(cells) > ncols:
+            cells = cells[:ncols]
+        out.append("| " + " | ".join(cells) + " |")
+    if more_after:
+        out.append("")
+
+
+def markdownify_pipe_tables(text: str) -> str:
+    """Turn plain/GFM pipe blocks into spaced GFM tables (blank line + header + ---).
+
+    无表前空行时，CommonMark 会把 `|...|` 并入上一段落，预览里就变成 `||` 粘连。
+    已带 `| --- |` 分隔行的块也必须再走一遍，补空行并规范化。
+    """
+    lines = text.splitlines()
+    out: list[str] = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        line = lines[i]
+        # 已是 GFM：表头 + 分隔行 + 数据行
+        if (
+            _is_pipe_table_row(line)
+            and i + 1 < n
+            and _is_table_separator(lines[i + 1])
+        ):
+            body: list[str] = []
+            j = i + 2
+            while j < n and _is_pipe_table_row(lines[j]):
+                body.append(lines[j])
+                j += 1
+            _emit_gfm_table(out, line, body, more_after=(j < n and lines[j].strip() != ""))
+            i = j
+            continue
+        # 纯文本 pipe 表：连续 ≥2 行 a | b
+        if _is_pipe_table_row(line) and i + 1 < n and _is_pipe_table_row(lines[i + 1]):
+            block = [line]
+            j = i + 1
+            while j < n and _is_pipe_table_row(lines[j]):
+                block.append(lines[j])
+                j += 1
+            _emit_gfm_table(
+                out, block[0], block[1:], more_after=(j < n and lines[j].strip() != "")
+            )
+            i = j
+            continue
+        out.append(line)
+        i += 1
+    return "\n".join(out)
 
 
 def _build_decision_log_body(
@@ -108,38 +212,61 @@ def _build_decision_log_body(
     wire: str,
     archive_path: Path | None = None,
 ) -> str:
-    parts = [
-        f"saved_at={time.strftime('%Y-%m-%d %H:%M:%S')}",
-        f"request_id={request_id}",
-        f"model={model}",
-        f"reason_mode={reason_mode()}",
-        f"thinking_chars={len(reasoning or '')}",
+    prompt_md = markdownify_pipe_tables(prompt)
+    meta_lines = [
+        f"- **saved_at**: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+        f"- **request_id**: `{request_id}`",
+        f"- **model**: `{model}`",
+        f"- **reason_mode**: `{reason_mode()}`",
+        f"- **thinking_chars**: {len(reasoning or '')}",
     ]
     if archive_path is not None:
-        parts.append(f"archive_file={archive_path}")
-    parts.extend(
-        [
-            "",
-            "=== PROMPT ===",
-            prompt,
-            "",
-            "=== REASONING (model thinking; not injected) ===",
-            reasoning or "(empty — enable HAIKESI_LLM_THINKING=1 to capture)",
-            "",
-            "=== RAW_RESPONSE ===",
-            raw_response,
-            "",
-            "=== CHOICES (applied to game) ===",
-            json.dumps(choices, ensure_ascii=False, indent=2),
-            "",
-            "=== REASONS (dev log only; never injected into game) ===",
-            json.dumps(reasons, ensure_ascii=False, indent=2),
-            "",
-            "=== WIRE_INJECTED (choices only; no reasons) ===",
-            wire,
-            "",
-        ]
-    )
+        meta_lines.append(f"- **archive_file**: `{archive_path}`")
+    raw_fence = "json" if raw_response.strip().startswith("{") else ""
+    parts = [
+        f"# Haikesi ExtAI Decision `{request_id}`",
+        "",
+        "## Meta",
+        "",
+        *meta_lines,
+        "",
+        "## Prompt",
+        "",
+        prompt_md,
+        "",
+        "## Reasoning",
+        "",
+        "模型思考过程（不注入游戏）。",
+        "",
+        reasoning or "*(empty — enable `HAIKESI_LLM_THINKING=1` to capture)*",
+        "",
+        "## Raw Response",
+        "",
+        f"```{raw_fence}".rstrip(),
+        raw_response,
+        "```",
+        "",
+        "## Choices",
+        "",
+        "```json",
+        json.dumps(choices, ensure_ascii=False, indent=2),
+        "```",
+        "",
+        "## Reasons",
+        "",
+        "仅开发日志；永不注入游戏。",
+        "",
+        "```json",
+        json.dumps(reasons, ensure_ascii=False, indent=2),
+        "```",
+        "",
+        "## Wire Injected",
+        "",
+        "```",
+        wire,
+        "```",
+        "",
+    ]
     return "\n".join(parts)
 
 
@@ -155,7 +282,7 @@ def save_decision_analysis_log(
     wire: str,
     payload: dict[str, Any] | None = None,
 ) -> Path | None:
-    """Append per-game decision log + mirror latest to haikesi_last_decision.txt."""
+    """Append per-game decision log + mirror latest to haikesi_last_decision.md."""
     if not decision_log_enabled():
         return None
     log_dir = last_prompt_path().parent
@@ -535,21 +662,21 @@ async def gather_haikesi_game_context(
 
 
 def _met_table(met: list[MetCivView]) -> str:
+    """列表而非宽表：17 列表格在 Cursor 预览里会挤成「分 数」按字换行、形似坏表。"""
     if not met:
         return "(尚未与其他主要文明建立接触)"
-    header = (
-        "id | 文明 | 领袖 | 分数 | 城 | 人口 | 科/回合 | 文/回合 | 金/回合 | "
-        "军力 | 科技数 | 市政数 | 信仰 | 关系 | 交战 | 我对彼不满 | 彼对我不满"
-    )
-    rows = [header]
+    lines: list[str] = []
     for m in sorted(met, key=lambda x: -x.score):
-        rows.append(
-            f"{m.player_id} | {m.civ_name} | {m.leader_name} | {m.score} | {m.cities} | {m.pop} | "
-            f"{m.sci} | {m.cul} | {m.gold} | {m.mil} | {m.techs} | {m.civics} | {m.faith} | "
-            f"{m.diplomatic_state}({m.relationship_score}) | "
-            f"{'是' if m.is_at_war else '否'} | {m.grievances} | {m.grievances_against_me}"
+        war = "交战" if m.is_at_war else "和平"
+        lines.append(
+            f"- {m.civ_name}（{m.leader_name}，id{m.player_id}）："
+            f"分数{m.score}，{m.cities}城/人口{m.pop}，"
+            f"科{m.sci}/文{m.cul}/金{m.gold}，军力{_fmt_mil(m.mil)}，"
+            f"科技{_fmt_count(m.techs)}/市政{_fmt_count(m.civics)}，信仰{m.faith}，"
+            f"{m.diplomatic_state}({m.relationship_score})，{war}，"
+            f"不满我→彼{m.grievances}/彼→我{m.grievances_against_me}"
         )
-    return "\n".join(rows)
+    return "\n".join(lines)
 
 
 def _diplo_attitude_block(met: list[MetCivView]) -> str:
@@ -650,24 +777,82 @@ def _format_world_congress(status: WorldCongressStatus | None) -> str:
     return "\n".join(lines)
 
 
+def _fmt_mil(value: int | float | None) -> str:
+    """军力：-1/缺失 → 未知（勿当成无军队）。"""
+    if value is None:
+        return "未知"
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return "未知"
+    if n < 0:
+        return "未知"
+    return str(n)
+
+
+def _fmt_count(value: int | float | None, *, suffix: str = "") -> str:
+    if value is None:
+        return "未知"
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return "未知"
+    if n < 0:
+        return "未知"
+    return f"{n}{suffix}"
+
+
 def _threat_table(view: LeaderView) -> str:
     if not view.threats:
-        return "(视野内未见敌对军事单位)"
-    rows = ["势力 | 可见单位数 | 最近距离(格)"]
+        return "(视野内未见边境军事单位)"
+    rows = [
+        "| 势力 | 可见单位数 | 最近距离(格) | 关系 |",
+        "| --- | --- | --- | --- |",
+    ]
     for t in sorted(view.threats, key=lambda x: (x.nearest_dist, -x.count)):
         name = "蛮族" if t.owner_name == "Barbarian" else t.owner_name
-        rows.append(f"{name} | {t.count} | {t.nearest_dist}")
+        if t.owner_name == "Barbarian":
+            rel = "敌对"
+        elif t.is_minor:
+            rel = "城邦可见"
+        elif t.is_at_war:
+            rel = "交战"
+        else:
+            rel = "可见·未交战"
+        rows.append(f"| {name} | {t.count} | {t.nearest_dist} | {rel} |")
     return "\n".join(rows)
+
+
+def _power_table(view: LeaderView) -> str:
+    """窄两列表：避免散文里的 `|` 被预览当成坏表，也避免并入上方能力列表。"""
+    rows = [
+        ("分数", str(view.score)),
+        ("城市/人口", f"{view.cities}城 / {view.pop}"),
+        ("科/文/金/回合", f"{view.sci}/{view.cul}/{view.gold}"),
+        ("军力", _fmt_mil(view.mil)),
+        ("科技/市政", f"{_fmt_count(view.techs)} / {_fmt_count(view.civics)}"),
+        ("信仰/回合", str(view.faith)),
+        ("外交支持度", str(view.favor)),
+        ("在研", view.current_research or "-"),
+        ("市政", view.current_civic or "-"),
+    ]
+    lines = ["| 项 | 值 |", "| --- | --- |"]
+    for key, val in rows:
+        lines.append(f"| {key} | {val} |")
+    return "\n".join(lines)
 
 
 def _traits_block(view: LeaderView) -> str:
     lines: list[str] = []
     for name, desc in view.leader_traits[:4]:
-        lines.append(f"- 领袖能力「{name}」: {desc}")
+        d = haikesi_lua._strip_civ_icons(desc).replace("[NEWLINE]", " ")
+        lines.append(f"- 领袖能力「{name}」: {d}")
     for name, desc in view.civ_traits[:4]:
-        lines.append(f"- 文明特性「{name}」: {desc}")
+        d = haikesi_lua._strip_civ_icons(desc).replace("[NEWLINE]", " ")
+        lines.append(f"- 文明特性「{name}」: {d}")
     for name, desc in view.agendas[:2]:
-        lines.append(f"- 历史议程「{name}」: {desc}")
+        d = haikesi_lua._strip_civ_icons(desc).replace("[NEWLINE]", " ")
+        lines.append(f"- 历史议程「{name}」: {d}")
     if not lines:
         return "(无可用能力/议程文本)"
     return "\n".join(lines)
@@ -676,8 +861,10 @@ def _traits_block(view: LeaderView) -> str:
 def _cities_table(view: LeaderView) -> str:
     if not view.own_cities:
         return "(无城市数据)"
+    # 直接输出 GFM（列少，预览稳定）；markdownify 会再补表前后空行
     rows = [
-        "城名 | 人口 | 粮/产/金/科/文/信 | 住房 | 宜居 | 区划 | 在建(回合) | 忠诚"
+        "| 城名 | 人口 | 粮/产/金/科/文/信 | 住房 | 宜居 | 区划 | 在建(回合) | 忠诚 |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for c in sorted(view.own_cities, key=lambda x: -x.pop):
         districts = c.districts or "-"
@@ -685,10 +872,10 @@ def _cities_table(view: LeaderView) -> str:
         if prod != "空闲" and c.turns_left > 0:
             prod = f"{prod}({c.turns_left})"
         rows.append(
-            f"{c.name} | {c.pop} | "
+            f"| {c.name} | {c.pop} | "
             f"{c.food:.0f}/{c.prod:.0f}/{c.gold:.0f}/{c.sci:.0f}/{c.cul:.0f}/{c.faith:.0f} | "
             f"{c.housing:.0f} | {c.amenities}/{c.amenities_needed} | {districts} | "
-            f"{prod} | {c.loyalty:.0f}"
+            f"{prod} | {c.loyalty:.0f} |"
         )
     return "\n".join(rows)
 
@@ -765,7 +952,7 @@ def _rst_block(view: LeaderView) -> str:
     return "\n".join(
         [
             "【Real Strategy 战略意图】（仅作选卡倾向参考，非强制）",
-            f"主战略: {label}（{rst.active_strategy}） | 优先级: {pri_txt}{flag_txt}",
+            f"主战略: {label}（{rst.active_strategy}） · 优先级: {pri_txt}{flag_txt}",
         ]
     )
 
@@ -793,41 +980,75 @@ def _victory_rank_block(view: LeaderView) -> str:
         more = f"…共{n}家" if n > top else f"共{n}家"
         return f"{title}: {' · '.join(bits)}（我#{my_rank}/{n}；{more}）"
 
+    def _culture_required(p: haikesi_lua.VictoryPeerStat) -> int:
+        # WorldRankings：需求 = 其他文明国内游客最大值 + 1
+        best = 0
+        for o in peers:
+            if o.player_id != p.player_id and o.staycationers > best:
+                best = o.staycationers
+        return best + 1 if best > 0 or n > 1 else 1
+
+    def _tech_key(p: haikesi_lua.VictoryPeerStat) -> tuple:
+        # 太空竞赛未启动时 VP 全 0：改按已研究科技数排序，避免假并列
+        if p.science_vp > 0 or p.spaceports > 0:
+            return (1, p.science_vp, max(p.techs, 0), p.spaceports)
+        return (0, max(p.techs, 0), p.score)
+
+    def _tech_fmt(p: haikesi_lua.VictoryPeerStat) -> str:
+        techs = _fmt_count(p.techs, suffix="项")
+        if p.science_vp > 0 or p.spaceports > 0:
+            return (
+                f"{p.science_vp}/{p.science_needed}VP·{techs}"
+                + (f"·港{p.spaceports}" if p.spaceports else "")
+            )
+        if p.techs < 0:
+            return "科技胜利VP未计·科技数未知"
+        return f"胜利VP未启动·{techs}"
+
+    def _mil_key(p: haikesi_lua.VictoryPeerStat) -> tuple:
+        mil = p.mil if p.mil is not None and p.mil >= 0 else -1
+        return (mil, 0 if p.holds_own_capital else 1, p.score)
+
+    def _mil_fmt(p: haikesi_lua.VictoryPeerStat) -> str:
+        return f"军{_fmt_mil(p.mil)}" + (
+            "·非原都" if not p.holds_own_capital else ""
+        )
+
     return "\n".join(
         [
-            "【已知文明胜利进度排名】（仅自己与已相遇；未相遇者不在榜）",
+            "【已知文明胜利进度排名】（仅自己与已相遇；未相遇者不在榜；"
+            "若军力/科技数为「未知」勿当作 0）",
             _rank_line(
                 "分数",
-                lambda p: (p.score, p.mil),
+                lambda p: (p.score, p.mil if p.mil >= 0 else -1),
                 lambda p: f"{p.score}",
             ),
-            _rank_line(
-                "科技",
-                lambda p: (p.science_vp, p.techs, p.spaceports),
-                lambda p: f"{p.science_vp}/{p.science_needed}VP·科{p.techs}"
-                + (f"·港{p.spaceports}" if p.spaceports else ""),
-            ),
+            _rank_line("科技", _tech_key, _tech_fmt),
             _rank_line(
                 "外交",
                 lambda p: (p.diplo_vp, p.score),
-                lambda p: f"{p.diplo_vp}分",
+                # diplo_vp=外交胜利点数（世界会议累积）；与外交条 Favor（支持度）不是同一指标
+                lambda p: f"{p.diplo_vp}VP",
             ),
+            # 与世界排名·文化页一致：旅=每回合旅游业绩；游客=国际/需求（非「内游」）
             _rank_line(
                 "文化",
-                lambda p: (p.tourism, p.civics),
-                lambda p: f"旅{p.tourism}·内游{p.staycationers}",
+                lambda p: (
+                    p.visiting_tourists / max(_culture_required(p), 1),
+                    p.tourism,
+                    p.visiting_tourists,
+                ),
+                lambda p: (
+                    f"旅{p.tourism}·游客{p.visiting_tourists}/{_culture_required(p)}"
+                    f"（国内{p.staycationers}）"
+                ),
             ),
             _rank_line(
                 "宗教",
                 lambda p: (p.rel_cities, p.score),
                 lambda p: f"{p.rel_cities}城追随",
             ),
-            _rank_line(
-                "征服(军力)",
-                lambda p: (p.mil, 0 if p.holds_own_capital else 1, p.score),
-                lambda p: f"军{p.mil}"
-                + ("·非原都" if not p.holds_own_capital else ""),
-            ),
+            _rank_line("征服(军力)", _mil_key, _mil_fmt),
         ]
     )
 
@@ -838,23 +1059,28 @@ def _format_leader_block(
     human_player_id: int,
 ) -> str:
     pid = int(ai["player_id"])
-    selected = list(ai.get("selected") or [])
-    hist_lines = "\n".join(haikesi_lua.format_relic_inventory_lines(selected))
-    hist_block = (
-        "【历史已选海克斯】（过往回合已获得的库存，不是本轮选择；"
-        "本轮必须从上方「候选海克斯」中重新选 1 张，禁止照抄或跳过）\n"
-        + hist_lines
-    )
+    selected = haikesi_lua.dedupe_preserve_order(list(ai.get("selected") or []))
+    # 效果全文见全局「各文明历史已选」；领袖侧只留摘要，避免双份膨胀与南蛮误读
+    if selected:
+        hist_block = (
+            f"【历史库存摘要】共{len(selected)}张："
+            f"{haikesi_lua.format_relic_type_list(selected)}\n"
+            "（完整效果见上文全局列表；不是本轮选项。"
+            "其中若含南蛮入侵，仅表示过去某轮已触发，与本轮候选能否再选无关）"
+        )
+    else:
+        hist_block = "【历史库存摘要】（无）"
     if view is None:
         label = ai.get("player_name") or ai.get("civ_label") or str(pid)
-        return (
-            f"### 领袖 {pid}（{label}）\n"
-            "可见情报不足（未能读取该领袖外交/视野数据）。\n"
-            "仅根据候选海克斯与历史库存，从自身发展需求选卡。\n"
-            "候选海克斯:\n"
-            + "\n".join(haikesi_lua.format_option_lines(ai.get("options", [])))
-            + "\n"
-            + hist_block
+        return "\n\n".join(
+            [
+                f"### 领袖 {pid}（{label}）",
+                "可见情报不足（未能读取该领袖外交/视野数据）。\n"
+                "仅根据候选海克斯与历史库存，从自身发展需求选卡。",
+                "候选海克斯:\n"
+                + "\n".join(haikesi_lua.format_option_lines(ai.get("options", []))),
+                hist_block,
+            ]
         )
 
     title = f"### 领袖 {pid}：{view.civ_name}（{view.leader_name}）"
@@ -864,24 +1090,18 @@ def _format_leader_block(
             f"已接触人类玩家 {human_met.civ_name}（{human_met.leader_name}）："
             f"关系 {human_met.diplomatic_state}({human_met.relationship_score})，"
             f"{'交战' if human_met.is_at_war else '和平'}，"
-            f"科{human_met.sci}/文{human_met.cul}/金{human_met.gold}，军力{human_met.mil}，"
+            f"科{human_met.sci}/文{human_met.cul}/金{human_met.gold}，"
+            f"军力{_fmt_mil(human_met.mil)}，"
             f"我对彼不满{human_met.grievances}，彼对我不满{human_met.grievances_against_me}"
         )
     else:
         human_line = "尚未与人类玩家建立接触（不知其详细国力与位置）"
 
-    parts = [
+    # 段间空行：避免 CommonMark 把【国力】/城表并入「你的身份」最后一个 bullet
+    parts: list[str] = [
         title,
-        "【你的身份】",
-        _traits_block(view),
-        "【本国国力】",
-        (
-            f"分数{view.score} | {view.cities}城 | 人口{view.pop} | "
-            f"科{view.sci}/回合 文{view.cul}/回合 金{view.gold}/回合 | "
-            f"军力{view.mil} | 科技{view.techs} 市政{view.civics} | 信仰{view.faith}/回合 | "
-            f"外交支持度{view.favor} | "
-            f"在研:{view.current_research} | 市政:{view.current_civic}"
-        ),
+        "【你的身份】\n" + _traits_block(view),
+        "【本国国力】\n" + _power_table(view),
     ]
     rst_txt = _rst_block(view)
     if rst_txt:
@@ -892,37 +1112,39 @@ def _format_leader_block(
     vic_txt = _victory_rank_block(view)
     if vic_txt:
         parts.append(vic_txt)
-    parts.extend(
-        [
-            "【本国城市】",
-            _cities_table(view),
-            "【与人类】",
-            human_line,
-            "【已相遇文明（外交可见数值；未相遇者不出现）】",
-            _met_table(view.met),
-        ]
+    parts.append("【本国城市】\n" + _cities_table(view))
+    parts.append("【与人类】\n" + human_line)
+    parts.append(
+        "【已相遇文明（外交可见数值；未相遇者不出现）】\n" + _met_table(view.met)
     )
     attitude = _diplo_attitude_block(view.met)
     if attitude:
         parts.append(attitude)
-    synergy = haikesi_lua.build_trait_option_synergy_hints(view, list(ai.get("options") or []))
+    synergy = haikesi_lua.build_trait_option_synergy_hints(
+        view, list(ai.get("options") or [])
+    )
     if synergy:
         parts.append(synergy)
-    parts.extend(
-        [
-            "【视野内可见敌对军事单位（战争迷雾外不可见）】",
-            _threat_table(view),
-            "【候选海克斯】（本轮三选一，必须从这里选）",
-            "\n".join(haikesi_lua.format_option_lines(ai.get("options", []))),
-            hist_block,
-        ]
+    parts.append(
+        "【边境可见军事单位】（战争迷雾外；含中立邻国/城邦/蛮族；"
+        "「可见·未交战」≠正在交战，勿一律当敌军）\n" + _threat_table(view)
     )
-    return "\n".join(parts)
+    parts.append(
+        "【候选海克斯】（本轮三选一，必须从这里选）\n"
+        + "\n".join(
+            haikesi_lua.format_option_lines(
+                ai.get("options", []), cities=int(view.cities or 0)
+            )
+        )
+    )
+    parts.append(hist_block)
+    return "\n\n".join(parts)
 
 
 def _format_historical_hexes_public(payload: dict[str, Any]) -> str:
-    """All civs' historical hex inventory with full effect text (public)."""
-    lines: list[str] = []
+    """持有名单 + 去重效果词典（同词条全文只出现一次）。"""
+    ownership: list[str] = []
+    ordered_types: list[str] = []
     for ai in payload.get("ai_players", []) or []:
         pid = int(ai.get("player_id", -1))
         label = (
@@ -932,11 +1154,27 @@ def _format_historical_hexes_public(payload: dict[str, Any]) -> str:
         )
         selected = haikesi_lua.dedupe_preserve_order(list(ai.get("selected") or []))
         if not selected:
-            lines.append(f"- {label}：无")
+            ownership.append(f"- {label}：无")
             continue
-        for relic in selected:
-            lines.append(f"- {label}：{haikesi_lua.format_relic_display(relic)}")
-    return "\n".join(lines) if lines else "- （尚无历史海克斯）"
+        ownership.append(
+            f"- {label}：{haikesi_lua.format_relic_type_list(selected)}"
+        )
+        ordered_types.extend(selected)
+    if not ownership:
+        return "- （尚无历史海克斯）"
+    unique = haikesi_lua.dedupe_preserve_order(ordered_types)
+    if not unique:
+        return "持有（仅名称）：\n" + "\n".join(ownership)
+    glossary = [
+        f"- {haikesi_lua.format_relic_display(relic)}" for relic in unique
+    ]
+    return (
+        "持有（仅名称）：\n"
+        + "\n".join(ownership)
+        + "\n\n"
+        + "效果说明（同词条只列一次）：\n"
+        + "\n".join(glossary)
+    )
 
 
 def format_context_summary(context: HaikesiGameContext) -> str:
@@ -1069,9 +1307,10 @@ def _early_game_rules(
     if speed_name and speed_name != "未知" and cost_multiplier != 100:
         speed_hint = f"（{speed_name}；阈值按 Cost×{cost_multiplier}/100 相对标准速度缩放）"
     rule = (
-        f"- 远古早期（约 T1–T{ancient_end}{speed_hint}、单城且军力≤2）："
-        "优先【即时】与资源/百分比产出；"
-        "其次 settler/builder echo；"
+        f"- 远古早期（约 T1–T{ancient_end}{speed_hint}、单城且已知军力≤2）："
+        "优先真正即时的百分比产出；"
+        "有城时才优先资源创建（落在最新城 3 环）；"
+        "**0 城时资源创建会空放，禁止选择**，改选开拓者/工人 echo 或百分比；"
         f"军事 echo 需 {echo_horizon} 回合内可造对应单位才优先，否则视为延迟收益\n"
     )
     return rule, barbarian_window
@@ -1113,7 +1352,7 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
             "- 不要输出 reasons（或给空对象 {}）；只需 choices。"
             "内心推演即可，勿把分析写进 JSON，以节省输出 token。"
         )
-        output_fmt = '{\n  "choices": {"1": "NW_AI_...", "...": "NW_AI_..."}\n}'
+        output_fmt = '{\n  "choices": {"2": "NW_AI_...", "3": "NW_AI_..."}\n}'
     elif mode == "full":
         reason_rule = (
             "- reasons 仅供开发日志，不会显示在游戏内；可用 1～2 句带领袖风味的简体中文"
@@ -1121,8 +1360,8 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
             "详细推演过程不必复述（另有 thinking 日志）。"
         )
         output_fmt = (
-            '{\n  "choices": {"1": "NW_AI_...", "...": "NW_AI_..."},\n'
-            '  "reasons": {"1": "...", "...": "..."}\n}'
+            '{\n  "choices": {"2": "NW_AI_...", "3": "NW_AI_..."},\n'
+            '  "reasons": {"2": "...", "3": "..."}\n}'
         )
     else:
         reason_rule = (
@@ -1131,8 +1370,8 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
             "不要复述效果全文"
         )
         output_fmt = (
-            '{\n  "choices": {"1": "NW_AI_...", "...": "NW_AI_..."},\n'
-            '  "reasons": {"1": "...", "...": "..."}\n}'
+            '{\n  "choices": {"2": "NW_AI_...", "3": "NW_AI_..."},\n'
+            '  "reasons": {"2": "...", "3": "..."}\n}'
         )
 
     human_relic = _format_human_relic_section(payload)
@@ -1144,17 +1383,17 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
     )
 
     return f"""你是文明6资深玩家，同时代入下列多位文明领袖，为各自选择本轮海克斯。{channel_note}
-决策以老玩家常识与当前局面数据为主，并**一定程度**受所扮演历史人物的性格、议程与外交立场影响（勿为角色表演而违背明显最优）。
+决策以老玩家常识与当前局面数据为主；仅在收益接近时用历史人物性格/议程破平（勿为角色表演而违背明显最优）。
 
 情报规则（必须遵守）：
 - 每位领袖只能使用**自己区块**内的情报做决策；禁止引用其他领袖区块，也禁止臆造未给出的单位/文明。
 - 未相遇文明、战争迷雾外的敌军对本领袖不存在，不得当作已知信息。
 - 人类本轮海克斯、各文明历史已选海克斯（含效果说明）、全局时代/速度、世界会议决议是本局公开机制信息，各位领袖都可以参考。
-- 「历史已选」不是本轮选择：不得据此认定某领袖本轮已选完，也不得照抄历史词条作为本轮 choices。
-- 已相遇文明的科/文/金/军力、双向不满值、对方对你的外交修饰语等为外交界面可见信息，可以比较。
-- 若区块含「已知文明胜利进度排名」：仅可比较榜内文明；未上榜者对本领袖不可见。
-- 若区块含「Real Strategy 战略意图」：将其作为该领袖当前胜利路线倾向；选卡应优先契合主战略（征服→军事/扩张，科技→科研，文化→文化/伟人，宗教→信仰，外交→使者/外交），但若候选与短板/可见威胁明显冲突，可偏离。
-- 若区块含「能力与候选协同提示」：由能力/议程文案自动匹配，供选卡参考（非强制）。
+- 「历史已选 / 历史库存」不是本轮选择：不得据此认定某领袖本轮已选完，也不得照抄历史词条作为本轮 choices；历史中的南蛮入侵只表示过去触发过，与本轮候选是否再出现无关。
+- 已相遇文明的科/文/金/军力、双向不满值、对方对你的外交修饰语等为外交界面可见信息，可以比较；军力/科技数为「未知」时勿当成 0 或「无军队/零科技」。
+- 若区块含「已知文明胜利进度排名」：仅可比较榜内文明；未上榜者对本领袖不可见；「胜利VP未启动」时用科技项数等替代指标，勿被全员 0/50VP 误导。
+- 优先级：交战或边境可见单位最近距离≤2 的生存/军事压力 > Real Strategy 主战略 > 协同弱提示。主战略仅作倾向（征服→军事/扩张，科技→科研，文化→文化/伟人，宗教→信仰，外交→使者/外交）。
+- 「能力与候选协同提示」为弱提示，可完全忽略；勿当作必须跟风的硬规则。
 
 ## 当前回合
 Turn {turn}
@@ -1173,19 +1412,22 @@ Turn {turn}
 {_format_historical_hexes_public(payload)}
 
 {notes_block}## 待决策领袖（逐位以该领袖身份选卡）
-{chr(10).join(ai_blocks)}
+{"\n\n".join(ai_blocks)}
 
 ## 规则
 - 每位领袖只能从其「候选海克斯」中选 1 个 relic type；必须重新决策，禁止因「历史已选」而照抄、跳过或认定本轮已选完
 - 「历史已选海克斯 / 各文明历史已选」仅为库存说明（名称+效果），不是本轮选项，也不是自动选卡结果
 - {invasion_note}
-- NW_AI_BARBARIAN_INVASION 分配：同一 JSON 内至多 1 名领袖；优先分配给触发后净收益最高者（清蛮/军事/干扰领先人类）；{barbarian_window} 且军力≤2 时，除非明确以干扰人类为目标且接受连带干扰其他 AI，否则优先即时产出或扩张类
-- 候选前缀【即时】/【延迟】标注生效时机；勿在远古早期盲选尚无法使用的军事 echo
-{early_rules}- 先在内心做策略推演再选卡（不必写出推演过程）：胜利路线优先级、时代与扩张节奏、产出短板、威胁与外交、与人类海克斯的对抗/跟风
+- NW_AI_BARBARIAN_INVASION 分配：同一 JSON 内至多 1 名领袖；优先分配给触发后净收益最高者（清蛮/军事/干扰领先人类）；{barbarian_window} 且已知军力≤2 时，除非明确以干扰人类为目标且接受连带干扰其他 AI，否则优先即时产出或扩张类；历史库存里出现过南蛮≠本轮不能选
+- 候选前缀标注生效时机：【即时】立刻生效；【条件即时·需已有城市】无城则空放；【空放·当前0城】禁止选择；【延迟】须先满足生产/商路等条件；勿在远古早期盲选尚无法使用的军事 echo
+- 资源创建类（奶龙/丝绸/烟草/茶/棉花等）依赖「最新建立的城市」：国力显示 0 城或「无城市数据」时选择=效果跳过，应改选开拓者 echo 或百分比产出
+{early_rules}- 先在内心做策略推演再选卡（不必写出推演过程）：生存威胁、胜利路线、时代与扩张节奏、产出短板、外交、与人类海克斯的对抗/跟风
 - 文明6常识（用于解释上下文，勿复述）：早期扩张与基础设施常优先于奇观；战略资源与特色单位窗口很关键；忠诚度差的新城易叛；宗教胜利靠信仰传播与神学战斗；科技靠学院链+航天；文化靠旅游压过对手国内游客；外交靠好感/宗主/世界会议；军事窗口常在特色单位与时代领先时；奢侈品种类比重复拷贝更重要；贸易路线容量是免费产出
-- 决策结合：自身能力与议程、Real Strategy 主战略（若有）、本国万神殿/教义、已知胜利进度排名、对已遇文明的不满与观感、世界会议决议、本国城市与产出短板、已相遇文明对比、可见威胁、人类公开海克斯、候选效果、历史库存（仅作能力背景）
-- 领袖皆有历史原型，决策时除了参考游戏数据和胜利路线战略外，还可以参考个人议程和与文明间的关系、不满来实现个人风味的厌恶表达
+- 决策结合：局面威胁与交战状态、自身能力与议程、Real Strategy（可偏离）、本国宗教、胜利进度（注意未知/未启动）、不满与观感、世界会议、城市短板、人类公开海克斯、候选效果；历史库存仅作能力背景
+- 尽量避免多名领袖无差别抄同一张牌；只有局面高度相似时才可同选
+- 领袖皆有历史原型：仅在收益接近时用议程/不满表达风味
 {reason_rule}
+- choices 的键必须等于上文「### 领袖 N」中的 N（本局可能从 2 起，勿强行从 1 编号）
 - 必须输出完整合法 JSON（所有字符串已闭合）；禁止 markdown 代码块
 
 ## 输出格式（仅 JSON，无 markdown）

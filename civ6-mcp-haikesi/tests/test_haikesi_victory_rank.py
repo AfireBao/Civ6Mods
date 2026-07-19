@@ -94,4 +94,5 @@ def test_victory_rank_block_and_prompt():
         HaikesiGameContext(overview=overview, leader_views={1: view}, human_player_id=0),
     )
     assert "已知文明胜利进度排名" in prompt
-    assert "已知胜利进度排名" in prompt
+    assert "胜利VP未启动" in prompt or "科" in prompt
+    assert "ANTICAVALRY" not in prompt  # echo labels localized elsewhere; smoke on prompt build

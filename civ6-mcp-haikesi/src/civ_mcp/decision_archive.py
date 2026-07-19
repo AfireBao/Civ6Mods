@@ -164,8 +164,15 @@ class DecisionArchive:
         model: str,
     ) -> Path:
         session_dir = self.resolve_session_dir(payload)
-        filename = f"{_safe_request_filename(request_id)}.txt"
+        base = _safe_request_filename(request_id)
+        human = _safe_request_filename(str(payload.get("human_relic") or "norelic"))
+        # 同 request_id / 同回合重选：文件名带 human_relic，避免覆盖；仍冲突再加时戳
+        filename = f"{base}__{human}.md"
         path = session_dir / filename
+        if path.exists():
+            stamp = time.strftime("%H%M%S")
+            filename = f"{base}__{human}__{stamp}.md"
+            path = session_dir / filename
         path.write_text(body, encoding="utf-8")
 
         index_entry = {

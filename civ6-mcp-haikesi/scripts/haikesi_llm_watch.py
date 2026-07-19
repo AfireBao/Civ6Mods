@@ -84,6 +84,8 @@ async def main() -> None:
             print(f"Recovered unapplied dump: {log_tailer._recovered.get('request_id')}")
 
     last_handled_id: str | None = None
+    # LOG 通道：同 request_id 重 dump（读档重选）也要再跑；用日志偏移去重
+    last_handled_log_key: str | None = None
     try:
         while True:
             try:
@@ -105,17 +107,27 @@ async def main() -> None:
                     payload = log_tailer.poll_new_request()
                     if payload is not None:
                         request_id = str(payload.get("request_id") or "")
-                        if request_id and request_id != last_handled_id:
+                        log_key = (
+                            f"{request_id}@pos{payload.get('_log_pos', '')}"
+                            f"@n{payload.get('_dump_seq', '')}"
+                        )
+                        if request_id and log_key != last_handled_log_key:
                             print(
                                 f"\n[{time.strftime('%H:%M:%S')}] "
-                                f"New pending (log): {request_id}"
+                                f"New pending (log): {request_id} key={log_key}"
                             )
                             handled = await decide_and_inject_log_channel(
                                 client, config.model, payload, verbose=True
                             )
                             if handled:
+                                last_handled_log_key = log_key
                                 last_handled_id = request_id
                                 print(f"[{time.strftime('%H:%M:%S')}] Injected OK\n")
+                            else:
+                                print(
+                                    f"[{time.strftime('%H:%M:%S')}] "
+                                    f"Inject failed — will retry same dump if redumped\n"
+                                )
             except ConnectionError as exc:
                 print(f"[{time.strftime('%H:%M:%S')}] FireTuner disconnected: {exc}")
                 if mode == "auto":

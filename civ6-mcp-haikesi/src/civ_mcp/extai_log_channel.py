@@ -289,11 +289,16 @@ class LuaLogExtAITailer:
         self._pos = 0
         self._partial: list[str] = []
         self._in_block = False
+        self._dump_seq = 0
         self._recovered: dict[str, Any] | None = None
         if self.path.is_file():
             self._pos = self.path.stat().st_size
             if recover_pending:
                 self._recovered = recover_latest_unapplied_request(self.path)
+                if self._recovered is not None:
+                    self._dump_seq += 1
+                    self._recovered["_log_pos"] = self._pos
+                    self._recovered["_dump_seq"] = self._dump_seq
         else:
             self._recovered = None
 
@@ -339,6 +344,9 @@ class LuaLogExtAITailer:
                 parsed = parse_extai_log_block(self._partial)
                 self._partial = []
                 if parsed.get("status") == "pending" and parsed.get("request_id"):
+                    self._dump_seq += 1
+                    parsed["_log_pos"] = self._pos
+                    parsed["_dump_seq"] = self._dump_seq
                     found = parsed
                 continue
             if self._in_block:

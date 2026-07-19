@@ -1450,7 +1450,7 @@
             <Text>勇敢的木</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个棉花奢侈品资源。棉花地块+3金币，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个棉花奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：棉花地块+3金币；需改良后收获，并提供奢侈品宜居。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_FLAVOR" Language="zh_Hans_CN">
             <Text>丁丁给我GoWork</Text>
@@ -1460,7 +1460,7 @@
             <Text>妈妈生的</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个烟草奢侈品资源。烟草地块+1信仰，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个烟草奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：烟草地块+1信仰；需改良后收获，并提供奢侈品宜居。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_FLAVOR" Language="zh_Hans_CN">
             <Text>这可是妈妈生的。</Text>
@@ -1470,7 +1470,7 @@
             <Text>我是奶龙</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个糖奢侈品资源。糖地块+2食物，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个糖奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：糖地块+2食物；需改良后收获，并提供奢侈品宜居。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_FLAVOR" Language="zh_Hans_CN">
             <Text>我是奶龙，我才是奶龙。</Text>
@@ -1480,7 +1480,7 @@
             <Text>丝绸之乡</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个丝绸奢侈品资源。丝绸地块+1文化，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个丝绸奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：丝绸地块+1文化；需改良后收获，并提供奢侈品宜居。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_FLAVOR" Language="zh_Hans_CN">
             <Text>一匹绸缎，万里商路。</Text>
@@ -1490,7 +1490,7 @@
             <Text>饮茶先啦</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个茶奢侈品资源。茶地块+1科技，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个茶奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：茶地块+1科技；需改良后收获，并提供奢侈品宜居。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_FLAVOR" Language="zh_Hans_CN">
             <Text>三点几咯，饮茶先啦。</Text>
