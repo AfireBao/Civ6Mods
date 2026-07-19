@@ -534,7 +534,7 @@ local AI_RELIC_TYPES = {
     -- 资源创建
     'NW_AI_BRAVE_WOOD', 'NW_AI_MAMA_BORN', 'NW_AI_MILK_DRAGON', 'NW_AI_SILK_LAND', 'NW_AI_DRINK_TEA',
     -- 和平互利
-    'NW_AI_CELESTIAL_EMPIRE',
+    'NW_AI_CELESTIAL_EMPIRE', 'NW_AI_FERTILE_CRESCENT', 'NW_AI_PAX_ROMANA',
 }
 local AI_RELIC_TYPE_SET = {}
 for _, t in ipairs(AI_RELIC_TYPES) do AI_RELIC_TYPE_SET[t] = true end

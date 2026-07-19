@@ -1506,6 +1506,26 @@
             <Text>万邦来朝，厚往薄来。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_FERTILE_CRESCENT_NAME" Language="zh_Hans_CN">
+            <Text>两河粮仓</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_FERTILE_CRESCENT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【和平互利】通往本文明城市的国际 [ICON_TradeRoute] 商路：对方出发城 +1 [ICON_Food] 食物、+1 [ICON_Production] 生产力；本文明到达城 +3 [ICON_Gold] 金币、+1 [ICON_Food] 食物。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_FERTILE_CRESCENT_FLAVOR" Language="zh_Hans_CN">
+            <Text>幼发拉底涨落之间，粮道通达王城。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_PAX_ROMANA_NAME" Language="zh_Hans_CN">
+            <Text>罗马和平</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_PAX_ROMANA_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【和平互利】通往本文明城市的国际 [ICON_TradeRoute] 商路：对方出发城 +1 [ICON_Production] 生产力、+1 [ICON_Gold] 金币；本文明到达城 +3 [ICON_Gold] 金币、+1 [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_PAX_ROMANA_FLAVOR" Language="zh_Hans_CN">
+            <Text>条条大路通罗马，商旅无虞。</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_BARB_INVASION_ASSAULT_TITLE" Language="zh_Hans_CN">
             <Text>南蛮入侵</Text>
         </Replace>

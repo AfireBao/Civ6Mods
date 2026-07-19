@@ -420,6 +420,15 @@ _STATS_YIELD_HINTS: dict[str, str] = {
     "NW_AI_STATS_6": "生产力",
 }
 
+# 和平互利：入向国际商路双方产出（天朝 / 两河 / 罗马和平）
+_MUTUAL_TRADE_RELICS: frozenset[str] = frozenset(
+    {
+        "NW_AI_CELESTIAL_EMPIRE",
+        "NW_AI_FERTILE_CRESCENT",
+        "NW_AI_PAX_ROMANA",
+    }
+)
+
 
 def relic_timing_tag(relic_type: str, *, cities: int | None = None) -> str:
     """Prompt label: when the hex pays off (instant vs delayed).
@@ -435,7 +444,7 @@ def relic_timing_tag(relic_type: str, *, cities: int | None = None) -> str:
     if relic_type.startswith("NW_AI_STATS_"):
         yield_hint = _STATS_YIELD_HINTS.get(relic_type, "产出")
         return f"【即时·全城市{yield_hint}%】"
-    if relic_type == "NW_AI_CELESTIAL_EMPIRE":
+    if relic_type in _MUTUAL_TRADE_RELICS:
         return "【延迟·需国际商路生效】"
     if relic_type in get_resource_spawn_map() or "MILK" in relic_type:
         if cities is not None and cities <= 0:
@@ -853,10 +862,11 @@ def _rst_strategy_hint(rst: RstStrategyView | None, relic_type: str) -> str | No
     if strat == "CULTURE" and relic_type.startswith("NW_AI_STATS_1"):
         return "Real Strategy 主战略=文化，文化产出类候选偏高"
     if strat == "RELIGION" and (
-        relic_type.startswith("NW_AI_STATS_4") or "CELESTIAL" in relic_type
+        relic_type.startswith("NW_AI_STATS_4")
+        or relic_type == "NW_AI_CELESTIAL_EMPIRE"
     ):
         return "Real Strategy 主战略=宗教，信仰/商路类候选偏高"
-    if strat == "DIPLO" and "CELESTIAL" in relic_type:
+    if strat == "DIPLO" and relic_type in _MUTUAL_TRADE_RELICS:
         return "Real Strategy 主战略=外交，贸易互利类候选偏高"
     return None
 
@@ -878,7 +888,7 @@ def build_trait_option_synergy_hints(
             k in corpus for k in ("蛮族", "哨站", "部落", "肃清", "征集")
         ):
             hints.append("能力与蛮族/清营相关；南蛮类需权衡全场连带（触发者免疫）")
-        if "CELESTIAL" in opt and any(
+        if opt in _MUTUAL_TRADE_RELICS and any(
             k in corpus for k in ("贸易", "商路", "商人", "同盟", "Camp", "牧场")
         ):
             hints.append("贸易/同盟特性与国际商路互利协同")

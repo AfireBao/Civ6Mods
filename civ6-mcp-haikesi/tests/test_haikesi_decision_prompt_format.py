@@ -73,6 +73,15 @@ def test_leader_sections_not_absorbed_into_trait_list():
     assert "\n（完整效果见上文" in block[hist_idx:]
 
 
+def test_mutual_trade_relics_share_delayed_tag():
+    for relic in (
+        "NW_AI_CELESTIAL_EMPIRE",
+        "NW_AI_FERTILE_CRESCENT",
+        "NW_AI_PAX_ROMANA",
+    ):
+        assert "国际商路" in haikesi_lua.relic_timing_tag(relic)
+
+
 def test_markdownify_keeps_blank_line_before_gfm_table():
     raw = (
         "【本国城市】\n"
