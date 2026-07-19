@@ -89,7 +89,10 @@ local function IsCommonPlotValid(plot:table, playerID:number)
     return owner == -1 or owner == playerID;
 end
 
--- UI 侧近似 CanHaveResource（Gameplay 仍以 ResourceBuilder.CanHaveResource 为准）
+-- UI 侧近似 CanHaveResource（Gameplay 仍以 ResourceBuilder.CanHaveResource 为准）。
+-- 有地貌 → 只看 Resource_ValidFeatures；无地貌 → 只看 Resource_ValidTerrains。
+-- 注意：Features.NaturalWonder 在 Lua 里可能是 true/false 或 1/0；
+-- 切勿写 `NaturalWonder ~= 0`（false/nil 也会被当成真，导致森林/雨林等全部拒种）。
 local function UICanHaveResource(plot:table, resourceType:string)
     if plot == nil or resourceType == nil then return false; end
     local terrainInfo:table = GameInfo.Terrains[plot:GetTerrainType()];
@@ -99,27 +102,20 @@ local function UICanHaveResource(plot:table, resourceType:string)
     local featureType:string = nil;
     if featureIndex ~= nil and featureIndex >= 0 then
         local featureInfo:table = GameInfo.Features[featureIndex];
-        featureType = featureInfo and featureInfo.FeatureType or nil;
-        if featureInfo ~= nil and featureInfo.NaturalWonder ~= 0 then
+        if featureInfo == nil then return false; end
+        if featureInfo.NaturalWonder and featureInfo.NaturalWonder ~= 0 then
             return false;
         end
+        featureType = featureInfo.FeatureType;
     end
 
     local terrainRules:table = m_validTerrainsByResource[resourceType];
     local featureRules:table = m_validFeaturesByResource[resourceType];
-    local hasTerrain:boolean = terrainRules ~= nil;
-    local hasFeature:boolean = featureRules ~= nil;
-    local terrainOk:boolean = hasTerrain and terrainRules[terrainType] == true;
-    local featureOk:boolean = hasFeature and featureType ~= nil and featureRules[featureType] == true;
 
-    if hasFeature and hasTerrain then
-        return terrainOk or featureOk;
-    elseif hasFeature then
-        return featureOk;
-    elseif hasTerrain then
-        return terrainOk;
+    if featureType ~= nil then
+        return featureRules ~= nil and featureRules[featureType] == true;
     end
-    return false;
+    return terrainRules ~= nil and terrainRules[terrainType] == true;
 end
 
 local function CollectPlantableEntries(pUnit:table)

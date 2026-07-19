@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="c3a8f1e4-7b2d-4a91-9e5c-6d0f8b4a2c17" version="15">
+  <Properties>
+    <Name>LOC_CREATE_PANTHEON_NAME</Name>
+    <Description>LOC_CREATE_PANTHEON_DESCRIPTION</Description>
+    <Created>1784452800</Created>
+    <Teaser>LOC_CREATE_PANTHEON_TEASER</Teaser>
+    <Authors>LOC_CREATE_PANTHEON_AUTHOR</Authors>
+    <CompatibleVersions>1.2,2.0</CompatibleVersions>
+  </Properties>
+  <ActionCriteria>
+    <Criteria id="DA_Disabled">
+      <RuleSetInUse>RULESET_EXPANSION_2</RuleSetInUse>
+      <!-- 黑暗时代未开启 -->
+      <ModInUse inverse="1">236af578-08bc-4278-ab57-c700ab114515</ModInUse>
+    </Criteria>
+  </ActionCriteria>
+  <Dependencies>
+    <Mod id="4873eb62-8ccc-4574-b784-dda455e74e68" title="Expansion: Gathering Storm" />
+  </Dependencies>
+
+  <FrontEndActions>
+    <UpdateText id="CreatePantheon_mod" criteria="DA_Disabled">
+      <Properties><LoadOrder>28000</LoadOrder></Properties>
+      <File>CP_Text_Frontend.sql</File>
+    </UpdateText>
+  </FrontEndActions>
+
+  <InGameActions>
+    <UpdateText id="CreatePantheon_mod" criteria="DA_Disabled">
+      <File>CP_Text_Pantheons.sql</File>
+    </UpdateText>
+    <UpdateText id="CreatePantheon_Frontend" criteria="DA_Disabled">
+      <Properties><LoadOrder>28000</LoadOrder></Properties>
+      <File>CP_Text_Frontend.sql</File>
+    </UpdateText>
+    <UpdateArt id="CreatePantheon_mod" criteria="DA_Disabled">
+      <File>CreatePantheon.dep</File>
+    </UpdateArt>
+    <UpdateIcons id="CreatePantheon_mod" criteria="DA_Disabled">
+      <File>CP_Icon_Pantheons.sql</File>
+    </UpdateIcons>
+
+    <UpdateDatabase id="CreatePantheon_mod" criteria="DA_Disabled">
+      <File>CP_Pantheons.sql</File>
+    </UpdateDatabase>
+
+    <!-- VFS override of base PantheonChooser (same filename = single InGame context) -->
+    <ImportFiles id="CreatePantheon_ImportChooser" criteria="DA_Disabled">
+      <File>PantheonChooser.lua</File>
+      <File>PantheonChooser.xml</File>
+      <File>Pantheon_HeaderBanner.dds</File>
+      <File>Platforms/Windows/BLPs/CP_Texture_Pantheons.blp</File>
+    </ImportFiles>
+
+    <AddUserInterfaces id="CreatePantheon_UtilsUI" criteria="DA_Disabled">
+      <Properties>
+        <Context>InGame</Context>
+        <LoadOrder>28199</LoadOrder>
+      </Properties>
+      <File>CP_Utils_UI.xml</File>
+    </AddUserInterfaces>
+    <ImportFiles id="CreatePantheon_UtilsUI_Lua" criteria="DA_Disabled">
+      <File>CP_Utils_UI.lua</File>
+    </ImportFiles>
+
+    <AddGameplayScripts id="CreatePantheon_Utils" criteria="DA_Disabled">
+      <File>CP_Utils.lua</File>
+    </AddGameplayScripts>
+    <AddGameplayScripts id="CreatePantheon_Miracles" criteria="DA_Disabled">
+      <File>CP_Miracles.lua</File>
+    </AddGameplayScripts>
+    <AddGameplayScripts id="CreatePantheon_AI" criteria="DA_Disabled">
+      <File>CP_AI.lua</File>
+    </AddGameplayScripts>
+  </InGameActions>
+
+  <Files>
+    <File>CP_AI.lua</File>
+    <File>CP_Miracles.lua</File>
+    <File>CP_Icon_Pantheons.sql</File>
+    <File>CP_Pantheons.sql</File>
+    <File>CreatePantheon.dep</File>
+    <File>CP_Text_Pantheons.sql</File>
+    <File>CP_Text_Frontend.sql</File>
+    <File>CP_Utils.lua</File>
+    <File>CP_Utils_UI.lua</File>
+    <File>CP_Utils_UI.xml</File>
+    <File>PantheonChooser.lua</File>
+    <File>PantheonChooser.xml</File>
+    <File>CP_Requirements.sql</File>
+    <File>Pantheon_HeaderBanner.dds</File>
+    <File>Platforms/Windows/BLPs/CP_Texture_Pantheons.blp</File>
+  </Files>
+
+  <LocalizedText>
+    <Text id="LOC_CREATE_PANTHEON_NAME">
+      <en_US>[COLOR_FLOAT_SCIENCE]Create Your Pantheon Dev[ENDCOLOR]</en_US>
+      <zh_Hans_CN>[COLOR_FLOAT_SCIENCE]创造万神殿 Dev[ENDCOLOR]</zh_Hans_CN>
+    </Text>
+
+    <Text id="LOC_CREATE_PANTHEON_AUTHOR">
+      <en_US>nea_bahaja,ShizukaMogami,XiMoLan,Phantagonist,PPK; Civ6Mods Dev fixes</en_US>
+      <zh_Hans_CN>nea_bahaja,千古歌,夕墨岚,Phantagonist,皮皮凯；Civ6Mods Dev 修复</zh_Hans_CN>
+    </Text>
+
+    <Text id="LOC_CREATE_PANTHEON_DESCRIPTION">
+      <en_US>Dev fork of Create Your Pantheon. Combos only; AI terrain weights; effects via Gameplay AttachModifier (BeliefModifiers path was a no-op for devotion thresholds). Miracles event+cache. Do NOT enable with the Workshop original.</en_US>
+      <zh_Hans_CN>工坊「创造万神殿」本地 Dev：仅组合；AI 地形加权；效果由 Gameplay AttachModifier 挂载（BeliefModifiers 对神力阈值无效）。奇迹事件+缓存。请勿与工坊原版同时启用。</zh_Hans_CN>
+    </Text>
+
+    <Text id="LOC_CREATE_PANTHEON_TEASER">
+      <en_US>Choose the domain and power to create your unique pantheon. (Dev)</en_US>
+      <zh_Hans_CN>选择神格和权柄，创造属于你的万神殿（Dev）</zh_Hans_CN>
+    </Text>
+  </LocalizedText>
+</Mod>

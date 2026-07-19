@@ -8,6 +8,7 @@
 | 目录 | 内容 |
 |------|------|
 | [`Haikesi_Dev/`](Haikesi_Dev/) | 海克斯大乱斗 Dev 模组（不与工坊原版同时启用）。将本目录整体复制到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\Haikesi_Dev\` |
+| [`CreatePantheon_Dev/`](CreatePantheon_Dev/) | 创造万神殿 Dev（工坊 [Create Your Pantheon](https://steamcommunity.com/sharedfiles/filedetails/?id=2990102039) 本地分支，**v15，效果待测待查**）。复制到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\CreatePantheon_Dev\`。**勿与工坊原版同时启用**；署名与变更见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md) |
 | [`civ6-mcp-haikesi/`](civ6-mcp-haikesi/) | 基于 [civ6-mcp](https://github.com/lmwilki/civ6-mcp) 的本地副本，含海克斯 AI 决策扩展（不向 upstream 推送） |
 
 ---
@@ -48,6 +49,10 @@
    https://steamcommunity.com/sharedfiles/filedetails/?id=3758337710  
    「种地仙人」的种植入口与扣充能思路借鉴自该模组；本仓库已独立实现，不依赖、也不要求启用该工坊模组。
 
+4. **Create Your Pantheon（创造万神殿）**  
+   https://steamcommunity.com/sharedfiles/filedetails/?id=2990102039  
+   本地分支见 [`CreatePantheon_Dev/`](CreatePantheon_Dev/)（新 Mod ID，修复阈值/AI/文案）；**勿与工坊原版同时启用**。
+
 ### 拓展依赖（软依赖）
 
 下列模组增强体验，**非硬性必需**；建议与海克斯 PVE / 外部大模型流程一并启用。
@@ -64,6 +69,8 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-19 | **创造万神殿 Dev（v15，效果待测待查）**：入库 `CreatePantheon_Dev/`（新 Mod ID，勿与工坊原版同开）。组合万神殿 + AI 地形加权 Top-K；奇迹之神事件+神力缓存；神力效果 `AttachModifier`；AI 防极光堆叠（`CP_COMBO`/`CP_FoundPantheon`）。神圣之光/家神/酒神改为互斥档位（`PROP_CP_B24_*`/`B35_*`），规避同区多条 `ADJUST_*` 引擎 ×2；家神 AI 权值下调+神力多样性。**待测待查**：海神+神光港口伟人点是否仍 ×2；家神/酒神读档后互斥旗标是否恢复（Bugbot：读档未把住房/酒神列入 devotion 恢复）。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |
+| 2026-07-19 | **种地仙人 UI**：`NaturalWonder ~= 0` 误拒森林/雨林等普通地貌；有地貌只看 ValidFeatures、无地貌只看 ValidTerrains。 |
 | 2026-07-19 | **AI 和平互利扩展**：「两河粮仓」（入向商路对方粮产、本方金粮）、「罗马和平」（对方产金、本方金产）；与天朝上国同机制。 |
 | 2026-07-19 | **ExtAI 决策提示与归档**：军力未知兜底、胜利 VP 未启动改按科技项数排；历史库存去重+摘要；资源生成 0 城标空放勿选；协同弱提示/RST 降权；人类策略参考纠偏；决策日志改 Markdown（GFM 表、段间空行、Icon 剥离）；联机 wire 拒截断、`request_id` 四段防重选覆盖；憨豆间谍 `NumRandomChoices` 与原版一致以免晋升面板错乱。 |
 | 2026-07-18 | **联机 ExtAI 事件驱动**：去掉每帧 `GameCoreEventPublishComplete` 轮询，改为选卡/`LuaEvents`/EditBox 粘贴驱动；减轻后期卡顿与横幅丢失。 |
