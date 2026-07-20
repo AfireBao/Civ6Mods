@@ -145,7 +145,7 @@ insert or ignore into LocalizedText    (Language,      Tag,                     
 -- Divine Spark tier2 uses +2 (not the shared +1 DIS_EFFECT).
 insert or ignore into PantheonTexts    (Language,      GodhoodType,	PowerType,		Texts) select
 			'en_US',		GodhoodType,	PowerType,
-			'Districts with at least '||MultiNumber||' '||'{LOC_'||GodhoodType||'_POINTS} within 1 tile receive '||
+			'Districts with at least '||MultiNumber||' adjacent '||'{LOC_'||GodhoodType||'_POINTS} receive '||
 			case when PowerType = 'DIVINE_SPARK' and pwParam1 = 'THRESHOLD2'
 				then '{LOC_DIVINE_SPARK_DIS_EFFECT_T2}'
 				else '{LOC_'||PowerType||'_DIS_EFFECT}'
@@ -155,7 +155,7 @@ insert or ignore into PantheonTexts    (Language,      GodhoodType,	PowerType,		
 --三类+城市
 insert or ignore into PantheonTexts    (Language,      GodhoodType,	PowerType,		Texts) select
 			'en_US',		GodhoodType,	PowerType,
-			'City centers with at least '||MultiNumber||' '||'{LOC_'||GodhoodType||'_POINTS} within 1 tile receive '||
+			'Cities whose City Center has at least '||MultiNumber||' adjacent '||'{LOC_'||GodhoodType||'_POINTS} receive '||
 			case when PowerType = 'DIVINE_SPARK' and pwParam1 = 'THRESHOLD2'
 				then '{LOC_DIVINE_SPARK_DIS_EFFECT_T2}'
 				else '{LOC_'||PowerType||'_DIS_EFFECT}'
@@ -362,7 +362,7 @@ insert or ignore into LocalizedText    (Language,      Tag,                     
 --三类+区域（修正「拥有至少拥有」；神圣之光二档为再+2）
 insert or ignore into PantheonTexts    (Language,      GodhoodType,	PowerType,		Texts) select
 			'zh_Hans_CN',		GodhoodType,	PowerType,
-			'一格范围内（境内）至少拥有'||MultiNumber||'个'||'{LOC_'||GodhoodType||'_POINTS}的区域'||
+			'境内相邻六格中至少有'||MultiNumber||'个'||'{LOC_'||GodhoodType||'_POINTS}的区域'||
 			case when PowerType = 'DIVINE_SPARK' and pwParam1 = 'THRESHOLD2'
 				then '{LOC_DIVINE_SPARK_DIS_EFFECT_T2}'
 				else '{LOC_'||PowerType||'_DIS_EFFECT}'
@@ -372,7 +372,7 @@ insert or ignore into PantheonTexts    (Language,      GodhoodType,	PowerType,		
 --三类+城市
 insert or ignore into PantheonTexts    (Language,      GodhoodType,	PowerType,		Texts) select
 			'zh_Hans_CN',		GodhoodType,	PowerType,
-			'市中心一格范围内至少拥有'||MultiNumber||'个'||'{LOC_'||GodhoodType||'_POINTS}的城市'||
+			'市中心境内相邻六格中至少有'||MultiNumber||'个'||'{LOC_'||GodhoodType||'_POINTS}的城市'||
 			case when PowerType = 'DIVINE_SPARK' and pwParam1 = 'THRESHOLD2'
 				then '{LOC_DIVINE_SPARK_DIS_EFFECT_T2}'
 				else '{LOC_'||PowerType||'_DIS_EFFECT}'

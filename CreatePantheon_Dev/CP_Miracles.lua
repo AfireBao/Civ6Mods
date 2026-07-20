@@ -13,14 +13,24 @@ local PROP_ASUNA = "PROP_CP_MIRACLES_ASUNA"
 local PROP_DEBUG = "PROP_CP_DEBUG" -- 1/nil = log on (Dev default on); 0 = off
 local PROP_DEVOTION = "PROP_CP_DEVOTION_TRACK" -- Lua writes PROP_CP_DEV_* for spark/housing/wine/miracles
 local CACHE_KEY_PREFIX = "PROP_CP_DEV_" -- + GodhoodType on district plot
+local PROP_MIRACLE_PENDING = "PROP_CP_MIRACLE_PENDING" -- retry after district completion / failed grant
 
 -- Default thresholds (devotion points). EARTH uses appeal with *2 in original SQL.
 local DEFAULT_MIRACLE_POINTS = 6
 
 local m_godhoodDefs = nil -- godhoodType -> { class, matches = { {param1, points}, ... }, appealMul }
 local m_tier1ByDistrict = nil -- districtType -> { buildingIndex, ... }
+local m_tier1Replacements = nil -- base buildingType -> { {index, traitType}, ... }
 local m_miraclePlayers = {} -- playerID -> true (grant buildings)
 local m_devotionPlayers = {} -- playerID -> true (update PROP_CP_DEV_* for exclusive-band SQL)
+
+-- Districts with several prerequisite-free buildings need a deterministic
+-- default. Civilization-specific replacements still take priority over these.
+local TIER1_DEFAULT_BY_DISTRICT = {
+	DISTRICT_CITY_CENTER = "BUILDING_MONUMENT",
+	DISTRICT_ENCAMPMENT = "BUILDING_STABLE", -- Mongolia receives the Ordu.
+	DISTRICT_NEIGHBORHOOD = "BUILDING_FOOD_MARKET",
+}
 
 local function DebugEnabled()
 	local v = Game.GetProperty(PROP_DEBUG)
@@ -82,14 +92,17 @@ local function BuildTier1Map()
 		return
 	end
 	m_tier1ByDistrict = {}
+	m_tier1Replacements = {}
 	local hasPrereq = {}
 	for row in GameInfo.BuildingPrereqs() do
 		hasPrereq[row.Building] = true
 	end
 	for row in GameInfo.Buildings() do
 		if row.PrereqDistrict ~= nil
+			and row.PrereqDistrict ~= "DISTRICT_GOVERNMENT"
 			and row.InternalOnly ~= true
 			and row.MustPurchase ~= true
+			and row.TraitType == nil
 			and not hasPrereq[row.BuildingType]
 		then
 			local d = row.PrereqDistrict
@@ -98,6 +111,26 @@ local function BuildTier1Map()
 				m_tier1ByDistrict[d] = m_tier1ByDistrict[d] or {}
 				table.insert(m_tier1ByDistrict[d], row.Index)
 			end
+		end
+	end
+	-- Every civilization-specific district inherits the tier-1 buildings of the
+	-- base district it replaces (Lavra -> Holy Site, Cothon -> Harbor, etc.).
+	for row in GameInfo.DistrictReplaces() do
+		local baseList = m_tier1ByDistrict[row.ReplacesDistrictType]
+		if baseList ~= nil then
+			m_tier1ByDistrict[row.CivUniqueDistrictType] = baseList
+		end
+	end
+	-- If a civilization replaces a tier-1 building, grant its unique version.
+	for row in GameInfo.BuildingReplaces() do
+		local unique = GameInfo.Buildings[row.CivUniqueBuildingType]
+		if unique ~= nil and unique.TraitType ~= nil then
+			local list = m_tier1Replacements[row.ReplacesBuildingType]
+			if list == nil then
+				list = {}
+				m_tier1Replacements[row.ReplacesBuildingType] = list
+			end
+			table.insert(list, { index = unique.Index, traitType = unique.TraitType })
 		end
 	end
 	local n = 0
@@ -141,7 +174,8 @@ local function PlotMatches(plot, match, class)
 	return false
 end
 
--- Devotion score for one godhood at a district plot (ring 0..1), matching SQL WITHIN_1 semantics.
+-- District devotion comes only from adjacent plots. The district's underlying
+-- tile has its separate tile-devotion value and must not feed the district.
 local function ComputeDevotion(districtPlot, godhoodType)
 	BuildGodhoodDefs()
 	local def = m_godhoodDefs[godhoodType]
@@ -164,7 +198,6 @@ local function ComputeDevotion(districtPlot, godhoodType)
 			end
 		end
 	end
-	consider(districtPlot)
 	for dir = 0, DirectionTypes.NUM_DIRECTION_TYPES - 1 do
 		consider(Map.GetAdjacentPlot(cx, cy, dir))
 	end
@@ -197,33 +230,209 @@ local function Band(score, threshold)
 	return 0
 end
 
-local function GrantTier1ForDistrict(playerID, city, district)
-	BuildTier1Map()
-	if city == nil or district == nil then
+local function DistrictIsComplete(district)
+	if district == nil then
+		return false
+	end
+	if type(district.IsComplete) ~= "function" then
+		return true
+	end
+	local ok, complete = pcall(function()
+		return district:IsComplete()
+	end)
+	return ok and complete == true
+end
+
+-- CreateBuilding bypasses the production queue, so Miracle must enforce unlocks itself.
+local function PlayerMeetsBuildingUnlock(playerID, buildingRow)
+	if buildingRow == nil then
+		return false
+	end
+	local player = Players[playerID]
+	if player == nil then
+		return false
+	end
+	if buildingRow.PrereqTech ~= nil then
+		local tech = GameInfo.Technologies[buildingRow.PrereqTech]
+		local techs = player:GetTechs()
+		if tech == nil or techs == nil or not techs:HasTech(tech.Index) then
+			return false
+		end
+	end
+	if buildingRow.PrereqCivic ~= nil then
+		local civic = GameInfo.Civics[buildingRow.PrereqCivic]
+		local culture = player:GetCulture()
+		if civic == nil or culture == nil or not culture:HasCivic(civic.Index) then
+			return false
+		end
+	end
+	return true
+end
+
+local function ResolveTier1Building(playerID, baseIndex)
+	local base = GameInfo.Buildings[baseIndex]
+	if base == nil or m_tier1Replacements == nil then
+		return baseIndex, false
+	end
+	local replacements = m_tier1Replacements[base.BuildingType]
+	if replacements == nil then
+		return baseIndex, false
+	end
+	local utils = ExposedMembers.DA and ExposedMembers.DA.Utils
+	if utils ~= nil and type(utils.PlayerHasTrait) == "function" then
+		for _, replacement in ipairs(replacements) do
+			if utils.PlayerHasTrait(playerID, replacement.traitType) then
+				return replacement.index, true
+			end
+		end
+	end
+	return baseIndex, false
+end
+
+local function ChooseTier1Building(playerID, districtType, list, buildings)
+	local candidates = {}
+	for _, baseIndex in ipairs(list) do
+		local resolvedIndex, isUnique = ResolveTier1Building(playerID, baseIndex)
+		local base = GameInfo.Buildings[baseIndex]
+		local resolved = GameInfo.Buildings[resolvedIndex]
+		if base ~= nil and resolved ~= nil then
+			-- Respect a choice the player already made; never add another branch
+			-- of Barracks/Stable afterward.
+			if buildings:HasBuilding(resolvedIndex) or buildings:HasBuilding(baseIndex) then
+				return nil, "already has " .. resolved.BuildingType
+			end
+			-- Skip locked options (Stable needs Horseback Riding; Barracks needs Bronze Working).
+			if not PlayerMeetsBuildingUnlock(playerID, resolved) then
+				CPLog("tier1 locked", resolved.BuildingType,
+					"tech", tostring(resolved.PrereqTech),
+					"civic", tostring(resolved.PrereqCivic))
+			else
+				table.insert(candidates, {
+					index = resolvedIndex,
+					baseType = base.BuildingType,
+					buildingType = resolved.BuildingType,
+					isUnique = isUnique,
+					cost = tonumber(resolved.Cost) or 0,
+				})
+			end
+		end
+	end
+	if #candidates == 0 then
+		return nil, "prereq locked"
+	end
+	table.sort(candidates, function(a, b)
+		if a.isUnique ~= b.isUnique then
+			return a.isUnique
+		end
+		if a.cost ~= b.cost then
+			return a.cost < b.cost
+		end
+		return a.buildingType < b.buildingType
+	end)
+	-- Unlocked unique replacement wins (Ordu once Horseback Riding is known).
+	if candidates[1].isUnique then
+		return candidates[1].index, "unique"
+	end
+	-- Encampment: Stable first if unlocked; otherwise Barracks via fallback.
+	local preferredType = TIER1_DEFAULT_BY_DISTRICT[districtType]
+	if preferredType ~= nil then
+		for _, candidate in ipairs(candidates) do
+			if candidate.baseType == preferredType then
+				return candidate.index, "preset"
+			end
+		end
+	end
+	return candidates[1].index, "fallback"
+end
+
+-- Divine Spark v16: use hidden city-center buildings only as LO/HI markers.
+-- The actual GPP comes from Lavra-style city modifiers in CP_Pantheons.sql.
+local function SyncSparkCityMarker(playerID, city, district, godhoodType, score)
+	local player = Players[playerID]
+	if player == nil or city == nil or district == nil then
+		return
+	end
+	if player:GetProperty(PROP_POWER) ~= SPARK_POWER
+		or player:GetProperty(PROP_GODHOOD) ~= godhoodType then
 		return
 	end
 	local dInfo = GameInfo.Districts[district:GetType()]
 	if dInfo == nil then
 		return
 	end
+	local suffix = string.gsub(dInfo.DistrictType, "^DISTRICT_", "")
+	local lowInfo = GameInfo.Buildings["BUILDING_CP_SPARK_" .. suffix .. "_LO"]
+	local highInfo = GameInfo.Buildings["BUILDING_CP_SPARK_" .. suffix .. "_HI"]
+	if lowInfo == nil or highInfo == nil then
+		-- Districts without a District_GreatPersonPoints row intentionally have no markers.
+		return
+	end
+
+	local desiredLow = score >= 2 and score < 4
+	local desiredHigh = score >= 4
+	local buildings = city:GetBuildings()
+	local queue = city:GetBuildQueue()
+	local function setMarker(info, wanted)
+		local has = buildings:HasBuilding(info.Index)
+		if wanted and not has then
+			queue:CreateBuilding(info.Index)
+			CPLog("Spark city marker ADD", "p", playerID, "city", city:GetID(), info.BuildingType)
+		elseif not wanted and has then
+			buildings:RemoveBuilding(info.Index)
+			CPLog("Spark city marker REMOVE", "p", playerID, "city", city:GetID(), info.BuildingType)
+		end
+	end
+	-- Remove the opposite band first, so the two city GPP modifiers never overlap.
+	if desiredHigh then
+		setMarker(lowInfo, false)
+		setMarker(highInfo, true)
+	elseif desiredLow then
+		setMarker(highInfo, false)
+		setMarker(lowInfo, true)
+	else
+		setMarker(lowInfo, false)
+		setMarker(highInfo, false)
+	end
+end
+
+local function GrantTier1ForDistrict(playerID, city, district)
+	BuildTier1Map()
+	if city == nil or district == nil then
+		return false
+	end
+	if not DistrictIsComplete(district) then
+		CPLog("GRANT blocked; district incomplete")
+		return false
+	end
+	local dInfo = GameInfo.Districts[district:GetType()]
+	if dInfo == nil then
+		return false
+	end
 	local list = m_tier1ByDistrict[dInfo.DistrictType]
 	if list == nil then
 		CPLog("no tier1 for", dInfo.DistrictType)
-		return
+		return true
 	end
 	local buildings = city:GetBuildings()
 	local queue = city:GetBuildQueue()
-	for _, bIndex in ipairs(list) do
-		local bRow = GameInfo.Buildings[bIndex]
-		local bName = bRow and bRow.BuildingType or tostring(bIndex)
-		if not buildings:HasBuilding(bIndex) then
-			CPLog("GRANT", "player", playerID, "city", city:GetID(),
-				"district", dInfo.DistrictType, "building", bName)
-			queue:CreateBuilding(bIndex)
-		else
-			CPLog("skip already has", bName)
+	local bIndex, reason = ChooseTier1Building(playerID, dInfo.DistrictType, list, buildings)
+	if bIndex == nil then
+		CPLog("skip tier1", dInfo.DistrictType, reason)
+		-- Keep pending when every option is still locked; clear when already satisfied.
+		if reason ~= nil and string.find(reason, "already has", 1, true) == 1 then
+			return true
 		end
+		return false
 	end
+	local bRow = GameInfo.Buildings[bIndex]
+	local bName = bRow and bRow.BuildingType or tostring(bIndex)
+	CPLog("GRANT attempt", "player", playerID, "city", city:GetID(),
+		"district", dInfo.DistrictType, "building", bName, "rule", reason)
+	queue:CreateBuilding(bIndex)
+	local granted = buildings:HasBuilding(bIndex)
+	CPLog(granted and "GRANT verified" or "GRANT failed; pending retry",
+		"player", playerID, "city", city:GetID(), "building", bName)
+	return granted
 end
 
 local function GodhoodsForPlayer(playerID)
@@ -279,21 +488,28 @@ local function PlayerTracksDevotion(playerID)
 		or player:GetProperty(PROP_ACTIVE) == 1
 end
 
--- Core C+A: recompute one district for one godhood; grant only on band cross or forceGrant
-local function RefreshDistrictGodhood(playerID, city, district, godhoodType, forceGrant)
+-- Core C+A: recompute one district for one godhood; grant only after completion.
+-- districtReady=false: placement / under construction — cache devotion only.
+-- districtReady=true: completed district — sync spark markers and attempt grants.
+local function RefreshDistrictGodhood(playerID, city, district, godhoodType, forceGrant, districtReady)
 	local plot = Map.GetPlot(district:GetX(), district:GetY())
 	if plot == nil then
 		return
 	end
+	if districtReady == nil then
+		districtReady = DistrictIsComplete(district)
+	end
+	local pending = plot:GetProperty(PROP_MIRACLE_PENDING) == 1
 	local threshold = MiracleThreshold(godhoodType)
 	local oldScore = GetCachedDevotion(plot, godhoodType)
 	local newScore = ComputeDevotion(plot, godhoodType)
 	local oldBand = (oldScore == nil) and -1 or Band(oldScore, threshold)
 	local newBand = Band(newScore, threshold)
 
-	-- C: only cache when score changes; spark still needs property even on first write.
-	-- When oldScore is nil (never cached), always write.
-	if oldScore == newScore and oldScore ~= nil and not forceGrant then
+	-- Cache hit: still fall through when a pending grant needs a completion retry.
+	if oldScore == newScore and oldScore ~= nil and not forceGrant
+		and not (pending and districtReady)
+	then
 		CPLog("cache hit", "p", playerID, "gh", godhoodType,
 			"xy", plot:GetX(), plot:GetY(), "dev", newScore, "noop")
 		return
@@ -303,33 +519,55 @@ local function RefreshDistrictGodhood(playerID, city, district, godhoodType, for
 	CPLog("devotion", "p", playerID, "gh", godhoodType,
 		"xy", plot:GetX(), plot:GetY(),
 		"old", tostring(oldScore), "->", newScore,
-		"band", oldBand, "->", newBand, "thr", threshold)
+		"band", oldBand, "->", newBand, "thr", threshold,
+		"ready", districtReady and 1 or 0)
 
-	-- Building grants only for God of Miracles; housing/wine/spark only need the property.
+	local dInfo = GameInfo.Districts[district:GetType()]
+	local isCityCenter = dInfo ~= nil and dInfo.DistrictType == "DISTRICT_CITY_CENTER"
+
+	-- Incomplete specialty district: never CreateBuilding; mark pending if eligible.
+	if not districtReady then
+		if PlayerHasMiracles(playerID) and not isCityCenter and newBand == 1 then
+			plot:SetProperty(PROP_MIRACLE_PENDING, 1)
+			CPLog("district incomplete; grant deferred", "p", playerID,
+				"xy", plot:GetX(), plot:GetY(), "dev", newScore)
+		else
+			plot:SetProperty(PROP_MIRACLE_PENDING, nil)
+		end
+		return
+	end
+
+	SyncSparkCityMarker(playerID, city, district, godhoodType, newScore)
+
 	if not PlayerHasMiracles(playerID) then
 		return
 	end
-
-	-- City center: write PROP_CP_DEV_* for housing/wine, but never grant miracle buildings.
-	local dInfo = GameInfo.Districts[district:GetType()]
-	if dInfo ~= nil and dInfo.DistrictType == "DISTRICT_CITY_CENTER" then
+	if isCityCenter then
+		plot:SetProperty(PROP_MIRACLE_PENDING, nil)
+		return
+	end
+	if newBand ~= 1 then
+		plot:SetProperty(PROP_MIRACLE_PENDING, nil)
+		if oldBand ~= newBand then
+			CPLog("band change no grant", "p", playerID, "oldBand", oldBand, "newBand", newBand)
+		end
 		return
 	end
 
-	-- C: only meaningful when crossing into active band, or forced (new district / load)
-	if newBand == 1 and (oldBand < 1 or forceGrant) then
-		CPLog("threshold crossed / force → grant", "p", playerID, "gh", godhoodType)
-		GrantTier1ForDistrict(playerID, city, district)
-	elseif oldBand ~= newBand then
-		CPLog("band change no grant", "p", playerID, "oldBand", oldBand, "newBand", newBand)
+	-- Grant on threshold cross, completion/load force, or pending retry after failed CreateBuilding.
+	if oldBand < 1 or forceGrant or pending then
+		CPLog("threshold / complete / pending → grant", "p", playerID, "gh", godhoodType,
+			"force", forceGrant and 1 or 0, "pending", pending and 1 or 0)
+		local granted = GrantTier1ForDistrict(playerID, city, district)
+		plot:SetProperty(PROP_MIRACLE_PENDING, granted and nil or 1)
 	else
 		CPLog("score change within same band — skipped grant")
 	end
 end
 
-local function RefreshDistrict(playerID, city, district, forceGrant)
+local function RefreshDistrict(playerID, city, district, forceGrant, districtReady)
 	for _, gh in ipairs(GodhoodsForPlayer(playerID)) do
-		RefreshDistrictGodhood(playerID, city, district, gh, forceGrant)
+		RefreshDistrictGodhood(playerID, city, district, gh, forceGrant, districtReady)
 	end
 end
 
@@ -630,7 +868,7 @@ local function ApplyAsunaExtras(playerID, godhoodType, powerType)
 end
 
 -- Exact Godhood×Power modifiers via AttachModifier (original CP apply path).
--- Divine Spark uses mutually exclusive LO/HI SQL bands (never two GPP mods at once).
+-- Divine Spark uses Lavra-style city GPP gated by mutually exclusive marker buildings.
 local function AttachExactPairModifiers(playerID, godhoodType, powerType)
 	if powerType == MIRACLE_POWER then
 		return 0
@@ -656,9 +894,7 @@ local function AttachExactPairModifiers(playerID, godhoodType, powerType)
 	CPLog("AttachExactPair", "p", playerID, godhoodType, powerType, "count", n)
 	if powerType == SPARK_POWER and n > 0 then
 		local sample = DB.Query(
-			"SELECT ModifierId, ModifierType, SubjectRequirementSetId FROM Modifiers WHERE ModifierId LIKE 'CPDS_"
-				.. godhoodType
-				.. "_DISTRICT_HARBOR%'"
+			"SELECT ModifierId, ModifierType, SubjectRequirementSetId FROM Modifiers WHERE ModifierId LIKE 'CPCS_HARBOR_%'"
 		)
 		if sample ~= nil then
 			for _, row in ipairs(sample) do
@@ -726,9 +962,9 @@ local function LogSeaDivineSparkProbe(playerID, godhoodType)
 					dev,
 					"expectAdmiral",
 					1 + spark,
-					"(base1+sqlSpark",
+					"(base1+citySpark",
 					spark,
-					") LO/HI exclusive"
+					") Lavra-style LO/HI"
 				)
 			elseif holyIdx >= 0 and dType == holyIdx then
 				foundHoly = foundHoly + 1
@@ -873,13 +1109,10 @@ if Events.FeatureRemovedFromMap then
 	Events.FeatureRemovedFromMap.Add(OnFeatureChanged)
 end
 
-function OnDistrictAdded(playerID, districtID, cityID, districtX, districtY)
-	if not PlayerTracksDevotion(playerID) then
-		return
-	end
+local function ResolveDistrictForEvent(playerID, districtID, cityID, districtX, districtY)
 	local city = CityManager.GetCity(playerID, cityID)
 	if city == nil then
-		return
+		return nil, nil
 	end
 	local district = nil
 	local districts = city:GetDistricts()
@@ -894,16 +1127,70 @@ function OnDistrictAdded(playerID, districtID, cityID, districtX, districtY)
 			district = d
 		end
 	end
+	return city, district
+end
+
+-- Placement: cache devotion only. Do not grant until the district is complete.
+function OnDistrictAdded(playerID, districtID, cityID, districtX, districtY)
+	if not PlayerTracksDevotion(playerID) then
+		return
+	end
+	local city, district = ResolveDistrictForEvent(playerID, districtID, cityID, districtX, districtY)
 	if district ~= nil then
-		CPLog("DistrictAdded", "p", playerID, "xy", districtX, districtY)
-		RefreshDistrict(playerID, city, district, true)
+		local ready = DistrictIsComplete(district)
+		CPLog("DistrictAdded", "p", playerID, "xy", districtX, districtY, "ready", ready and 1 or 0)
+		-- Incomplete: forceGrant=false, districtReady=false → cache + pending only.
+		-- Already complete (instant / repaired): force grant after recompute.
+		RefreshDistrict(playerID, city, district, ready, ready)
 	else
 		CPLog("DistrictAdded unresolved", "p", playerID, "xy", districtX, districtY, "→ FullScan")
 		FullScanPlayer(playerID, "district_added_fallback")
 	end
 end
 
+-- Completion: recompute adjacent devotion, then grant if the threshold is met.
+function OnDistrictBuildProgressChanged(playerID, districtID, cityID, districtX, districtY,
+	districtType, era, civilization, percentComplete, appeal, isPillaged)
+	if not PlayerTracksDevotion(playerID) then
+		return
+	end
+	local city, district = ResolveDistrictForEvent(playerID, districtID, cityID, districtX, districtY)
+	if district == nil then
+		return
+	end
+	local ready = DistrictIsComplete(district)
+		or (percentComplete ~= nil and tonumber(percentComplete) ~= nil and tonumber(percentComplete) >= 100)
+	if not ready then
+		return
+	end
+	CPLog("DistrictComplete", "p", playerID, "xy", districtX, districtY,
+		"pct", tostring(percentComplete))
+	RefreshDistrict(playerID, city, district, true, true)
+end
+
 Events.DistrictAddedToMap.Add(OnDistrictAdded)
+if Events.DistrictBuildProgressChanged then
+	Events.DistrictBuildProgressChanged.Add(OnDistrictBuildProgressChanged)
+end
+
+-- Retry Miracle grants when a tech/civic unlocks a previously locked tier-1 (e.g. Barracks → Stable).
+local function OnUnlockMaybeRetryMiracle(playerID, reason)
+	if not PlayerHasMiracles(playerID) then
+		return
+	end
+	FullScanPlayer(playerID, reason)
+end
+
+if Events.ResearchCompleted then
+	Events.ResearchCompleted.Add(function(playerID, techIndex)
+		OnUnlockMaybeRetryMiracle(playerID, "tech")
+	end)
+end
+if Events.CivicCompleted then
+	Events.CivicCompleted.Add(function(playerID, civicIndex)
+		OnUnlockMaybeRetryMiracle(playerID, "civic")
+	end)
+end
 
 local function RescanAllMiraclePlayers(reason)
 	BuildGodhoodDefs()
@@ -913,24 +1200,21 @@ local function RescanAllMiraclePlayers(reason)
 	for _, player in ipairs(PlayerManager.GetAliveMajors()) do
 		local pid = player:GetID()
 		local pw = player:GetProperty(PROP_POWER)
-		if player:GetProperty(PROP_ACTIVE) == 1 then
+		local asuna = player:GetProperty(PROP_ASUNA) == 1
+		if player:GetProperty(PROP_ACTIVE) == 1 or pw == MIRACLE_POWER or asuna then
+			-- Miracles (and Asuna) need grant + devotion rescan.
+			player:SetProperty(PROP_ACTIVE, 1)
+			player:SetProperty(PROP_DEVOTION, 1)
 			m_miraclePlayers[pid] = true
 			m_devotionPlayers[pid] = true
-			player:SetProperty(PROP_DEVOTION, 1)
 			FullScanPlayer(pid, reason)
-		elseif pw == SPARK_POWER then
+		elseif pw == SPARK_POWER or pw == HOUSING_POWER or pw == WINE_POWER
+			or player:GetProperty(PROP_DEVOTION) == 1
+		then
+			-- Divine Spark / Religious Settlements / God of Wine: rewrite band flags only.
 			m_devotionPlayers[pid] = true
 			player:SetProperty(PROP_DEVOTION, 1)
-			FullScanPlayer(pid, reason .. "_spark")
-		elseif pw == MIRACLE_POWER
-			or (player:GetProperty(PROP_ASUNA) == 1 and player:GetProperty(PROP_GODHOOD) ~= nil) then
-			if pw == MIRACLE_POWER or player:GetProperty(PROP_ASUNA) == 1 then
-				player:SetProperty(PROP_ACTIVE, 1)
-				player:SetProperty(PROP_DEVOTION, 1)
-				m_miraclePlayers[pid] = true
-				m_devotionPlayers[pid] = true
-				FullScanPlayer(pid, reason .. "_recover")
-			end
+			FullScanPlayer(pid, reason .. "_devotion")
 		end
 	end
 end

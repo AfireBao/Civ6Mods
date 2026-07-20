@@ -474,7 +474,7 @@ select 'REQ_OBJECT_WITHIN_'||numbers||'_TILES', 'REQUIREMENT_PLOT_ADJACENT_TO_OW
 from counter where numbers >= 1 and numbers <= 10;
 
 insert or replace into RequirementArguments (RequirementId, Name, Value)
-select 'REQ_OBJECT_WITHIN_'||numbers||'_TILES', 'MinDistance', '0'
+select 'REQ_OBJECT_WITHIN_'||numbers||'_TILES', 'MinDistance', '1'
 from counter where numbers >= 1 and numbers <= 10;
 
 insert or replace into RequirementArguments (RequirementId, Name, Value)

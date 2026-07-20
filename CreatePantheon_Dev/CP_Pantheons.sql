@@ -53,7 +53,7 @@ select 'REQ_OBJECT_WITHIN_'||numbers||'_TILES', 'REQUIREMENT_PLOT_ADJACENT_TO_OW
 from counter where numbers >= 1 and numbers <= 10;
 
 insert or ignore into RequirementArguments (RequirementId, Name, Value)
-select 'REQ_OBJECT_WITHIN_'||numbers||'_TILES', 'MinDistance', '0'
+select 'REQ_OBJECT_WITHIN_'||numbers||'_TILES', 'MinDistance', '1'
 from counter where numbers >= 1 and numbers <= 10;
 
 insert or ignore into RequirementArguments (RequirementId, Name, Value)
@@ -526,13 +526,12 @@ insert or ignore into DynamicModifiers (ModifierType, CollectionType, EffectType
 	from GodHood,  District_GreatPersonPoints where ghClass in ('IMPROVEMENT',	'FEATURE',	'TERRAIN', 'APPEAL');
 
 -- =============================================================================
--- Divine Spark (v15) — mutually exclusive bands (never two GPP mods on one district)
--- Bug: two ADJUST_GREAT_PERSON_POINTS on the same district+GP class doubles
--- (base+mods)×2. Fix: only one modifier active at a time.
---   2 ≤ devotion < 4  → +1
---   devotion ≥ 4      → +3  (equals old +1 then +2, single modifier)
--- v13/v14 used Inverse LT_4 on PROP_CP_DEV_* — Inverse does not exclude the high
--- band (Sea+3 boats → (1+1+3)×2=10). v15: Lua writes exclusive PROP_CP_B24_LO/HI.
+-- Divine Spark (v16) — Lavra-style city GPP, gated by hidden marker buildings.
+-- Do not alter the district's own GPP: multiple district GPP modifiers can make
+-- Civ VI enumerate the district source twice. Lua keeps exactly one LO/HI marker
+-- in the owning city; these modifiers add a separate city-level GPP source.
+--   2 <= devotion < 4  -> +1
+--   devotion >= 4      -> +3  (old +1 then +2, represented by one modifier)
 -- =============================================================================
 delete from PantheonModifiers where PowerType = 'DIVINE_SPARK';
 delete from ModifierArguments where ModifierId like '%_DIVINE_SPARK_%' or ModifierId like 'CPDS_%';
@@ -585,122 +584,108 @@ insert or ignore into RequirementArguments (RequirementId, Name, Value) select
 	'REQ_CP_B35_HI_'||GodhoodType, 'PropertyMinimum', '1'
 	from GodHood where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL');
 
--- Low band SubjectReq: district type + B24_LO flag
-insert or ignore into RequirementSets (RequirementSetId, RequirementSetType) select
-	'RS_CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_LO',
+-- One unbuildable city-center marker per district and band. Lua grants/removes
+-- these markers as devotion changes. They carry no yields themselves.
+insert or ignore into Types(Type, Kind) select distinct
+	'BUILDING_CP_SPARK_'||replace(DistrictType, 'DISTRICT_', '')||'_LO', 'KIND_BUILDING'
+	from District_GreatPersonPoints;
+insert or ignore into Types(Type, Kind) select distinct
+	'BUILDING_CP_SPARK_'||replace(DistrictType, 'DISTRICT_', '')||'_HI', 'KIND_BUILDING'
+	from District_GreatPersonPoints;
+
+insert or ignore into Buildings
+	(BuildingType, Name, Description, PrereqDistrict, Cost, MustPurchase, AdvisorType)
+	select distinct
+		'BUILDING_CP_SPARK_'||replace(DistrictType, 'DISTRICT_', '')||'_LO',
+		'LOC_BELIEF_DIVINE_SPARK_NAME', 'LOC_BELIEF_DIVINE_SPARK_DESCRIPTION',
+		'DISTRICT_CITY_CENTER', 1, 1, 'ADVISOR_RELIGIOUS'
+	from District_GreatPersonPoints;
+insert or ignore into Buildings
+	(BuildingType, Name, Description, PrereqDistrict, Cost, MustPurchase, AdvisorType)
+	select distinct
+		'BUILDING_CP_SPARK_'||replace(DistrictType, 'DISTRICT_', '')||'_HI',
+		'LOC_BELIEF_DIVINE_SPARK_NAME', 'LOC_BELIEF_DIVINE_SPARK_DESCRIPTION',
+		'DISTRICT_CITY_CENTER', 1, 1, 'ADVISOR_RELIGIOUS'
+	from District_GreatPersonPoints;
+
+-- Lavra-style city requirement: marker building present in this city.
+insert or ignore into Requirements(RequirementId, RequirementType) select distinct
+	'REQ_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_LO',
+	'REQUIREMENT_CITY_HAS_BUILDING'
+	from District_GreatPersonPoints;
+insert or ignore into RequirementArguments(RequirementId, Name, Value) select distinct
+	'REQ_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_LO',
+	'BuildingType', 'BUILDING_CP_SPARK_'||replace(DistrictType, 'DISTRICT_', '')||'_LO'
+	from District_GreatPersonPoints;
+insert or ignore into Requirements(RequirementId, RequirementType) select distinct
+	'REQ_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_HI',
+	'REQUIREMENT_CITY_HAS_BUILDING'
+	from District_GreatPersonPoints;
+insert or ignore into RequirementArguments(RequirementId, Name, Value) select distinct
+	'REQ_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_HI',
+	'BuildingType', 'BUILDING_CP_SPARK_'||replace(DistrictType, 'DISTRICT_', '')||'_HI'
+	from District_GreatPersonPoints;
+
+insert or ignore into RequirementSets(RequirementSetId, RequirementSetType) select distinct
+	'RS_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_LO',
 	'REQUIREMENTSET_TEST_ALL'
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-	and DistrictType not in (select CivUniqueDistrictType from DistrictReplaces);
-
-insert or ignore into RequirementSetRequirements (RequirementSetId, RequirementId) select
-	'RS_CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_LO',
-	case DistrictType
-		when 'DISTRICT_CAMPUS' then 'REQUIRES_DISTRICT_IS_CAMPUS'
-		when 'DISTRICT_HOLY_SITE' then 'REQUIRES_DISTRICT_IS_HOLY_SITE'
-		when 'DISTRICT_HARBOR' then 'REQUIRES_DISTRICT_IS_HARBOR'
-		when 'DISTRICT_COMMERCIAL_HUB' then 'REQUIRES_DISTRICT_IS_COMMERCIAL_HUB'
-		when 'DISTRICT_ENCAMPMENT' then 'REQUIRES_DISTRICT_IS_ENCAMPMENT'
-		when 'DISTRICT_INDUSTRIAL_ZONE' then 'REQUIRES_DISTRICT_IS_INDUSTRIAL_ZONE'
-		when 'DISTRICT_THEATER' then 'REQUIRES_DISTRICT_IS_THEATER'
-		when 'DISTRICT_ENTERTAINMENT_COMPLEX' then 'REQUIRES_DISTRICT_IS_ENTERTAINMENT_COMPLEX'
-		else 'REQ_PLOT_HAS_'||DistrictType
-	end
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-	and DistrictType not in (select CivUniqueDistrictType from DistrictReplaces);
-
-insert or ignore into RequirementSetRequirements (RequirementSetId, RequirementId) select
-	'RS_CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_LO',
-	'REQ_CP_B24_LO_'||GodhoodType
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-	and DistrictType not in (select CivUniqueDistrictType from DistrictReplaces);
-
--- High band SubjectReq: district type + B24_HI flag
-insert or ignore into RequirementSets (RequirementSetId, RequirementSetType) select
-	'RS_CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_HI',
+	from District_GreatPersonPoints;
+insert or ignore into RequirementSetRequirements(RequirementSetId, RequirementId) select distinct
+	'RS_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_LO',
+	'REQ_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_LO'
+	from District_GreatPersonPoints;
+insert or ignore into RequirementSets(RequirementSetId, RequirementSetType) select distinct
+	'RS_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_HI',
 	'REQUIREMENTSET_TEST_ALL'
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL');
+	from District_GreatPersonPoints;
+insert or ignore into RequirementSetRequirements(RequirementSetId, RequirementId) select distinct
+	'RS_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_HI',
+	'REQ_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_HI'
+	from District_GreatPersonPoints;
 
-insert or ignore into RequirementSetRequirements (RequirementSetId, RequirementId) select
-	'RS_CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_HI',
-	case DistrictType
-		when 'DISTRICT_CAMPUS' then 'REQUIRES_DISTRICT_IS_CAMPUS'
-		when 'DISTRICT_HOLY_SITE' then 'REQUIRES_DISTRICT_IS_HOLY_SITE'
-		when 'DISTRICT_HARBOR' then 'REQUIRES_DISTRICT_IS_HARBOR'
-		when 'DISTRICT_COMMERCIAL_HUB' then 'REQUIRES_DISTRICT_IS_COMMERCIAL_HUB'
-		when 'DISTRICT_ENCAMPMENT' then 'REQUIRES_DISTRICT_IS_ENCAMPMENT'
-		when 'DISTRICT_INDUSTRIAL_ZONE' then 'REQUIRES_DISTRICT_IS_INDUSTRIAL_ZONE'
-		when 'DISTRICT_THEATER' then 'REQUIRES_DISTRICT_IS_THEATER'
-		when 'DISTRICT_ENTERTAINMENT_COMPLEX' then 'REQUIRES_DISTRICT_IS_ENTERTAINMENT_COMPLEX'
-		else 'REQ_PLOT_HAS_'||DistrictType
-	end
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL');
-
-insert or ignore into RequirementSetRequirements (RequirementSetId, RequirementId) select
-	'RS_CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_HI',
-	'REQ_CP_B24_HI_'||GodhoodType
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL');
-
--- Low: +1 (only when high is off)
+-- Every Godhood+Divine Spark pair attaches the same city-level modifier set.
 insert or ignore into PantheonModifiers(GodhoodType, PowerType, ModifierId) select
 	GodhoodType, 'DIVINE_SPARK',
-	'CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_LO'
+	'CPCS_'||replace(DistrictType, 'DISTRICT_', '')||'_'||
+		replace(GreatPersonClassType, 'GREAT_PERSON_CLASS_', '')||'_LO'
 	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-	and DistrictType not in (select CivUniqueDistrictType from DistrictReplaces);
-
-insert or ignore into Modifiers(ModifierId, ModifierType, SubjectRequirementSetId) select
-	'CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_LO',
-	'MODIFIER_PLAYER_DISTRICTS_ADJUST_GREAT_PERSON_POINTS',
-	'RS_CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_LO'
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-	and DistrictType not in (select CivUniqueDistrictType from DistrictReplaces);
-
-insert or ignore into ModifierArguments(ModifierId, Name, Value) select
-	'CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_LO',
-	'Amount', 1
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-	and DistrictType not in (select CivUniqueDistrictType from DistrictReplaces);
-
-insert or ignore into ModifierArguments(ModifierId, Name, Value) select
-	'CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_LO',
-	'GreatPersonClassType', GreatPersonClassType
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-	and DistrictType not in (select CivUniqueDistrictType from DistrictReplaces);
-
--- High: +3 in one modifier (include unique districts)
+	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL');
 insert or ignore into PantheonModifiers(GodhoodType, PowerType, ModifierId) select
 	GodhoodType, 'DIVINE_SPARK',
-	'CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_HI'
+	'CPCS_'||replace(DistrictType, 'DISTRICT_', '')||'_'||
+		replace(GreatPersonClassType, 'GREAT_PERSON_CLASS_', '')||'_HI'
 	from GodHood, District_GreatPersonPoints
 	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL');
 
 insert or ignore into Modifiers(ModifierId, ModifierType, SubjectRequirementSetId) select
-	'CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_HI',
-	'MODIFIER_PLAYER_DISTRICTS_ADJUST_GREAT_PERSON_POINTS',
-	'RS_CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_HI'
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL');
+	'CPCS_'||replace(DistrictType, 'DISTRICT_', '')||'_'||
+		replace(GreatPersonClassType, 'GREAT_PERSON_CLASS_', '')||'_LO',
+	'MODIFIER_PLAYER_CITIES_ADJUST_GREAT_PERSON_POINT_BASE',
+	'RS_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_LO'
+	from District_GreatPersonPoints;
+insert or ignore into Modifiers(ModifierId, ModifierType, SubjectRequirementSetId) select
+	'CPCS_'||replace(DistrictType, 'DISTRICT_', '')||'_'||
+		replace(GreatPersonClassType, 'GREAT_PERSON_CLASS_', '')||'_HI',
+	'MODIFIER_PLAYER_CITIES_ADJUST_GREAT_PERSON_POINT_BASE',
+	'RS_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_HI'
+	from District_GreatPersonPoints;
 
 insert or ignore into ModifierArguments(ModifierId, Name, Value) select
-	'CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_HI',
-	'Amount', 3
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL');
-
+	'CPCS_'||replace(DistrictType, 'DISTRICT_', '')||'_'||
+		replace(GreatPersonClassType, 'GREAT_PERSON_CLASS_', '')||'_LO',
+	'Amount', 1 from District_GreatPersonPoints;
 insert or ignore into ModifierArguments(ModifierId, Name, Value) select
-	'CPDS_'||GodhoodType||'_'||DistrictType||'_'||GreatPersonClassType||'_HI',
-	'GreatPersonClassType', GreatPersonClassType
-	from GodHood, District_GreatPersonPoints
-	where ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL');
+	'CPCS_'||replace(DistrictType, 'DISTRICT_', '')||'_'||
+		replace(GreatPersonClassType, 'GREAT_PERSON_CLASS_', '')||'_LO',
+	'GreatPersonClassType', GreatPersonClassType from District_GreatPersonPoints;
+insert or ignore into ModifierArguments(ModifierId, Name, Value) select
+	'CPCS_'||replace(DistrictType, 'DISTRICT_', '')||'_'||
+		replace(GreatPersonClassType, 'GREAT_PERSON_CLASS_', '')||'_HI',
+	'Amount', 3 from District_GreatPersonPoints;
+insert or ignore into ModifierArguments(ModifierId, Name, Value) select
+	'CPCS_'||replace(DistrictType, 'DISTRICT_', '')||'_'||
+		replace(GreatPersonClassType, 'GREAT_PERSON_CLASS_', '')||'_HI',
+	'GreatPersonClassType', GreatPersonClassType from District_GreatPersonPoints;
 
 -- =============================================================================
 -- Religious Settlements (v15) — mutually exclusive housing via B24 flags
