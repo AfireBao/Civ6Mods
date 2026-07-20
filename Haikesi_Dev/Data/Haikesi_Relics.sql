@@ -302,6 +302,14 @@ UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'BEANAGENTRUNE';
 UPDATE Haikesi_Relics SET MinTurn = 80 WHERE RelicType = 'BEANAGENTRUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'BEANAGENTRUNE';
 
+-- 铝翼坠毁：暂借未实装「悲惨命运」MISERABLEFATERUNE 图标（占位不动）
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('CRASHHELICOPTERUNE', 'LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_NAME', 'LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_FLAVOR', 'ICON_HAIKESI_RELIC_CRASHHELICOPTERUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'CRASHHELICOPTERUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'CRASHHELICOPTERUNE';
+UPDATE Haikesi_Relics SET MinTurn = 160 WHERE RelicType = 'CRASHHELICOPTERUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'CRASHHELICOPTERUNE';
+
 -- District 升级套（7 个，复用未实装海克斯 RelicType 以共享预导入图标，均不可重复）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DRAWYOURSWORDRUNE';       -- 礁石船坞（英国）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DUALWIELDRUNE';           -- 港口使节（迦太基）

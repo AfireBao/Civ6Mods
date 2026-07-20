@@ -2008,3 +2008,36 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
 -- 宜居随单位 Ability 生效，不挂玩家级 Relic Modifier（避免任意反间谍都触发）
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('BEANAGENTRUNE', 'MODIFIER_NW_BEAN_GRANT');
+
+-- ===========================================================================
+-- 铝翼坠毁 (CRASHHELICOPTERUNE): 首都赠送 1 架原版直升机 + 每回合 +1 铝
+-- 赠单位：与娟/种地仙人同款宫殿城 Grant（无城时挂着，建都有宫殿后落地）
+-- 坠毁标记：Haikesi_CrashHeli_GamePlay.lua 给赠送实例打 Property
+-- 卡面图标暂借 MISERABLEFATERUNE，不改写占位
+-- ===========================================================================
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, RunOnce, Permanent, NewOnly, SubjectStackLimit) VALUES
+    ('MODIFIER_NW_CRASH_HELI_GRANT_EFFECT',
+     'MODIFIER_SINGLE_CITY_GRANT_UNIT_IN_CITY', 1, 1, 0, 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_CRASH_HELI_GRANT_EFFECT', 'UnitType',            'UNIT_HELICOPTER'),
+    ('MODIFIER_NW_CRASH_HELI_GRANT_EFFECT', 'Amount',              '1'),
+    ('MODIFIER_NW_CRASH_HELI_GRANT_EFFECT', 'AllowUniqueOverride', 'false');
+
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, SubjectRequirementSetId, SubjectStackLimit) VALUES
+    ('MODIFIER_NW_CRASH_HELI_GRANT',
+     'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', 'NW_CITY_HAS_BUILDING_PALACE', 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_CRASH_HELI_GRANT', 'ModifierId', 'MODIFIER_NW_CRASH_HELI_GRANT_EFFECT');
+
+-- 每回合免费开采 1 铝（李舜臣送煤同款 EXTRACTION）
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, RunOnce, Permanent) VALUES
+    ('MODIFIER_NW_CRASH_HELI_ALUMINUM', 'MODIFIER_PLAYER_ADJUST_FREE_RESOURCE_EXTRACTION', 1, 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_CRASH_HELI_ALUMINUM', 'ResourceType', 'RESOURCE_ALUMINUM'),
+    ('MODIFIER_NW_CRASH_HELI_ALUMINUM', 'Amount',       '1');
+
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('CRASHHELICOPTERUNE', 'MODIFIER_NW_CRASH_HELI_GRANT'),
+    ('CRASHHELICOPTERUNE', 'MODIFIER_NW_CRASH_HELI_ALUMINUM');

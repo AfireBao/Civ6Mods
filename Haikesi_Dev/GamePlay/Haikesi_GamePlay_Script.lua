@@ -2024,6 +2024,29 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     end
 
     -- ==============================
+    -- CRASHHELICOPTERUNE 铝翼坠毁
+    -- 单位由 SQL 宫殿 Grant；此处仅打开坠毁标记期望 / 给已生成机打标
+    -- ==============================
+    if relicType == 'CRASHHELICOPTERUNE' then
+        local applyFn = nil
+        if ExposedMembers ~= nil then
+            applyFn = ExposedMembers.Haikesi_ApplyCrashHeliRelic
+        end
+        if type(applyFn) ~= "function" then
+            applyFn = rawget(_G, "Haikesi_ApplyCrashHeliRelic")
+        end
+        if type(applyFn) ~= "function" then
+            print("[Haikesi GamePlay] CRASHHELICOPTERUNE missing mark fn")
+            return
+        end
+        local okApply, errApply = pcall(applyFn, iPlayer)
+        if not okApply then
+            print("[Haikesi GamePlay] CRASHHELICOPTERUNE mark error: " .. tostring(errApply))
+        end
+        return
+    end
+
+    -- ==============================
     -- 资源创建类型（Haikesi_Relic_ResourceSpawns）
     -- 例：NW_AI_BRAVE_WOOD 勇敢的木 → 最新城市 3 环 4 棉花
     -- ==============================

@@ -747,6 +747,16 @@
             <Text>通行证、微型相机、一颗沉默的卷心菜——任务说明书上写着「请勿弄坏」。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_NAME" Language="zh_Hans_CN">
+            <Text>铝翼坠毁</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立即在首都获得一架直升机，并获得每回合 +1 [ICON_RESOURCE_ALUMINUM] 铝。[NEWLINE]该直升机每移动 1 格有 10% 概率坠毁；坠毁时在周围 1 格内造成爆炸，对区域内单位造成 50 点伤害。[NEWLINE]可与普通直升机合成军团/军队。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>说明书第三页写着「铝制机身，轻便易碎」——你翻到了第二页。</Text>
+        </Replace>
+
         <Replace Tag="LOC_UNIT_NW_BEAN_NAME" Language="zh_Hans_CN">
             <Text>特工</Text>
         </Replace>
