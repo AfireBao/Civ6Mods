@@ -135,6 +135,7 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_
 -- 三、混乱干扰系列（对其他文明施压/捣乱；可扩展）
 -- 南蛮入侵：最新城市 5 环尝试生成 3 营地；每缺 1 个仅在该城 5 环内已有营地补 3 战士；环内无可用寨则该城 4 环生成 6 战士
 -- 闪电风暴：选中后下一回合起连续 10 游戏回合，每回合按存活主要文明数 ApplyEvent 官方风暴
+-- 仇水连汛：关系最差最多 3 文明（未接触=默认分0）；其城市附近可泛滥河，下一回合起连续 5 回合洪水
 -- 每轮全场至多 1 个 AI 抽中混乱干扰类之一
 -- ===========================================================================
 INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
@@ -152,6 +153,14 @@ INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_LIGHTNING_STORM_MARKER', 'Key', 'PROP_NW_AI_LIGHTNING_STORM');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_LIGHTNING_STORM_MARKER', 'Amount', '1');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_LIGHTNING_STORM', 'MODIFIER_NW_AI_LIGHTNING_STORM_MARKER');
+
+-- 仇水连汛：关系最差最多 3 名主要文明（未接触=默认分 0）；城市附近可泛滥命名河，下回合起连续 5 回合洪水
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_RIVER_FLOOD', 'LOC_HAIKESI_RELIC_NW_AI_RIVER_FLOOD_NAME', 'LOC_HAIKESI_RELIC_NW_AI_RIVER_FLOOD_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_RIVER_FLOOD_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 1);
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_RIVER_FLOOD_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_RIVER_FLOOD_MARKER', 'Key', 'PROP_NW_AI_RIVER_FLOOD');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_RIVER_FLOOD_MARKER', 'Amount', '1');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_RIVER_FLOOD', 'MODIFIER_NW_AI_RIVER_FLOOD_MARKER');
 
 -- ===========================================================================
 -- 四、资源创建类型（配置见 Haikesi_Relic_ResourceSpawns.sql）

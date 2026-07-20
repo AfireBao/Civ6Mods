@@ -439,6 +439,8 @@ def relic_timing_tag(relic_type: str, *, cities: int | None = None) -> str:
         return "【即时·触发者免疫】"
     if relic_type == "NW_AI_LIGHTNING_STORM":
         return "【延迟·下回合起持续10回合风暴】"
+    if relic_type == "NW_AI_RIVER_FLOOD":
+        return "【延迟·下回合起持续5回合仇水洪水】"
     if relic_type.startswith("NW_AI_ECHO_"):
         suffix = relic_type.removeprefix("NW_AI_ECHO_")
         unit = _ECHO_UNIT_LABELS.get(suffix, suffix.replace("_", ""))

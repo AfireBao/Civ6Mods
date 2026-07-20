@@ -532,6 +532,7 @@ local AI_RELIC_TYPES = {
     -- 混乱干扰
     'NW_AI_BARBARIAN_INVASION',
     'NW_AI_LIGHTNING_STORM',
+    'NW_AI_RIVER_FLOOD',
     -- 资源创建
     'NW_AI_BRAVE_WOOD', 'NW_AI_MAMA_BORN', 'NW_AI_MILK_DRAGON', 'NW_AI_SILK_LAND', 'NW_AI_DRINK_TEA',
     -- 和平互利
@@ -542,12 +543,16 @@ for _, t in ipairs(AI_RELIC_TYPES) do AI_RELIC_TYPE_SET[t] = true end
 
 local BARBARIAN_INVASION_RELIC = 'NW_AI_BARBARIAN_INVASION'
 local LIGHTNING_STORM_RELIC = 'NW_AI_LIGHTNING_STORM'
--- 南蛮入侵 / 闪电风暴：每轮至多 1 个 AI 抽中混乱干扰类之一
+local RIVER_FLOOD_RELIC = 'NW_AI_RIVER_FLOOD'
+-- 南蛮入侵 / 闪电风暴 / 仇水连汛：每轮至多 1 个 AI 抽中混乱干扰类之一
 local function IsChaosInterferenceRelic(relicType)
-    return relicType == BARBARIAN_INVASION_RELIC or relicType == LIGHTNING_STORM_RELIC
+    return relicType == BARBARIAN_INVASION_RELIC
+        or relicType == LIGHTNING_STORM_RELIC
+        or relicType == RIVER_FLOOD_RELIC
 end
 -- 南蛮入侵实现已拆至 GamePlay/Haikesi_Barbarian_GamePlay.lua
 -- 闪电风暴实现已拆至 GamePlay/Haikesi_LightningStorm_GamePlay.lua
+-- 仇水连汛实现已拆至 GamePlay/Haikesi_RiverFlood_GamePlay.lua
 
 local function Haikesi_GetAliveAIPlayers()
     local aiPlayers = {}
@@ -2062,6 +2067,29 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
         local okStorm, errStorm = pcall(stormFn, iPlayer)
         if not okStorm then
             print("[Haikesi GamePlay] LIGHTNING_STORM apply error: " .. tostring(errStorm))
+        end
+        return
+    end
+
+    -- ==============================
+    -- NW_AI_RIVER_FLOOD 仇水连汛
+    -- 关系最差最多 3 文明城市附近命名河，下回合起连续 5 回合洪水
+    -- ==============================
+    if relicType == RIVER_FLOOD_RELIC then
+        local floodFn = nil
+        if ExposedMembers ~= nil then
+            floodFn = ExposedMembers.Haikesi_ApplyRiverFloodRelic
+        end
+        if type(floodFn) ~= "function" then
+            floodFn = rawget(_G, "Haikesi_ApplyRiverFloodRelic")
+        end
+        if type(floodFn) ~= "function" then
+            print("[Haikesi GamePlay] RIVER_FLOOD missing apply fn (ExposedMembers not ready)")
+            return
+        end
+        local okFlood, errFlood = pcall(floodFn, iPlayer)
+        if not okFlood then
+            print("[Haikesi GamePlay] RIVER_FLOOD apply error: " .. tostring(errFlood))
         end
         return
     end

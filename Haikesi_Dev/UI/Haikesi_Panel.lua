@@ -58,15 +58,19 @@ local AI_RELIC_TYPES = {
     -- 混乱干扰
     'NW_AI_BARBARIAN_INVASION',
     'NW_AI_LIGHTNING_STORM',
-    -- 资源创建
+    'NW_AI_RIVER_FLOOD',
+    -- 资源创造
     'NW_AI_BRAVE_WOOD', 'NW_AI_MAMA_BORN', 'NW_AI_MILK_DRAGON', 'NW_AI_SILK_LAND', 'NW_AI_DRINK_TEA',
     -- 和平互利
     'NW_AI_CELESTIAL_EMPIRE', 'NW_AI_FERTILE_CRESCENT', 'NW_AI_PAX_ROMANA',
 }
 local BARBARIAN_INVASION_RELIC = 'NW_AI_BARBARIAN_INVASION'
 local LIGHTNING_STORM_RELIC = 'NW_AI_LIGHTNING_STORM'
+local RIVER_FLOOD_RELIC = 'NW_AI_RIVER_FLOOD'
 local function IsChaosInterferenceRelic(relicType)
-    return relicType == BARBARIAN_INVASION_RELIC or relicType == LIGHTNING_STORM_RELIC
+    return relicType == BARBARIAN_INVASION_RELIC
+        or relicType == LIGHTNING_STORM_RELIC
+        or relicType == RIVER_FLOOD_RELIC
 end
 
 -- 为指定 AI 构建未选过的候选池（excludeChaosThisRound：本轮混乱干扰已被占用）
