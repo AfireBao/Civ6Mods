@@ -649,6 +649,7 @@ uv run python scripts/haikesi_deepseek_watch.py
 | `status: none` | 尚未人类确认 / 已提交 / 已超时回退 | 人类再选一次海克斯 |
 | 提交后 `request_id mismatch` | 使用了过期的 request_id | 重新 `get_haikesi_ai_request` |
 | 端口 4318 无监听 | EnableTuner 未开或游戏未运行 | 检查 AppOptions.txt |
+| 单机 Submit OK 但 AI 未选卡 | Stage 后 UI 未广播（旧版跨 Context LuaEvent 丢失） | 更新 `Haikesi_TriTrade_Bridge`；Lua.log 应见 `broadcast ExtAIApply` |
 | 联机 watch 已 `Published OK` 但 AI 未选卡 | 未 Ctrl+V 或剪贴板被覆盖 | 从 `haikesi_last_exchange.json` 复制 wire → 输入框 Ctrl+V |
 | 粘贴后无反应 | wire 格式错（粘了 JSON/decision 全文） | 只粘单行 `request_id#1=NW_AI_*|2=...` |
 | 联机追踪面板无决策理由 | wire 仅含 choices，reasons 不进游戏 | 开 `HAIKESI_DECISION_LOG=1` 查 `haikesi_last_decision.md` |

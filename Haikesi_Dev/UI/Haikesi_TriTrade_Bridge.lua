@@ -524,6 +524,12 @@ local function IsGameHost()
     return true
 end
 
+local function IsNetworkMultiplayerGame()
+    return Game ~= nil
+        and Game.IsNetworkMultiplayer ~= nil
+        and Game.IsNetworkMultiplayer()
+end
+
 local function ProcessStagedExtAI()
     if not IsGameHost() or ExposedMembers == nil then
         return
@@ -552,7 +558,7 @@ local function ProcessStagedExtAI()
     param['ExtAIApply'] = tostring(payload)
     UI.RequestPlayerOperation(localPlayer, PlayerOperations.EXECUTE_SCRIPT, param)
     print("[Haikesi ExtAI UI] broadcast ExtAIApply len=" .. tostring(#tostring(payload))
-        .. " via P" .. tostring(localPlayer))
+        .. " via P" .. tostring(localPlayer) .. " seq=" .. tostring(seq))
 end
 
 -- ===========================================================================
@@ -1119,6 +1125,12 @@ local function ShowExtAIPendingBannerNow(source)
         SetExtAIBannerVisible(false)
         return false
     end
+    -- 单机走 FireTuner Stage→广播，不弹联机 Ctrl+V 横幅；顺带捞一次 staged
+    if not IsNetworkMultiplayerGame() then
+        SetExtAIBannerVisible(false)
+        ProcessStagedExtAI()
+        return false
+    end
     if not IsExtAIPending() then
         return false
     end
@@ -1156,9 +1168,14 @@ local function ShowExtAIPendingBannerNow(source)
     return true
 end
 
--- 选卡确认 / Gameplay 建 pending / 读档恢复：显示横幅（粘贴靠 EditBox 回调）
+-- 选卡确认 / Gameplay 建 pending / 读档恢复：联机显示横幅；单机仅尝试 staged
 -- 横幅与 LLM 并行：pending 一建就显示，不必等 exchange 生成
 local function OnExtAIPendingUI(source)
+    if not IsNetworkMultiplayerGame() then
+        SetExtAIBannerVisible(false)
+        ProcessStagedExtAI()
+        return
+    end
     local ok, err = pcall(function()
         if ShowExtAIPendingBannerNow(source) then
             return
@@ -1288,6 +1305,10 @@ local function OnExtAIInputHandler(pInputStruct)
     local key = pInputStruct:GetKey()
     if key == Keys.R then
         if uiMsg == KeyEvents.KeyDown then
+            if not IsNetworkMultiplayerGame() then
+                ProcessStagedExtAI()
+                return true
+            end
             print("[Haikesi ExtAI MP] hotkey R → show banner + focus EditBox")
             if IsExtAIPending() or g_ExtAIPendingNotified then
                 SetExtAIBannerVisible(true, "LOC_HAIKESI_EXT_AI_BANNER_PENDING")
@@ -1299,6 +1320,10 @@ local function OnExtAIInputHandler(pInputStruct)
     end
     if key == Keys.V then
         if uiMsg == KeyEvents.KeyDown then
+            if not IsNetworkMultiplayerGame() then
+                ProcessStagedExtAI()
+                return true
+            end
             print("[Haikesi ExtAI MP] hotkey V → apply EditBox / apply.txt")
             if IsExtAIPending() then
                 SetExtAIBannerVisible(true, "LOC_HAIKESI_EXT_AI_BANNER_PENDING")
@@ -1316,10 +1341,12 @@ local function Initialize()
         OnTurnPhase("TurnBegin")
         RefreshExtAIMilitaryCache()
         ProcessStagedExtAI()
-        if not IsExtAIPending() and (g_ExtAIPendingNotified or g_ExtAIUiConsumed) then
-            OnExtAIClearedUI("TurnBegin")
-        elseif IsExtAIPending() and not g_ExtAIPendingNotified and not g_ExtAIUiConsumed then
-            OnExtAIPendingUI("TurnBegin")
+        if IsNetworkMultiplayerGame() then
+            if not IsExtAIPending() and (g_ExtAIPendingNotified or g_ExtAIUiConsumed) then
+                OnExtAIClearedUI("TurnBegin")
+            elseif IsExtAIPending() and not g_ExtAIPendingNotified and not g_ExtAIUiConsumed then
+                OnExtAIPendingUI("TurnBegin")
+            end
         end
     end)
     Events.TurnEnd.Add(function()
@@ -1329,15 +1356,18 @@ local function Initialize()
         OnLocalPlayerTurnBegin()
         RefreshExtAIMilitaryCache()
         ProcessStagedExtAI()
-        if not IsExtAIPending() and (g_ExtAIPendingNotified or g_ExtAIUiConsumed) then
-            OnExtAIClearedUI("LocalPlayerTurnBegin")
-        elseif IsExtAIPending() and not g_ExtAIPendingNotified and not g_ExtAIUiConsumed then
-            OnExtAIPendingUI("LocalPlayerTurnBegin")
+        if IsNetworkMultiplayerGame() then
+            if not IsExtAIPending() and (g_ExtAIPendingNotified or g_ExtAIUiConsumed) then
+                OnExtAIClearedUI("LocalPlayerTurnBegin")
+            elseif IsExtAIPending() and not g_ExtAIPendingNotified and not g_ExtAIUiConsumed then
+                OnExtAIPendingUI("LocalPlayerTurnBegin")
+            end
         end
     end)
-    -- 攻城通知 + ExtAI 横幅短重试（仅 retry>0 时干活）
+    -- 攻城通知 + ExtAI：帧末捞 staged（Gameplay→UI 的 LuaEvents 常丢）+ 联机横幅重试
     Events.GameCoreEventPublishComplete.Add(function()
         ProcessAssaultNotifyQueue()
+        ProcessStagedExtAI()
         TickExtAIBannerRetry()
     end)
 
