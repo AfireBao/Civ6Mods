@@ -49,9 +49,8 @@ def test_early_game_rules_online_default():
     mult, name, defaulted = _resolve_game_speed(ctx, {"mp": True, "turn": 2})
     assert mult == 50
     assert defaulted is True
-    rule, barb = _early_game_rules(2, cost_multiplier=mult, speed_name=name)
+    rule = _early_game_rules(2, cost_multiplier=mult, speed_name=name)
     assert "T1–T20" in rule
-    assert barb == "T2–T8"
 
 
 def test_parse_game_speed_value():
@@ -61,13 +60,10 @@ def test_parse_game_speed_value():
 
 
 def test_early_game_rules_quick_vs_marathon():
-    std_rule, std_barb = _early_game_rules(30, cost_multiplier=100, speed_name="标准")
-    quick_rule, quick_barb = _early_game_rules(20, cost_multiplier=67, speed_name="快速")
+    std_rule = _early_game_rules(30, cost_multiplier=100, speed_name="标准")
+    quick_rule = _early_game_rules(20, cost_multiplier=67, speed_name="快速")
     assert "T1–T40" in std_rule
     assert "T1–T27" in quick_rule
-    assert std_barb == "T2–T15"
-    assert quick_barb == "T2–T10"
-    marathon_rule, marathon_barb = _early_game_rules(80, cost_multiplier=300, speed_name="马拉松")
+    marathon_rule = _early_game_rules(80, cost_multiplier=300, speed_name="马拉松")
     assert "T1–T120" in marathon_rule
-    assert marathon_barb == "T2–T45"
     assert early_game_phase_thresholds(cost_multiplier=150)["ancient_end"] == 60

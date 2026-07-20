@@ -531,6 +531,7 @@ local AI_RELIC_TYPES = {
     'NW_AI_ECHO_LIGHT_CAVALRY', 'NW_AI_ECHO_HEAVY_CAVALRY', 'NW_AI_ECHO_ANTI_CAVALRY', 'NW_AI_ECHO_SIEGE',
     -- 混乱干扰
     'NW_AI_BARBARIAN_INVASION',
+    'NW_AI_LIGHTNING_STORM',
     -- 资源创建
     'NW_AI_BRAVE_WOOD', 'NW_AI_MAMA_BORN', 'NW_AI_MILK_DRAGON', 'NW_AI_SILK_LAND', 'NW_AI_DRINK_TEA',
     -- 和平互利
@@ -540,7 +541,13 @@ local AI_RELIC_TYPE_SET = {}
 for _, t in ipairs(AI_RELIC_TYPES) do AI_RELIC_TYPE_SET[t] = true end
 
 local BARBARIAN_INVASION_RELIC = 'NW_AI_BARBARIAN_INVASION'
+local LIGHTNING_STORM_RELIC = 'NW_AI_LIGHTNING_STORM'
+-- 南蛮入侵 / 闪电风暴：每轮至多 1 个 AI 抽中混乱干扰类之一
+local function IsChaosInterferenceRelic(relicType)
+    return relicType == BARBARIAN_INVASION_RELIC or relicType == LIGHTNING_STORM_RELIC
+end
 -- 南蛮入侵实现已拆至 GamePlay/Haikesi_Barbarian_GamePlay.lua
+-- 闪电风暴实现已拆至 GamePlay/Haikesi_LightningStorm_GamePlay.lua
 
 local function Haikesi_GetAliveAIPlayers()
     local aiPlayers = {}
@@ -559,7 +566,7 @@ local function Haikesi_GetPlayerRelicCount(pPlayer)
     return tonumber(pPlayer:GetProperty(RelicsCountPropertyKey) or 0) or 0
 end
 
-local function GetAIAvailableRelics(pAI, excludeInvasionThisRound)
+local function GetAIAvailableRelics(pAI, excludeChaosThisRound)
     local selected = GetSelectedRelicTypesForPlayer(pAI)
     local available = {}
     for _, t in ipairs(AI_RELIC_TYPES) do
@@ -567,7 +574,7 @@ local function GetAIAvailableRelics(pAI, excludeInvasionThisRound)
         local alreadySelected = selected[t]
         local canPick = not alreadySelected or (relicDef ~= nil and relicDef.IsRepeatable == 1)
         if canPick then
-            if not (excludeInvasionThisRound and t == BARBARIAN_INVASION_RELIC) then
+            if not (excludeChaosThisRound and IsChaosInterferenceRelic(t)) then
                 table.insert(available, t)
             end
         end
@@ -575,33 +582,44 @@ local function GetAIAvailableRelics(pAI, excludeInvasionThisRound)
     return available
 end
 
-local function AIHasOnlyInvasionLeft(pAI)
+local function AIHasOnlyChaosLeft(pAI)
     local available = GetAIAvailableRelics(pAI, false)
-    return #available == 1 and available[1] == BARBARIAN_INVASION_RELIC
+    if #available == 0 then
+        return false
+    end
+    for _, t in ipairs(available) do
+        if not IsChaosInterferenceRelic(t) then
+            return false
+        end
+    end
+    return true
 end
 
 function Haikesi_BuildDeterministicAIChoices(requesterPlayerID, countBefore)
     local choices = {}
-    local invasionAssigned = false
+    local chaosAssigned = false
     local aiPlayers = Haikesi_GetAliveAIPlayers()
 
-    local invasionOnlyAIs = {}
+    local chaosOnlyAIs = {}
     for _, pAI in ipairs(aiPlayers) do
-        if AIHasOnlyInvasionLeft(pAI) then
-            table.insert(invasionOnlyAIs, pAI)
+        if AIHasOnlyChaosLeft(pAI) then
+            table.insert(chaosOnlyAIs, pAI)
         end
     end
-    if #invasionOnlyAIs > 0 then
-        local pickIdx = (math.abs(countBefore * 997 + requesterPlayerID) % #invasionOnlyAIs) + 1
-        local pPick = invasionOnlyAIs[pickIdx]
-        choices[tostring(pPick:GetID())] = BARBARIAN_INVASION_RELIC
-        invasionAssigned = true
+    if #chaosOnlyAIs > 0 then
+        local pickIdx = (math.abs(countBefore * 997 + requesterPlayerID) % #chaosOnlyAIs) + 1
+        local pPick = chaosOnlyAIs[pickIdx]
+        local available = GetAIAvailableRelics(pPick, false)
+        local salt = countBefore * 1000 + pPick:GetID() + requesterPlayerID
+        local relic = available[(math.abs(salt) % #available) + 1]
+        choices[tostring(pPick:GetID())] = relic
+        chaosAssigned = true
     end
 
     for _, pAI in ipairs(aiPlayers) do
         local aiIDStr = tostring(pAI:GetID())
         if choices[aiIDStr] == nil then
-            local available = GetAIAvailableRelics(pAI, invasionAssigned)
+            local available = GetAIAvailableRelics(pAI, chaosAssigned)
             if #available == 0 then
                 print("[Haikesi GamePlay] AI Player" .. aiIDStr .. " no available AI relic this round")
             else
@@ -609,8 +627,8 @@ function Haikesi_BuildDeterministicAIChoices(requesterPlayerID, countBefore)
                 local idx = (math.abs(salt) % #available) + 1
                 local relic = available[idx]
                 choices[aiIDStr] = relic
-                if relic == BARBARIAN_INVASION_RELIC then
-                    invasionAssigned = true
+                if IsChaosInterferenceRelic(relic) then
+                    chaosAssigned = true
                 end
             end
         end
@@ -618,24 +636,24 @@ function Haikesi_BuildDeterministicAIChoices(requesterPlayerID, countBefore)
     return choices
 end
 
--- 每轮至多 1 个 AI 拿南蛮入侵；重复强制改抽（落地前最后一道闸）
-local function Haikesi_EnforceInvasionMutexInChoices(choices, requesterPlayerID, countBefore)
+-- 每轮至多 1 个 AI 拿混乱干扰类；重复强制改抽（落地前最后一道闸）
+local function Haikesi_EnforceChaosMutexInChoices(choices, requesterPlayerID, countBefore)
     if choices == nil then return choices end
-    local invaders = {}
+    local chaosHolders = {}
     for aiIDStr, relic in pairs(choices) do
-        if relic == BARBARIAN_INVASION_RELIC then
-            table.insert(invaders, aiIDStr)
+        if IsChaosInterferenceRelic(relic) then
+            table.insert(chaosHolders, aiIDStr)
         end
     end
-    if #invaders <= 1 then
+    if #chaosHolders <= 1 then
         return choices
     end
-    table.sort(invaders)
-    local keepIdx = (math.abs((countBefore or 0) * 997 + (requesterPlayerID or 0)) % #invaders) + 1
-    local keep = invaders[keepIdx]
-    print("[Haikesi GamePlay] INVASION mutex: " .. tostring(#invaders)
-        .. " AIs had invasion; keep AI" .. tostring(keep))
-    for _, aiIDStr in ipairs(invaders) do
+    table.sort(chaosHolders)
+    local keepIdx = (math.abs((countBefore or 0) * 997 + (requesterPlayerID or 0)) % #chaosHolders) + 1
+    local keep = chaosHolders[keepIdx]
+    print("[Haikesi GamePlay] CHAOS mutex: " .. tostring(#chaosHolders)
+        .. " AIs had chaos interference; keep AI" .. tostring(keep))
+    for _, aiIDStr in ipairs(chaosHolders) do
         if aiIDStr ~= keep then
             local aiID = tonumber(aiIDStr)
             local pAI = aiID ~= nil and Players[aiID] or nil
@@ -648,7 +666,7 @@ local function Haikesi_EnforceInvasionMutexInChoices(choices, requesterPlayerID,
                 end
             end
             choices[aiIDStr] = replacement
-            print("[Haikesi GamePlay] INVASION mutex: AI" .. tostring(aiIDStr)
+            print("[Haikesi GamePlay] CHAOS mutex: AI" .. tostring(aiIDStr)
                 .. " reassigned -> " .. tostring(replacement))
         end
     end
@@ -665,10 +683,10 @@ function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, count
     if choices == nil or next(choices) == nil then
         return 0
     end
-    choices = Haikesi_EnforceInvasionMutexInChoices(choices, requesterPlayerID, countBefore)
+    choices = Haikesi_EnforceChaosMutexInChoices(choices, requesterPlayerID, countBefore)
 
     local applied = 0
-    local invasionApplied = false
+    local chaosApplied = false
     -- 稳定顺序，避免 pairs 打乱互斥二次校验
     local aiIDList = {}
     for aiIDStr, _ in pairs(choices) do
@@ -686,15 +704,15 @@ function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, count
         else
             local pAI = Players[aiID]
             if pAI ~= nil and not pAI:IsHuman() and not pAI:IsBarbarian() then
-                if aiRelic == BARBARIAN_INVASION_RELIC and invasionApplied then
+                if IsChaosInterferenceRelic(aiRelic) and chaosApplied then
                     local available = GetAIAvailableRelics(pAI, true)
                     if #available > 0 then
                         local salt = (countBefore or 0) * 1000 + aiID + (requesterPlayerID or 0)
                         aiRelic = available[(math.abs(salt) % #available) + 1]
-                        print("[Haikesi GamePlay] INVASION mutex at apply: AI" .. aiID
+                        print("[Haikesi GamePlay] CHAOS mutex at apply: AI" .. aiID
                             .. " -> " .. tostring(aiRelic))
                     else
-                        print("[Haikesi GamePlay] INVASION mutex at apply: AI" .. aiID .. " skip (no alt)")
+                        print("[Haikesi GamePlay] CHAOS mutex at apply: AI" .. aiID .. " skip (no alt)")
                         aiRelic = nil
                     end
                 end
@@ -718,8 +736,8 @@ function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, count
                                     .. ": " .. tostring(applyResult))
                             elseif applyResult then
                                 applied = applied + 1
-                                if aiRelic == BARBARIAN_INVASION_RELIC then
-                                    invasionApplied = true
+                                if IsChaosInterferenceRelic(aiRelic) then
+                                    chaosApplied = true
                                 end
                                 print("[Haikesi GamePlay] AI Player" .. aiID .. " gained AI relic " .. aiRelic)
                             else
@@ -781,9 +799,9 @@ local function Haikesi_SyncAIRelicCountToHuman(requesterPlayerID, targetCount, u
         if choices == nil or next(choices) == nil then
             print("[Haikesi GamePlay] sync round " .. tostring(needCount) .. " empty choices")
         else
-            choices = Haikesi_EnforceInvasionMutexInChoices(choices, requesterPlayerID, countBefore)
+            choices = Haikesi_EnforceChaosMutexInChoices(choices, requesterPlayerID, countBefore)
 
-            local invasionApplied = false
+            local chaosApplied = false
             local sortedIDs = {}
             for _, pAI in ipairs(aiPlayers) do
                 table.insert(sortedIDs, pAI:GetID())
@@ -797,23 +815,23 @@ local function Haikesi_SyncAIRelicCountToHuman(requesterPlayerID, targetCount, u
                     local relic = choices[aiIDStr]
                     local reason = (useUI and aiReasonsTable ~= nil) and aiReasonsTable[aiIDStr] or nil
 
-                    -- 缺卡/非法/本轮南蛮已占用：只在本 AI 候选池内重抽，勿再整桌 Build（会重置互斥）
-                    local function PickAltForAI(excludeInvasion)
-                        local available = GetAIAvailableRelics(pAI, excludeInvasion)
+                    -- 缺卡/非法/本轮混乱干扰已占用：只在本 AI 候选池内重抽，勿再整桌 Build（会重置互斥）
+                    local function PickAltForAI(excludeChaos)
+                        local available = GetAIAvailableRelics(pAI, excludeChaos)
                         if #available == 0 then return nil end
                         local salt = countBefore * 1000 + aiID + requesterPlayerID
                         return available[(math.abs(salt) % #available) + 1]
                     end
 
                     if relic == nil or not AI_RELIC_TYPE_SET[relic] then
-                        relic = PickAltForAI(invasionApplied)
+                        relic = PickAltForAI(chaosApplied)
                         reason = nil
                     end
 
-                    if relic == BARBARIAN_INVASION_RELIC and invasionApplied then
+                    if IsChaosInterferenceRelic(relic) and chaosApplied then
                         relic = PickAltForAI(true)
                         reason = nil
-                        print("[Haikesi GamePlay] INVASION mutex sync: AI" .. aiID
+                        print("[Haikesi GamePlay] CHAOS mutex sync: AI" .. aiID
                             .. " -> " .. tostring(relic))
                     end
 
@@ -826,7 +844,7 @@ local function Haikesi_SyncAIRelicCountToHuman(requesterPlayerID, targetCount, u
                         local canApply = not selectedTypes[relic]
                             or (relicDef ~= nil and relicDef.IsRepeatable == 1)
                         if not canApply then
-                            relic = PickAltForAI(invasionApplied)
+                            relic = PickAltForAI(chaosApplied)
                             reason = nil
                             if relic == nil then
                                 print("[Haikesi GamePlay] AI Player" .. aiIDStr
@@ -842,8 +860,8 @@ local function Haikesi_SyncAIRelicCountToHuman(requesterPlayerID, targetCount, u
                                     .. " catch-up ApplyRelic error: " .. tostring(catchResult))
                             elseif catchResult then
                                 totalApplied = totalApplied + 1
-                                if relic == BARBARIAN_INVASION_RELIC then
-                                    invasionApplied = true
+                                if IsChaosInterferenceRelic(relic) then
+                                    chaosApplied = true
                                 end
                                 print("[Haikesi GamePlay] AI Player" .. aiID
                                     .. " catch-up gained " .. relic
@@ -924,18 +942,20 @@ local function Haikesi_PickRandomRelicsFromPool(pool, count, salt)
 end
 
 local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countBefore, createdTurn)
-    local invasionInOptionsBatch = false
+    -- 混乱干扰互斥：本批候选池中至多一名 AI 的 options 可含混乱类；
+    -- 大模型提示词不再写互斥规则，靠候选列表自然约束。
+    local chaosInOptionsBatch = false
     local aiOptionIDs = {}
     for _, pAI in ipairs(Haikesi_GetAliveAIPlayers()) do
         local aiID = pAI:GetID()
-        local available = GetAIAvailableRelics(pAI, invasionInOptionsBatch)
+        local available = GetAIAvailableRelics(pAI, chaosInOptionsBatch)
         local salt = countBefore * 1000 + aiID * 17 + requesterPlayerID + createdTurn * 997
         local options = Haikesi_PickRandomRelicsFromPool(available, EXT_AI_OPTIONS_PER_PLAYER, salt)
         Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, table.concat(options, ","))
         table.insert(aiOptionIDs, tostring(aiID))
         for _, opt in ipairs(options) do
-            if opt == BARBARIAN_INVASION_RELIC then
-                invasionInOptionsBatch = true
+            if IsChaosInterferenceRelic(opt) then
+                chaosInOptionsBatch = true
                 break
             end
         end
@@ -1123,17 +1143,17 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
         end
     end
 
-    local invasionCount = 0
+    local chaosCount = 0
     for _, aiRelic in pairs(choicesTable) do
-        if aiRelic == BARBARIAN_INVASION_RELIC then
-            invasionCount = invasionCount + 1
+        if IsChaosInterferenceRelic(aiRelic) then
+            chaosCount = chaosCount + 1
         end
     end
-    if invasionCount > 1 then
-        return false, "multiple invasion assignments"
+    if chaosCount > 1 then
+        return false, "multiple chaos interference assignments"
     end
 
-    local invasionAssignedInBatch = invasionCount == 1
+    local chaosAssignedInBatch = chaosCount == 1
     for aiIDStr, aiRelic in pairs(choicesTable) do
         local aiID = tonumber(aiIDStr)
         if aiID == nil then
@@ -1148,8 +1168,8 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
         end
         local options = Haikesi_GetStoredExternalAIOptions(aiID)
         if #options == 0 then
-            local excludeInvasion = invasionAssignedInBatch and aiRelic ~= BARBARIAN_INVASION_RELIC
-            options = GetAIAvailableRelics(pAI, excludeInvasion)
+            local excludeChaos = chaosAssignedInBatch and not IsChaosInterferenceRelic(aiRelic)
+            options = GetAIAvailableRelics(pAI, excludeChaos)
         end
         local found = false
         for _, t in ipairs(options) do
@@ -2019,6 +2039,29 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
         local okSpawn, errSpawn = pcall(spawnFn, iPlayer)
         if not okSpawn then
             print("[Haikesi GamePlay] BARBARIAN_INVASION spawn error: " .. tostring(errSpawn))
+        end
+        return
+    end
+
+    -- ==============================
+    -- NW_AI_LIGHTNING_STORM 闪电风暴
+    -- 按存活主要文明数连续 ApplyEvent 官方风暴（独立脚本）
+    -- ==============================
+    if relicType == LIGHTNING_STORM_RELIC then
+        local stormFn = nil
+        if ExposedMembers ~= nil then
+            stormFn = ExposedMembers.Haikesi_ApplyLightningStormRelic
+        end
+        if type(stormFn) ~= "function" then
+            stormFn = rawget(_G, "Haikesi_ApplyLightningStormRelic")
+        end
+        if type(stormFn) ~= "function" then
+            print("[Haikesi GamePlay] LIGHTNING_STORM missing apply fn (ExposedMembers not ready)")
+            return
+        end
+        local okStorm, errStorm = pcall(stormFn, iPlayer)
+        if not okStorm then
+            print("[Haikesi GamePlay] LIGHTNING_STORM apply error: " .. tostring(errStorm))
         end
         return
     end

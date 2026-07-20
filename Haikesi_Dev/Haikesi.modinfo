@@ -140,6 +140,12 @@
       </Properties>
       <File>GamePlay/Haikesi_CrashHeli_GamePlay.lua</File>
     </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_LightningStormGamePlay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_LightningStorm_GamePlay.lua</File>
+    </AddGameplayScripts>
     <AddGameplayScripts id="Haikesi_Trigger">
       <Properties>
         <LoadOrder>16797</LoadOrder>
@@ -178,6 +184,7 @@
     <File>GamePlay/Haikesi_TriTrade_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Bean_GamePlay.lua</File>
     <File>GamePlay/Haikesi_CrashHeli_GamePlay.lua</File>
+    <File>GamePlay/Haikesi_LightningStorm_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Trigger.lua</File>
     <File>Haikesi.dep</File>
     <File>Platforms/Windows/BLPs/UI/Icons.blp</File>

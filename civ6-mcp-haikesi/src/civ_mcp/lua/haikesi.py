@@ -436,7 +436,9 @@ def relic_timing_tag(relic_type: str, *, cities: int | None = None) -> str:
     cities: 当前城市数；0 城时资源创建会空放（Gameplay skip），必须醒目标出。
     """
     if relic_type == "NW_AI_BARBARIAN_INVASION":
-        return "【即时·全场互斥·触发者免疫】"
+        return "【即时·触发者免疫】"
+    if relic_type == "NW_AI_LIGHTNING_STORM":
+        return "【延迟·下回合起持续10回合风暴】"
     if relic_type.startswith("NW_AI_ECHO_"):
         suffix = relic_type.removeprefix("NW_AI_ECHO_")
         unit = _ECHO_UNIT_LABELS.get(suffix, suffix.replace("_", ""))
@@ -887,7 +889,7 @@ def build_trait_option_synergy_hints(
         if "BARBARIAN" in opt and any(
             k in corpus for k in ("蛮族", "哨站", "部落", "肃清", "征集")
         ):
-            hints.append("能力与蛮族/清营相关；南蛮类需权衡全场连带（触发者免疫）")
+            hints.append("能力与蛮族/清营相关；南蛮类需权衡连带干扰（触发者免疫）")
         if opt in _MUTUAL_TRADE_RELICS and any(
             k in corpus for k in ("贸易", "商路", "商人", "同盟", "Camp", "牧场")
         ):

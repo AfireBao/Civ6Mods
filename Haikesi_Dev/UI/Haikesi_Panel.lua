@@ -1,4 +1,4 @@
-﻿-- ===========================================================================
+-- ===========================================================================
 -- Haikesi_Panel.lua — 海克斯大乱斗 三卡选择面板
 -- ===========================================================================
 include("InstanceManager")
@@ -57,15 +57,20 @@ local AI_RELIC_TYPES = {
     'NW_AI_ECHO_LIGHT_CAVALRY', 'NW_AI_ECHO_HEAVY_CAVALRY', 'NW_AI_ECHO_ANTI_CAVALRY', 'NW_AI_ECHO_SIEGE',
     -- 混乱干扰
     'NW_AI_BARBARIAN_INVASION',
+    'NW_AI_LIGHTNING_STORM',
     -- 资源创建
     'NW_AI_BRAVE_WOOD', 'NW_AI_MAMA_BORN', 'NW_AI_MILK_DRAGON', 'NW_AI_SILK_LAND', 'NW_AI_DRINK_TEA',
     -- 和平互利
     'NW_AI_CELESTIAL_EMPIRE', 'NW_AI_FERTILE_CRESCENT', 'NW_AI_PAX_ROMANA',
 }
 local BARBARIAN_INVASION_RELIC = 'NW_AI_BARBARIAN_INVASION'
+local LIGHTNING_STORM_RELIC = 'NW_AI_LIGHTNING_STORM'
+local function IsChaosInterferenceRelic(relicType)
+    return relicType == BARBARIAN_INVASION_RELIC or relicType == LIGHTNING_STORM_RELIC
+end
 
--- 为指定 AI 构建未选过的候选池（excludeInvasionThisRound：本轮南蛮入侵已被占用）
-local function GetAIAvailableRelicsForUI(pAI, excludeInvasionThisRound)
+-- 为指定 AI 构建未选过的候选池（excludeChaosThisRound：本轮混乱干扰已被占用）
+local function GetAIAvailableRelicsForUI(pAI, excludeChaosThisRound)
     local selected = {}
     local count = tonumber(pAI:GetProperty(HAIKESI_RELIC_COUNT_KEY) or 0) or 0
     if count > 0 then
@@ -84,7 +89,7 @@ local function GetAIAvailableRelicsForUI(pAI, excludeInvasionThisRound)
         local alreadySelected = selected[relicType]
         local canPick = not alreadySelected or (relicDef ~= nil and relicDef.IsRepeatable == 1)
         if canPick then
-            if not (excludeInvasionThisRound and relicType == BARBARIAN_INVASION_RELIC) then
+            if not (excludeChaosThisRound and IsChaosInterferenceRelic(relicType)) then
                 table.insert(candidates, relicType)
             end
         end
@@ -92,14 +97,22 @@ local function GetAIAvailableRelicsForUI(pAI, excludeInvasionThisRound)
     return candidates
 end
 
-local function AIHasOnlyInvasionLeftForUI(pAI)
+local function AIHasOnlyChaosLeftForUI(pAI)
     local available = GetAIAvailableRelicsForUI(pAI, false)
-    return #available == 1 and available[1] == BARBARIAN_INVASION_RELIC
+    if #available == 0 then
+        return false
+    end
+    for _, t in ipairs(available) do
+        if not IsChaosInterferenceRelic(t) then
+            return false
+        end
+    end
+    return true
 end
 
 local function BuildAIChoicesBatch()
     local aiChoices = {}
-    local invasionAssigned = false
+    local chaosAssigned = false
     local aiPlayers = {}
     for _, pAI in ipairs(PlayerManager.GetAliveMajors()) do
         if not pAI:IsHuman() and not pAI:IsBarbarian() then
@@ -107,27 +120,28 @@ local function BuildAIChoicesBatch()
         end
     end
 
-    local invasionOnlyAIs = {}
+    local chaosOnlyAIs = {}
     for _, pAI in ipairs(aiPlayers) do
-        if AIHasOnlyInvasionLeftForUI(pAI) then
-            table.insert(invasionOnlyAIs, pAI)
+        if AIHasOnlyChaosLeftForUI(pAI) then
+            table.insert(chaosOnlyAIs, pAI)
         end
     end
-    if #invasionOnlyAIs > 0 then
-        local pPick = invasionOnlyAIs[math.random(#invasionOnlyAIs)]
-        aiChoices[tostring(pPick:GetID())] = BARBARIAN_INVASION_RELIC
-        invasionAssigned = true
+    if #chaosOnlyAIs > 0 then
+        local pPick = chaosOnlyAIs[math.random(#chaosOnlyAIs)]
+        local available = GetAIAvailableRelicsForUI(pPick, false)
+        aiChoices[tostring(pPick:GetID())] = available[math.random(#available)]
+        chaosAssigned = true
     end
 
     for _, pAI in ipairs(aiPlayers) do
         local aiIDStr = tostring(pAI:GetID())
         if aiChoices[aiIDStr] == nil then
-            local candidates = GetAIAvailableRelicsForUI(pAI, invasionAssigned)
+            local candidates = GetAIAvailableRelicsForUI(pAI, chaosAssigned)
             if #candidates > 0 then
                 local aiRelic = candidates[math.random(#candidates)]
                 aiChoices[aiIDStr] = aiRelic
-                if aiRelic == BARBARIAN_INVASION_RELIC then
-                    invasionAssigned = true
+                if IsChaosInterferenceRelic(aiRelic) then
+                    chaosAssigned = true
                 end
             else
                 print("[Haikesi] AI Player" .. aiIDStr .. " no available AI relic this round")

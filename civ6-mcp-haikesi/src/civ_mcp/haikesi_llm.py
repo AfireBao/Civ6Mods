@@ -1065,8 +1065,7 @@ def _format_leader_block(
         hist_block = (
             f"【历史库存摘要】共{len(selected)}张："
             f"{haikesi_lua.format_relic_type_list(selected)}\n"
-            "（完整效果见上文全局列表；不是本轮选项。"
-            "其中若含南蛮入侵，仅表示过去某轮已触发，与本轮候选能否再选无关）"
+            "（完整效果见上文全局列表；不是本轮选项）"
         )
     else:
         hist_block = "【历史库存摘要】（无）"
@@ -1294,26 +1293,23 @@ def _early_game_rules(
     *,
     cost_multiplier: int = 100,
     speed_name: str = "",
-) -> tuple[str, str]:
-    """Return (early_phase_rule, barbarian_turn_window) scaled by game speed."""
+) -> str:
+    """Return early-phase rule text scaled by game speed (empty if past ancient)."""
     thresholds = haikesi_lua.early_game_phase_thresholds(cost_multiplier=cost_multiplier)
     ancient_end = thresholds["ancient_end"]
     echo_horizon = thresholds["echo_horizon"]
-    barb_end = thresholds["barbarian_caution_end"]
-    barbarian_window = f"T2–T{barb_end}"
     if turn > ancient_end:
-        return "", barbarian_window
+        return ""
     speed_hint = ""
     if speed_name and speed_name != "未知" and cost_multiplier != 100:
         speed_hint = f"（{speed_name}；阈值按 Cost×{cost_multiplier}/100 相对标准速度缩放）"
-    rule = (
+    return (
         f"- 远古早期（约 T1–T{ancient_end}{speed_hint}、单城且已知军力≤2）："
         "优先真正即时的百分比产出；"
         "有城时才优先资源创建（落在最新城 3 环）；"
         "**0 城时资源创建会空放，禁止选择**，改选开拓者/工人 echo 或百分比；"
         f"军事 echo 需 {echo_horizon} 回合内可造对应单位才优先，否则视为延迟收益\n"
     )
-    return rule, barbarian_window
 
 
 def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) -> str:
@@ -1325,12 +1321,6 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
         )
         for ai in payload.get("ai_players", [])
     ]
-
-    invasion_note = (
-        "本轮 NW_AI_BARBARIAN_INVASION 互斥：全场最多一名领袖可选。"
-        if payload.get("invasion_mutex")
-        else "本轮无南蛮入侵互斥限制。"
-    )
 
     notes_block = ""
     if context.fetch_notes:
@@ -1378,7 +1368,7 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
     turn = int(payload.get("turn") or 0)
     speed_mult, speed_name, _ = _resolve_game_speed(context, payload)
     global_setting = _format_global_setting(context, turn=turn, payload=payload)
-    early_rules, barbarian_window = _early_game_rules(
+    early_rules = _early_game_rules(
         turn, cost_multiplier=speed_mult, speed_name=speed_name
     )
 
@@ -1389,7 +1379,7 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
 - 每位领袖只能使用**自己区块**内的情报做决策；禁止引用其他领袖区块，也禁止臆造未给出的单位/文明。
 - 未相遇文明、战争迷雾外的敌军对本领袖不存在，不得当作已知信息。
 - 人类本轮海克斯、各文明历史已选海克斯（含效果说明）、全局时代/速度、世界会议决议是本局公开机制信息，各位领袖都可以参考。
-- 「历史已选 / 历史库存」不是本轮选择：不得据此认定某领袖本轮已选完，也不得照抄历史词条作为本轮 choices；历史中的南蛮入侵只表示过去触发过，与本轮候选是否再出现无关。
+- 「历史已选 / 历史库存」不是本轮选择：不得据此认定某领袖本轮已选完，也不得照抄历史词条作为本轮 choices。
 - 已相遇文明的科/文/金/军力、双向不满值、对方对你的外交修饰语等为外交界面可见信息，可以比较；军力/科技数为「未知」时勿当成 0 或「无军队/零科技」。
 - 若区块含「已知文明胜利进度排名」：仅可比较榜内文明；未上榜者对本领袖不可见；「胜利VP未启动」时用科技项数等替代指标，勿被全员 0/50VP 误导。
 - 优先级：交战或边境可见单位最近距离≤2 的生存/军事压力 > Real Strategy 主战略 > 协同弱提示。主战略仅作倾向（征服→军事/扩张，科技→科研，文化→文化/伟人，宗教→信仰，外交→使者/外交）。
@@ -1417,8 +1407,9 @@ Turn {turn}
 ## 规则
 - 每位领袖只能从其「候选海克斯」中选 1 个 relic type；必须重新决策，禁止因「历史已选」而照抄、跳过或认定本轮已选完
 - 「历史已选海克斯 / 各文明历史已选」仅为库存说明（名称+效果），不是本轮选项，也不是自动选卡结果
-- {invasion_note}
-- NW_AI_BARBARIAN_INVASION 分配：同一 JSON 内至多 1 名领袖；优先分配给触发后净收益最高者（清蛮/军事/干扰领先人类）；{barbarian_window} 且已知军力≤2 时，除非明确以干扰人类为目标且接受连带干扰其他 AI，否则优先即时产出或扩张类；历史库存里出现过南蛮≠本轮不能选
+- 只从该领袖区块列出的候选中选择；未列出的类型不可选
+- NW_AI_BARBARIAN_INVASION：对除触发者外各文明最新城附近刷蛮；远古早期且已知军力≤2 时慎选（除非以干扰人类为主）
+- NW_AI_LIGHTNING_STORM：下回合起多回合全图风暴；评估对本国与对手的净收益后再选
 - 候选前缀标注生效时机：【即时】立刻生效；【条件即时·需已有城市】无城则空放；【空放·当前0城】禁止选择；【延迟】须先满足生产/商路等条件；勿在远古早期盲选尚无法使用的军事 echo
 - 资源创建类（奶龙/丝绸/烟草/茶/棉花等）依赖「最新建立的城市」：国力显示 0 城或「无城市数据」时选择=效果跳过，应改选开拓者 echo 或百分比产出
 {early_rules}- 先在内心做策略推演再选卡（不必写出推演过程）：生存威胁、胜利路线、时代与扩张节奏、产出短板、外交、与人类海克斯的对抗/跟风

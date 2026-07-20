@@ -2736,12 +2736,13 @@ async def get_haikesi_ai_request(ctx: Context) -> str:
 
     Returns JSON:
       - status \"none\" if no pending request
-      - status \"pending\" with request_id, human_relic, invasion_mutex rule,
+      - status \"pending\" with request_id, human_relic,
         and per-AI options (up to 3 randomly drawn relics, like human card picks)
 
     Rules for the LLM:
       - Pick exactly one relic per AI from that AI's \"options\" list only
-      - NW_AI_BARBARIAN_INVASION may be assigned to at most one AI per round
+      - Chaos interference relics (e.g. barbarian invasion / lightning storm) appear
+        in at most one AI's options list for the round (pool-enforced; not a prompt rule)
       - Invalid submissions are rejected; pending request remains until timeout
       - When submitting, also provide a short Chinese \"reason\" per AI explaining
         why that relic fits the current game state (shown in tracker panel)
