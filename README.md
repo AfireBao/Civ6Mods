@@ -8,7 +8,7 @@
 | 目录 | 内容 |
 |------|------|
 | [`Haikesi_Dev/`](Haikesi_Dev/) | 海克斯大乱斗 Dev 模组（不与工坊原版同时启用）。将本目录整体复制到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\Haikesi_Dev\` |
-| [`CreatePantheon_Dev/`](CreatePantheon_Dev/) | 创造万神殿 Dev（工坊 [Create Your Pantheon](https://steamcommunity.com/sharedfiles/filedetails/?id=2990102039) 本地分支，**v17，效果待测待查**）。复制或链接到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\CreatePantheon_Dev\`。**勿与工坊原版同时启用**；署名与变更见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md) |
+| [`CreatePantheon_Dev/`](CreatePantheon_Dev/) | 创造万神殿 Dev（工坊 [Create Your Pantheon](https://steamcommunity.com/sharedfiles/filedetails/?id=2990102039) 本地分支，**v19，效果待测待查**）。复制或链接到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\CreatePantheon_Dev\`。**勿与工坊原版同时启用**；署名与变更见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md) |
 | [`civ6-mcp-haikesi/`](civ6-mcp-haikesi/) | 基于 [civ6-mcp](https://github.com/lmwilki/civ6-mcp) 的本地副本，含海克斯 AI 决策扩展（不向 upstream 推送） |
 
 ---
@@ -69,6 +69,7 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-21 | **创造万神殿 Dev v19**：AI 第二词条（Power）将丰产 / 工匠 / 神农 / 文曲提为最高档（权重 2.6），高于神圣之光（2.2）；原版 AI 不会为万神殿优化区域落点，优先推格产出类词条。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |
 | 2026-07-20 | **单机 ExtAI**：不弹联机 Ctrl+V 横幅；帧末捞 FireTuner Stage 暂存并广播（修复跨 Context LuaEvent 丢失导致 Submit OK 却不落地）。 |
 | 2026-07-20 | **AI 混乱干扰「仇水连汛」**：关系最差最多 3 文明（未接触=默认分 0）城市附近可泛滥河，下回合起连续 5 回合官方洪水（70% 千年 / 30% 重大）；与南蛮入侵/闪电风暴共享每轮混乱互斥（候选池互斥，提示词不写互斥）。 |
 | 2026-07-20 | **AI 混乱干扰「闪电风暴」**：选中后下一回合起连续 10 回合，每回合按存活主要文明数触发同等场次官方风暴；与南蛮入侵每轮互斥（由 ExtAI 候选池互斥，提示词不再写互斥规则）。 |
@@ -108,5 +109,5 @@
 
 ```powershell
 Set-Location "G:\Civ6Mods\civ6-mcp-haikesi"
-uv run python scripts/haikesi_deepseek_watch.py
+uv run python scripts/haikesi_llm_watch.py
 ```

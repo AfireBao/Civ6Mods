@@ -6,10 +6,14 @@ Utils = ExposedMembers.DA and ExposedMembers.DA.Utils
 -- Draw only from Top-K by score (default 8) to avoid long-tail mismatch picks.
 -- Civ6 Lua has no goto — do not use ::labels:: (CP_AI failed to load with them).
 -- Logs: [CP_AI] in Lua.log. Game.SetProperty('PROP_CP_AI_DEBUG', 0) to silence.
+-- Power tier: tile-yield powers (Fertility/Craftsmen/Shennong/GGV) rank highest —
+-- vanilla AI does not replan districts for pantheon thresholds.
 
 local MIRACLE_POWER = "GOD_OF_MIRACLES"
 local MIRACLE_WEIGHT = 0.08
 local BASE_WEIGHT = 1.0
+-- Highest Power tier: direct tile yields AI can realize without district micro.
+local YIELD_POWER_BONUS = 1.6 -- → 2.6 vs Divine Spark 2.2
 local TOP_N_LOG = 8
 -- Weighted draw only among the K highest-scoring combos (kills rank-130 long-tail picks).
 local TOP_K = 8
@@ -225,17 +229,19 @@ local function ScorePower(pw, s)
 	local w = BASE_WEIGHT
 	if pw == MIRACLE_POWER then
 		return MIRACLE_WEIGHT
+	elseif pw == "FERTILITY_RITES" or pw == "GOD_OF_CRAFTSMEN"
+		or pw == "SHENNONG" or pw == "GGV" then
+		-- Top tier: faith/prod/food/culture on devoted tiles — works with godhood terrain.
+		w = w + YIELD_POWER_BONUS
 	elseif pw == "DIVINE_SPARK" then
 		w = w + 1.2
 	elseif pw == "RELIGIOUS_SETTLEMENTS" then
-		-- Was +1.5 early → 2.50, highest of all powers; × godhood filled Top-K with 家神.
-		-- Keep a mild early expansion nudge, but below Divine Spark (2.2) and ≈ craftsmen (2.0).
+		-- Mild early expansion nudge; below yield tier (2.6) and Divine Spark (2.2).
 		w = w + (s.cities <= 2 and 0.85 or 0.45)
 	elseif pw == "CITY_PATRON_GODDESS" then
+		-- Needs city-center devotion + district planning AI will not do.
 		w = w + (s.cities <= 3 and 1.0 or 0.5)
-	elseif pw == "GOD_OF_CRAFTSMEN" or pw == "SHENNONG" or pw == "GGV" then
-		w = w + 1.0
-	elseif pw == "FERTILITY_RITES" or pw == "INITIATION_RITES" then
+	elseif pw == "INITIATION_RITES" then
 		w = w + 0.7
 	elseif pw == "MONUMENT_TO_THE_GODS" then
 		w = w + 0.6
