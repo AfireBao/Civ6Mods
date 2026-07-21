@@ -114,6 +114,34 @@ local function AIHasOnlyChaosLeftForUI(pAI)
     return true
 end
 
+local function PlayerIsGoldenOrHeroicForUI(pPlayer)
+    if pPlayer == nil then
+        return false
+    end
+    local eras = Game.GetEras()
+    if eras == nil then
+        return false
+    end
+    local id = pPlayer:GetID()
+    -- 与原版 TopPanel 一致：先英雄(HasHeroicGoldenAge)再黄金；勿用 == true（Firaxis 偶发 1）
+    local okH, heroic = pcall(function()
+        return eras:HasHeroicGoldenAge(id)
+    end)
+    if okH and heroic then
+        return true
+    end
+    okH, heroic = pcall(function()
+        return eras:HasHeroicAge(id)
+    end)
+    if okH and heroic then
+        return true
+    end
+    local okG, golden = pcall(function()
+        return eras:HasGoldenAge(id)
+    end)
+    return okG and golden
+end
+
 local function BuildAIChoicesBatch()
     local aiChoices = {}
     local chaosAssigned = false
@@ -124,6 +152,32 @@ local function BuildAIChoicesBatch()
         end
     end
 
+    local function PickN(pAI, pickCount, startChaos)
+        local picked = {}
+        local localChaos = startChaos
+        for pickIdx = 1, pickCount do
+            local candidates = GetAIAvailableRelicsForUI(pAI, localChaos)
+            if #picked > 0 then
+                local used = {}
+                for _, r in ipairs(picked) do used[r] = true end
+                local filtered = {}
+                for _, r in ipairs(candidates) do
+                    if not used[r] then table.insert(filtered, r) end
+                end
+                candidates = filtered
+            end
+            if #candidates == 0 then
+                break
+            end
+            local relic = candidates[math.random(#candidates)]
+            table.insert(picked, relic)
+            if IsChaosInterferenceRelic(relic) then
+                localChaos = true
+            end
+        end
+        return picked, localChaos
+    end
+
     local chaosOnlyAIs = {}
     for _, pAI in ipairs(aiPlayers) do
         if AIHasOnlyChaosLeftForUI(pAI) then
@@ -132,21 +186,22 @@ local function BuildAIChoicesBatch()
     end
     if #chaosOnlyAIs > 0 then
         local pPick = chaosOnlyAIs[math.random(#chaosOnlyAIs)]
-        local available = GetAIAvailableRelicsForUI(pPick, false)
-        aiChoices[tostring(pPick:GetID())] = available[math.random(#available)]
-        chaosAssigned = true
+        local n = PlayerIsGoldenOrHeroicForUI(pPick) and 2 or 1
+        local picked, nowChaos = PickN(pPick, n, false)
+        if #picked > 0 then
+            aiChoices[tostring(pPick:GetID())] = table.concat(picked, "+")
+            chaosAssigned = nowChaos
+        end
     end
 
     for _, pAI in ipairs(aiPlayers) do
         local aiIDStr = tostring(pAI:GetID())
         if aiChoices[aiIDStr] == nil then
-            local candidates = GetAIAvailableRelicsForUI(pAI, chaosAssigned)
-            if #candidates > 0 then
-                local aiRelic = candidates[math.random(#candidates)]
-                aiChoices[aiIDStr] = aiRelic
-                if IsChaosInterferenceRelic(aiRelic) then
-                    chaosAssigned = true
-                end
+            local n = PlayerIsGoldenOrHeroicForUI(pAI) and 2 or 1
+            local picked, nowChaos = PickN(pAI, n, chaosAssigned)
+            if #picked > 0 then
+                aiChoices[aiIDStr] = table.concat(picked, "+")
+                chaosAssigned = nowChaos
             else
                 print("[Haikesi] AI Player" .. aiIDStr .. " no available AI relic this round")
             end

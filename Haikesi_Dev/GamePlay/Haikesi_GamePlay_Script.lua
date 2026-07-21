@@ -600,10 +600,150 @@ local function AIHasOnlyChaosLeft(pAI)
     return true
 end
 
+-- AgePick 在独立 Gameplay Lua 状态；经 ExposedMembers 绑定到本脚本全局
+-- （否则 Haikesi_SplitChoiceRelics 等为 nil → 单机自动选卡 Runtime Error）
+do
+    local EM = ExposedMembers
+    if EM ~= nil
+        and type(Haikesi_SplitChoiceRelics) ~= "function"
+        and type(EM.Haikesi_SplitChoiceRelics) == "function" then
+        Haikesi_PlayerIsGoldenOrHeroicAge = EM.Haikesi_PlayerIsGoldenOrHeroicAge
+        Haikesi_PlayerAgeLabel = EM.Haikesi_PlayerAgeLabel
+        Haikesi_AIPickCountForPlayer = EM.Haikesi_AIPickCountForPlayer
+        Haikesi_AIOptionsCountForPlayer = EM.Haikesi_AIOptionsCountForPlayer
+        Haikesi_SplitChoiceRelics = EM.Haikesi_SplitChoiceRelics
+        Haikesi_JoinChoiceRelics = EM.Haikesi_JoinChoiceRelics
+        Haikesi_GetAISelectRound = EM.Haikesi_GetAISelectRound
+        Haikesi_SetAISelectRound = EM.Haikesi_SetAISelectRound
+        print("[Haikesi GamePlay] AgePick helpers bound from ExposedMembers")
+    end
+end
+
+-- 兜底：AgePick 未加载时仍保证自动选卡可用（global，不占 local 寄存器）
+-- 优先读 UI 时代戳记（HasGoldenAge 在 GameCore 不可用）
+if type(Haikesi_SplitChoiceRelics) ~= "function" then
+    function Haikesi_PlayerAgeLabel(playerID)
+        if playerID == nil then return "NORMAL" end
+        if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIEraAgeByPlayer ~= nil then
+            local stamped = ExposedMembers.Haikesi_UIEraAgeByPlayer[playerID]
+                or ExposedMembers.Haikesi_UIEraAgeByPlayer[tostring(playerID)]
+            if stamped ~= nil and tostring(stamped) ~= "" then
+                return tostring(stamped)
+            end
+        end
+        local prop = Game:GetProperty('PROP_NW_HAIKESI_UI_ERA_AGE_' .. tostring(playerID))
+        if prop ~= nil and tostring(prop) ~= "" then return tostring(prop) end
+        local eras = Game.GetEras()
+        if eras == nil then return "NORMAL" end
+        local okH, heroic = pcall(function() return eras:HasHeroicGoldenAge(playerID) end)
+        if okH and heroic then return "HEROIC" end
+        okH, heroic = pcall(function() return eras:HasHeroicAge(playerID) end)
+        if okH and heroic then return "HEROIC" end
+        local okG, golden = pcall(function() return eras:HasGoldenAge(playerID) end)
+        if okG and golden then return "GOLDEN" end
+        local okD, dark = pcall(function() return eras:HasDarkAge(playerID) end)
+        if okD and dark then return "DARK" end
+        return "NORMAL"
+    end
+    function Haikesi_PlayerIsGoldenOrHeroicAge(playerID)
+        local label = Haikesi_PlayerAgeLabel(playerID)
+        return label == "GOLDEN" or label == "HEROIC"
+    end
+    function Haikesi_AIPickCountForPlayer(pPlayer)
+        if pPlayer ~= nil and Haikesi_PlayerIsGoldenOrHeroicAge(pPlayer:GetID()) then
+            return 2
+        end
+        return 1
+    end
+    function Haikesi_AIOptionsCountForPlayer(pPlayer)
+        if Haikesi_AIPickCountForPlayer(pPlayer) >= 2 then return 6 end
+        return 3
+    end
+    function Haikesi_SplitChoiceRelics(value)
+        local list = {}
+        if value == nil then return list end
+        if type(value) == "table" then
+            for _, item in ipairs(value) do
+                if item ~= nil and tostring(item) ~= "" then
+                    table.insert(list, tostring(item))
+                end
+            end
+            return list
+        end
+        local s = tostring(value)
+        if s == "" then return list end
+        for item in string.gmatch(s, "[^+]+") do
+            if item ~= "" then table.insert(list, item) end
+        end
+        return list
+    end
+    function Haikesi_JoinChoiceRelics(relics)
+        if relics == nil or #relics == 0 then return nil end
+        return table.concat(relics, "+")
+    end
+    function Haikesi_GetAISelectRound(pAI)
+        if pAI == nil then return 0 end
+        local marked = pAI:GetProperty('PROP_NW_HAIKESI_AI_SELECT_ROUND')
+        if marked ~= nil then return tonumber(marked) or 0 end
+        return Haikesi_GetPlayerRelicCount(pAI)
+    end
+    function Haikesi_SetAISelectRound(pAI, roundNum)
+        if pAI == nil or roundNum == nil then return end
+        pAI:SetProperty('PROP_NW_HAIKESI_AI_SELECT_ROUND', tonumber(roundNum) or 0)
+    end
+    print("[Haikesi GamePlay] AgePick helpers installed as local fallbacks")
+end
+
+-- UI→Gameplay：刷 InGame 时代/军力缓存（双选依赖时代戳记，须在发牌前调用）
+function Haikesi_WarmExtAIUICaches()
+    pcall(function()
+        local warmFn = ExposedMembers and ExposedMembers.Haikesi_RefreshExtAIUICache
+        if type(warmFn) == "function" then
+            warmFn()
+        elseif LuaEvents ~= nil and LuaEvents.Haikesi_ExtAIWarmCache ~= nil then
+            LuaEvents.Haikesi_ExtAIWarmCache()
+        end
+    end)
+end
+
 function Haikesi_BuildDeterministicAIChoices(requesterPlayerID, countBefore)
+    Haikesi_WarmExtAIUICaches()
     local choices = {}
     local chaosAssigned = false
     local aiPlayers = Haikesi_GetAliveAIPlayers()
+
+    local function PickNForAI(pAI, pickCount, startChaos)
+        local picked = {}
+        local localChaos = startChaos
+        local aiID = pAI:GetID()
+        for pickIdx = 1, pickCount do
+            local available = GetAIAvailableRelics(pAI, localChaos)
+            -- 排除本轮已抽
+            if #picked > 0 then
+                local filtered = {}
+                local used = {}
+                for _, r in ipairs(picked) do
+                    used[r] = true
+                end
+                for _, r in ipairs(available) do
+                    if not used[r] then
+                        table.insert(filtered, r)
+                    end
+                end
+                available = filtered
+            end
+            if #available == 0 then
+                break
+            end
+            local salt = (countBefore or 0) * 1000 + aiID + (requesterPlayerID or 0) + pickIdx * 7919
+            local relic = available[(math.abs(salt) % #available) + 1]
+            table.insert(picked, relic)
+            if IsChaosInterferenceRelic(relic) then
+                localChaos = true
+            end
+        end
+        return picked, localChaos
+    end
 
     local chaosOnlyAIs = {}
     for _, pAI in ipairs(aiPlayers) do
@@ -614,26 +754,28 @@ function Haikesi_BuildDeterministicAIChoices(requesterPlayerID, countBefore)
     if #chaosOnlyAIs > 0 then
         local pickIdx = (math.abs(countBefore * 997 + requesterPlayerID) % #chaosOnlyAIs) + 1
         local pPick = chaosOnlyAIs[pickIdx]
-        local available = GetAIAvailableRelics(pPick, false)
-        local salt = countBefore * 1000 + pPick:GetID() + requesterPlayerID
-        local relic = available[(math.abs(salt) % #available) + 1]
-        choices[tostring(pPick:GetID())] = relic
-        chaosAssigned = true
+        local n = Haikesi_AIPickCountForPlayer(pPick)
+        local picked, nowChaos = PickNForAI(pPick, n, false)
+        if #picked > 0 then
+            choices[tostring(pPick:GetID())] = Haikesi_JoinChoiceRelics(picked)
+            chaosAssigned = nowChaos
+        end
     end
 
     for _, pAI in ipairs(aiPlayers) do
         local aiIDStr = tostring(pAI:GetID())
         if choices[aiIDStr] == nil then
-            local available = GetAIAvailableRelics(pAI, chaosAssigned)
-            if #available == 0 then
+            local n = Haikesi_AIPickCountForPlayer(pAI)
+            local picked, nowChaos = PickNForAI(pAI, n, chaosAssigned)
+            if #picked == 0 then
                 print("[Haikesi GamePlay] AI Player" .. aiIDStr .. " no available AI relic this round")
             else
-                local salt = countBefore * 1000 + pAI:GetID() + requesterPlayerID
-                local idx = (math.abs(salt) % #available) + 1
-                local relic = available[idx]
-                choices[aiIDStr] = relic
-                if IsChaosInterferenceRelic(relic) then
-                    chaosAssigned = true
+                choices[aiIDStr] = Haikesi_JoinChoiceRelics(picked)
+                chaosAssigned = nowChaos
+                if n >= 2 then
+                    print("[Haikesi GamePlay] AI Player" .. aiIDStr
+                        .. " dual-pick (" .. tostring(Haikesi_PlayerAgeLabel(pAI:GetID()))
+                        .. "): " .. tostring(choices[aiIDStr]))
                 end
             end
         end
@@ -642,37 +784,66 @@ function Haikesi_BuildDeterministicAIChoices(requesterPlayerID, countBefore)
 end
 
 -- 每轮至多 1 个 AI 拿混乱干扰类；重复强制改抽（落地前最后一道闸）
+-- choices 值可为 "A" 或 "A+B"
 local function Haikesi_EnforceChaosMutexInChoices(choices, requesterPlayerID, countBefore)
     if choices == nil then return choices end
     local chaosHolders = {}
-    for aiIDStr, relic in pairs(choices) do
-        if IsChaosInterferenceRelic(relic) then
-            table.insert(chaosHolders, aiIDStr)
+    for aiIDStr, packed in pairs(choices) do
+        local relics = Haikesi_SplitChoiceRelics(packed)
+        for _, relic in ipairs(relics) do
+            if IsChaosInterferenceRelic(relic) then
+                table.insert(chaosHolders, { aiIDStr = aiIDStr, relic = relic })
+                break
+            end
         end
     end
     if #chaosHolders <= 1 then
         return choices
     end
-    table.sort(chaosHolders)
+    table.sort(chaosHolders, function(a, b)
+        return tostring(a.aiIDStr) < tostring(b.aiIDStr)
+    end)
     local keepIdx = (math.abs((countBefore or 0) * 997 + (requesterPlayerID or 0)) % #chaosHolders) + 1
-    local keep = chaosHolders[keepIdx]
+    local keep = chaosHolders[keepIdx].aiIDStr
     print("[Haikesi GamePlay] CHAOS mutex: " .. tostring(#chaosHolders)
         .. " AIs had chaos interference; keep AI" .. tostring(keep))
-    for _, aiIDStr in ipairs(chaosHolders) do
+    for _, holder in ipairs(chaosHolders) do
+        local aiIDStr = holder.aiIDStr
         if aiIDStr ~= keep then
             local aiID = tonumber(aiIDStr)
             local pAI = aiID ~= nil and Players[aiID] or nil
-            local replacement = nil
-            if pAI ~= nil then
-                local available = GetAIAvailableRelics(pAI, true)
-                if #available > 0 then
-                    local salt = (countBefore or 0) * 1000 + aiID + (requesterPlayerID or 0)
-                    replacement = available[(math.abs(salt) % #available) + 1]
+            local oldList = Haikesi_SplitChoiceRelics(choices[aiIDStr])
+            local newList = {}
+            local localChaos = true -- 已有 keep 占用混乱
+            for _, relic in ipairs(oldList) do
+                if IsChaosInterferenceRelic(relic) then
+                    local replacement = nil
+                    if pAI ~= nil then
+                        local available = GetAIAvailableRelics(pAI, true)
+                        local used = {}
+                        for _, r in ipairs(newList) do used[r] = true end
+                        for _, r in ipairs(oldList) do used[r] = true end
+                        local filtered = {}
+                        for _, r in ipairs(available) do
+                            if not used[r] and not IsChaosInterferenceRelic(r) then
+                                table.insert(filtered, r)
+                            end
+                        end
+                        if #filtered > 0 then
+                            local salt = (countBefore or 0) * 1000 + aiID + (requesterPlayerID or 0)
+                            replacement = filtered[(math.abs(salt) % #filtered) + 1]
+                        end
+                    end
+                    if replacement ~= nil then
+                        table.insert(newList, replacement)
+                    end
+                else
+                    table.insert(newList, relic)
                 end
             end
-            choices[aiIDStr] = replacement
+            choices[aiIDStr] = Haikesi_JoinChoiceRelics(newList)
             print("[Haikesi GamePlay] CHAOS mutex: AI" .. tostring(aiIDStr)
-                .. " reassigned -> " .. tostring(replacement))
+                .. " reassigned -> " .. tostring(choices[aiIDStr]))
         end
     end
     return choices
@@ -692,6 +863,7 @@ function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, count
 
     local applied = 0
     local chaosApplied = false
+    local roundNum = (countBefore or 0) + 1
     -- 稳定顺序，避免 pairs 打乱互斥二次校验
     local aiIDList = {}
     for aiIDStr, _ in pairs(choices) do
@@ -700,57 +872,74 @@ function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, count
     table.sort(aiIDList)
 
     for _, aiIDStr in ipairs(aiIDList) do
-        local aiRelic = choices[aiIDStr]
+        local packed = choices[aiIDStr]
         local aiID = tonumber(aiIDStr)
+        local relicList = Haikesi_SplitChoiceRelics(packed)
         if aiID == nil then
             print("[Haikesi GamePlay] AIChoices invalid aiID: " .. tostring(aiIDStr))
-        elseif aiRelic == nil or not AI_RELIC_TYPE_SET[aiRelic] then
-            print("[Haikesi GamePlay] AIChoices rejected (not in AI pool): " .. tostring(aiRelic))
+        elseif #relicList == 0 then
+            print("[Haikesi GamePlay] AIChoices empty pack for AI " .. tostring(aiIDStr))
         else
             local pAI = Players[aiID]
             if pAI ~= nil and not pAI:IsHuman() and not pAI:IsBarbarian() then
-                if IsChaosInterferenceRelic(aiRelic) and chaosApplied then
-                    local available = GetAIAvailableRelics(pAI, true)
-                    if #available > 0 then
-                        local salt = (countBefore or 0) * 1000 + aiID + (requesterPlayerID or 0)
-                        aiRelic = available[(math.abs(salt) % #available) + 1]
-                        print("[Haikesi GamePlay] CHAOS mutex at apply: AI" .. aiID
-                            .. " -> " .. tostring(aiRelic))
-                    else
-                        print("[Haikesi GamePlay] CHAOS mutex at apply: AI" .. aiID .. " skip (no alt)")
-                        aiRelic = nil
-                    end
-                end
-                if aiRelic ~= nil then
-                    local needCount = (countBefore or 0) + 1
-                    if Haikesi_GetPlayerRelicCount(pAI) >= needCount then
-                        print("[Haikesi GamePlay] AI Player" .. aiID
-                            .. " already at round " .. tostring(needCount) .. ", skip")
-                    else
-                        local selectedTypes = GetSelectedRelicTypesForPlayer(pAI)
-                        local relicDef = GameInfo.Haikesi_Relics[aiRelic]
-                        local canApply = not selectedTypes[aiRelic]
-                            or (relicDef ~= nil and relicDef.IsRepeatable == 1)
-                        if canApply then
-                            local reason = aiReasonsTable and aiReasonsTable[aiIDStr] or nil
-                            local okApplyOne, applyResult = pcall(
-                                ApplyRelicToPlayer, aiID, aiRelic, true, reason)
-                            if not okApplyOne then
-                                print("[Haikesi GamePlay] AI Player" .. aiID
-                                    .. " ApplyRelic error for " .. tostring(aiRelic)
-                                    .. ": " .. tostring(applyResult))
-                            elseif applyResult then
-                                applied = applied + 1
-                                if IsChaosInterferenceRelic(aiRelic) then
-                                    chaosApplied = true
-                                end
-                                print("[Haikesi GamePlay] AI Player" .. aiID .. " gained AI relic " .. aiRelic)
-                            else
-                                print("[Haikesi GamePlay] AI Player" .. aiID .. " failed to apply AI relic " .. tostring(aiRelic))
-                            end
+                if Haikesi_GetAISelectRound(pAI) >= roundNum then
+                    print("[Haikesi GamePlay] AI Player" .. aiID
+                        .. " already at round " .. tostring(roundNum) .. ", skip")
+                else
+                    local appliedThisAI = 0
+                    for pickIdx, aiRelic in ipairs(relicList) do
+                        if not AI_RELIC_TYPE_SET[aiRelic] then
+                            print("[Haikesi GamePlay] AIChoices rejected (not in AI pool): "
+                                .. tostring(aiRelic))
                         else
-                            print("[Haikesi GamePlay] AI Player" .. aiID .. " already has " .. aiRelic .. ", skip")
+                            if IsChaosInterferenceRelic(aiRelic) and chaosApplied then
+                                local available = GetAIAvailableRelics(pAI, true)
+                                if #available > 0 then
+                                    local salt = (countBefore or 0) * 1000 + aiID
+                                        + (requesterPlayerID or 0) + pickIdx * 7919
+                                    aiRelic = available[(math.abs(salt) % #available) + 1]
+                                    print("[Haikesi GamePlay] CHAOS mutex at apply: AI" .. aiID
+                                        .. " -> " .. tostring(aiRelic))
+                                else
+                                    print("[Haikesi GamePlay] CHAOS mutex at apply: AI" .. aiID
+                                        .. " skip pick (no alt)")
+                                    aiRelic = nil
+                                end
+                            end
+                            if aiRelic ~= nil then
+                                local selectedTypes = GetSelectedRelicTypesForPlayer(pAI)
+                                local relicDef = GameInfo.Haikesi_Relics[aiRelic]
+                                local canApply = not selectedTypes[aiRelic]
+                                    or (relicDef ~= nil and relicDef.IsRepeatable == 1)
+                                if canApply then
+                                    local reason = aiReasonsTable and aiReasonsTable[aiIDStr] or nil
+                                    local okApplyOne, applyResult = pcall(
+                                        ApplyRelicToPlayer, aiID, aiRelic, true, reason)
+                                    if not okApplyOne then
+                                        print("[Haikesi GamePlay] AI Player" .. aiID
+                                            .. " ApplyRelic error for " .. tostring(aiRelic)
+                                            .. ": " .. tostring(applyResult))
+                                    elseif applyResult then
+                                        applied = applied + 1
+                                        appliedThisAI = appliedThisAI + 1
+                                        if IsChaosInterferenceRelic(aiRelic) then
+                                            chaosApplied = true
+                                        end
+                                        print("[Haikesi GamePlay] AI Player" .. aiID
+                                            .. " gained AI relic " .. aiRelic)
+                                    else
+                                        print("[Haikesi GamePlay] AI Player" .. aiID
+                                            .. " failed to apply AI relic " .. tostring(aiRelic))
+                                    end
+                                else
+                                    print("[Haikesi GamePlay] AI Player" .. aiID
+                                        .. " already has " .. aiRelic .. ", skip")
+                                end
+                            end
                         end
+                    end
+                    if appliedThisAI > 0 then
+                        Haikesi_SetAISelectRound(pAI, roundNum)
                     end
                 end
             end
@@ -774,7 +963,7 @@ local EXT_AI_HUMAN_RELIC_KEY = 'PROP_NW_HAIKESI_EXT_AI_HUMAN_RELIC'
 local EXT_AI_CREATED_TURN_KEY = 'PROP_NW_HAIKESI_EXT_AI_CREATED_TURN'
 local EXT_AI_OPTION_IDS_KEY = 'PROP_NW_HAIKESI_EXT_AI_OPTION_IDS'
 local EXT_AI_OPTIONS_PREFIX = 'PROP_NW_HAIKESI_EXT_AI_OPTIONS_'
-local EXT_AI_OPTIONS_PER_PLAYER = 3
+-- 普通 3 选 1；黄金/英雄 6 选 2（见 Haikesi_ExtAI_AgePick.lua）
 local EXT_AI_TIMEOUT_TURNS = 1
 
 -- Civ6 布尔配置常为 0/1；Lua 中 0 为真，故不能写 (GetValue() or false)
@@ -815,68 +1004,95 @@ local function Haikesi_SyncAIRelicCountToHuman(requesterPlayerID, targetCount, u
 
             for _, aiID in ipairs(sortedIDs) do
                 local pAI = Players[aiID]
-                if pAI ~= nil and Haikesi_GetPlayerRelicCount(pAI) < needCount then
+                if pAI ~= nil and Haikesi_GetAISelectRound(pAI) < needCount then
                     local aiIDStr = tostring(aiID)
-                    local relic = choices[aiIDStr]
+                    local packed = choices[aiIDStr]
                     local reason = (useUI and aiReasonsTable ~= nil) and aiReasonsTable[aiIDStr] or nil
+                    local relicList = Haikesi_SplitChoiceRelics(packed)
 
-                    -- 缺卡/非法/本轮混乱干扰已占用：只在本 AI 候选池内重抽，勿再整桌 Build（会重置互斥）
-                    local function PickAltForAI(excludeChaos)
+                    local function PickAltForAI(excludeChaos, excludeSet)
                         local available = GetAIAvailableRelics(pAI, excludeChaos)
+                        if excludeSet ~= nil then
+                            local filtered = {}
+                            for _, r in ipairs(available) do
+                                if not excludeSet[r] then
+                                    table.insert(filtered, r)
+                                end
+                            end
+                            available = filtered
+                        end
                         if #available == 0 then return nil end
                         local salt = countBefore * 1000 + aiID + requesterPlayerID
                         return available[(math.abs(salt) % #available) + 1]
                     end
 
-                    if relic == nil or not AI_RELIC_TYPE_SET[relic] then
-                        relic = PickAltForAI(chaosApplied)
+                    if #relicList == 0 then
+                        local one = PickAltForAI(chaosApplied, nil)
+                        if one ~= nil then
+                            relicList = { one }
+                        end
                         reason = nil
                     end
 
-                    if IsChaosInterferenceRelic(relic) and chaosApplied then
-                        relic = PickAltForAI(true)
-                        reason = nil
-                        print("[Haikesi GamePlay] CHAOS mutex sync: AI" .. aiID
-                            .. " -> " .. tostring(relic))
-                    end
-
-                    if relic == nil then
-                        print("[Haikesi GamePlay] AI Player" .. aiIDStr
-                            .. " cannot catch up round " .. tostring(needCount))
-                    else
-                        local selectedTypes = GetSelectedRelicTypesForPlayer(pAI)
-                        local relicDef = GameInfo.Haikesi_Relics[relic]
-                        local canApply = not selectedTypes[relic]
-                            or (relicDef ~= nil and relicDef.IsRepeatable == 1)
-                        if not canApply then
-                            relic = PickAltForAI(chaosApplied)
+                    local appliedAny = false
+                    local usedThisRound = {}
+                    for pickIdx, relic in ipairs(relicList) do
+                        if relic == nil or not AI_RELIC_TYPE_SET[relic] then
+                            relic = PickAltForAI(chaosApplied, usedThisRound)
                             reason = nil
-                            if relic == nil then
-                                print("[Haikesi GamePlay] AI Player" .. aiIDStr
-                                    .. " catch-up blocked round " .. tostring(needCount))
-                            end
                         end
 
-                        if relic ~= nil then
-                            local okCatch, catchResult = pcall(
-                                ApplyRelicToPlayer, aiID, relic, true, reason)
-                            if not okCatch then
-                                print("[Haikesi GamePlay] AI Player" .. aiID
-                                    .. " catch-up ApplyRelic error: " .. tostring(catchResult))
-                            elseif catchResult then
-                                totalApplied = totalApplied + 1
-                                if IsChaosInterferenceRelic(relic) then
-                                    chaosApplied = true
+                        if IsChaosInterferenceRelic(relic) and chaosApplied then
+                            relic = PickAltForAI(true, usedThisRound)
+                            reason = nil
+                            print("[Haikesi GamePlay] CHAOS mutex sync: AI" .. aiID
+                                .. " -> " .. tostring(relic))
+                        end
+
+                        if relic == nil then
+                            print("[Haikesi GamePlay] AI Player" .. aiIDStr
+                                .. " cannot catch up round " .. tostring(needCount)
+                                .. " pick " .. tostring(pickIdx))
+                        else
+                            local selectedTypes = GetSelectedRelicTypesForPlayer(pAI)
+                            local relicDef = GameInfo.Haikesi_Relics[relic]
+                            local canApply = not selectedTypes[relic]
+                                or (relicDef ~= nil and relicDef.IsRepeatable == 1)
+                            if not canApply or usedThisRound[relic] then
+                                relic = PickAltForAI(chaosApplied, usedThisRound)
+                                reason = nil
+                                if relic == nil then
+                                    print("[Haikesi GamePlay] AI Player" .. aiIDStr
+                                        .. " catch-up blocked round " .. tostring(needCount))
                                 end
-                                print("[Haikesi GamePlay] AI Player" .. aiID
-                                    .. " catch-up gained " .. relic
-                                    .. " (round " .. tostring(needCount)
-                                    .. "/" .. tostring(targetCount) .. ")")
-                            else
-                                print("[Haikesi GamePlay] AI Player" .. aiID
-                                    .. " catch-up apply failed: " .. tostring(relic))
+                            end
+
+                            if relic ~= nil then
+                                local okCatch, catchResult = pcall(
+                                    ApplyRelicToPlayer, aiID, relic, true, reason)
+                                if not okCatch then
+                                    print("[Haikesi GamePlay] AI Player" .. aiID
+                                        .. " catch-up ApplyRelic error: " .. tostring(catchResult))
+                                elseif catchResult then
+                                    totalApplied = totalApplied + 1
+                                    appliedAny = true
+                                    usedThisRound[relic] = true
+                                    if IsChaosInterferenceRelic(relic) then
+                                        chaosApplied = true
+                                    end
+                                    print("[Haikesi GamePlay] AI Player" .. aiID
+                                        .. " catch-up gained " .. relic
+                                        .. " (round " .. tostring(needCount)
+                                        .. "/" .. tostring(targetCount) .. ")")
+                                else
+                                    print("[Haikesi GamePlay] AI Player" .. aiID
+                                        .. " catch-up apply failed: " .. tostring(relic))
+                                end
                             end
                         end
+                    end
+                    if appliedAny then
+                        Haikesi_SetAISelectRound(pAI, needCount)
                     end
                 end
             end
@@ -954,8 +1170,9 @@ local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countB
     for _, pAI in ipairs(Haikesi_GetAliveAIPlayers()) do
         local aiID = pAI:GetID()
         local available = GetAIAvailableRelics(pAI, chaosInOptionsBatch)
+        local optCount = Haikesi_AIOptionsCountForPlayer(pAI)
         local salt = countBefore * 1000 + aiID * 17 + requesterPlayerID + createdTurn * 997
-        local options = Haikesi_PickRandomRelicsFromPool(available, EXT_AI_OPTIONS_PER_PLAYER, salt)
+        local options = Haikesi_PickRandomRelicsFromPool(available, optCount, salt)
         Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, table.concat(options, ","))
         table.insert(aiOptionIDs, tostring(aiID))
         for _, opt in ipairs(options) do
@@ -964,8 +1181,10 @@ local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countB
                 break
             end
         end
-        print("[Haikesi GamePlay] External AI options Player" .. aiID .. ": "
-            .. table.concat(options, ", "))
+        print("[Haikesi GamePlay] External AI options Player" .. aiID
+            .. " picks=" .. tostring(Haikesi_AIPickCountForPlayer(pAI))
+            .. " age=" .. tostring(Haikesi_PlayerAgeLabel(aiID))
+            .. ": " .. table.concat(options, ", "))
     end
     Game:SetProperty(EXT_AI_OPTION_IDS_KEY, table.concat(aiOptionIDs, ","))
 end
@@ -992,6 +1211,7 @@ local function Haikesi_EnsureExternalAIOptionsStored()
     local createdTurn = tonumber(Game:GetProperty(EXT_AI_CREATED_TURN_KEY))
         or Game.GetCurrentGameTurn()
     print("[Haikesi GamePlay] External AI options missing, regenerating...")
+    Haikesi_WarmExtAIUICaches()
     Haikesi_StoreExternalAIOptionsForAllAIs(requester, countBefore, createdTurn)
 end
 
@@ -1073,7 +1293,9 @@ local function Haikesi_DumpExternalAIRequestToLog(reason)
         local selectedList = GetSelectedRelicTypeListForPlayer(pAI)
         print("AI|" .. tostring(aiID) .. "|" .. tostring(civLabel) .. "|"
             .. table.concat(options, ",") .. "|selected:" .. table.concat(selectedList, ",")
-            .. "|name:" .. tostring(playerName))
+            .. "|name:" .. tostring(playerName)
+            .. "|picks:" .. tostring(Haikesi_AIPickCountForPlayer(pAI))
+            .. "|age:" .. tostring(Haikesi_PlayerAgeLabel(aiID)))
     end
     -- 与单机 FireTuner gather 同线格式：overview + WC + 各 AI 迷雾/外交视图
     -- Context 脚本在独立 Gameplay 环境，经 ExposedMembers 调用
@@ -1106,21 +1328,16 @@ local function Haikesi_CreateExternalAIRequest(requesterPlayerID, humanRelic, co
     Game:SetProperty(EXT_AI_HUMAN_RELIC_KEY, humanRelic)
     Game:SetProperty(EXT_AI_CREATED_TURN_KEY, turn)
 
+    -- 须在发牌前刷 UI 时代戳记：HasGoldenAge 仅 InGame，否则黄金时代也会 3 选 1
+    Haikesi_WarmExtAIUICaches()
     Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countBefore, turn)
 
     print("[Haikesi GamePlay] External AI request created: " .. requestID
         .. " requester=" .. tostring(requesterPlayerID)
         .. " humanRelic=" .. tostring(humanRelic)
         .. " countBefore=" .. tostring(countBefore))
-    -- 先让 UI 刷军力/关系/不满缓存，再 dump（Gameplay 读 ExposedMembers / Game prop）
-    pcall(function()
-        local warmFn = ExposedMembers and ExposedMembers.Haikesi_RefreshExtAIUICache
-        if type(warmFn) == "function" then
-            warmFn()
-        elseif LuaEvents ~= nil and LuaEvents.Haikesi_ExtAIWarmCache ~= nil then
-            LuaEvents.Haikesi_ExtAIWarmCache()
-        end
-    end)
+    -- 再刷一次军力/外交缓存后 dump（时代已在发牌前刷过）
+    Haikesi_WarmExtAIUICaches()
     -- 单机/联机均 dump：联机 watch 无 Tuner 时依赖此块；单机可忽略
     Haikesi_DumpExternalAIRequestToLog("create")
     pcall(function()
@@ -1149,9 +1366,11 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
     end
 
     local chaosCount = 0
-    for _, aiRelic in pairs(choicesTable) do
-        if IsChaosInterferenceRelic(aiRelic) then
-            chaosCount = chaosCount + 1
+    for _, packed in pairs(choicesTable) do
+        for _, aiRelic in ipairs(Haikesi_SplitChoiceRelics(packed)) do
+            if IsChaosInterferenceRelic(aiRelic) then
+                chaosCount = chaosCount + 1
+            end
         end
     end
     if chaosCount > 1 then
@@ -1159,32 +1378,56 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
     end
 
     local chaosAssignedInBatch = chaosCount == 1
-    for aiIDStr, aiRelic in pairs(choicesTable) do
+    for aiIDStr, packed in pairs(choicesTable) do
         local aiID = tonumber(aiIDStr)
         if aiID == nil then
             return false, "invalid aiID: " .. tostring(aiIDStr)
-        end
-        if not AI_RELIC_TYPE_SET[aiRelic] then
-            return false, "not in AI pool: " .. tostring(aiRelic)
         end
         local pAI = Players[aiID]
         if pAI == nil or pAI:IsHuman() or pAI:IsBarbarian() then
             return false, "invalid AI player: " .. tostring(aiIDStr)
         end
-        local options = Haikesi_GetStoredExternalAIOptions(aiID)
-        if #options == 0 then
-            local excludeChaos = chaosAssignedInBatch and not IsChaosInterferenceRelic(aiRelic)
-            options = GetAIAvailableRelics(pAI, excludeChaos)
+        local relicList = Haikesi_SplitChoiceRelics(packed)
+        local expectedPicks = Haikesi_AIPickCountForPlayer(pAI)
+        if #relicList < 1 then
+            return false, "empty picks for AI " .. aiIDStr
         end
-        local found = false
-        for _, t in ipairs(options) do
-            if t == aiRelic then
-                found = true
-                break
+        if #relicList > expectedPicks then
+            return false, "too many picks for AI " .. aiIDStr
+                .. " got " .. tostring(#relicList) .. " expected <=" .. tostring(expectedPicks)
+        end
+        local seen = {}
+        for _, aiRelic in ipairs(relicList) do
+            if seen[aiRelic] then
+                return false, "duplicate pick for AI " .. aiIDStr .. ": " .. tostring(aiRelic)
+            end
+            seen[aiRelic] = true
+            if not AI_RELIC_TYPE_SET[aiRelic] then
+                return false, "not in AI pool: " .. tostring(aiRelic)
             end
         end
-        if not found then
-            return false, "invalid choice for AI " .. aiIDStr .. " (not in options): " .. tostring(aiRelic)
+        -- 候选充足时必须选满（金/英 6 选 2）
+        local options = Haikesi_GetStoredExternalAIOptions(aiID)
+        if #options == 0 then
+            local excludeChaos = chaosAssignedInBatch
+            options = GetAIAvailableRelics(pAI, excludeChaos)
+        end
+        if #relicList < expectedPicks and #options >= expectedPicks then
+            return false, "under-picked for AI " .. aiIDStr
+                .. " got " .. tostring(#relicList) .. " expected " .. tostring(expectedPicks)
+        end
+        for _, aiRelic in ipairs(relicList) do
+            local found = false
+            for _, t in ipairs(options) do
+                if t == aiRelic then
+                    found = true
+                    break
+                end
+            end
+            if not found then
+                return false, "invalid choice for AI " .. aiIDStr
+                    .. " (not in options): " .. tostring(aiRelic)
+            end
         end
     end
     return true, nil
@@ -1246,7 +1489,9 @@ function Haikesi_GetExternalAIRequest()
         local selectedList = GetSelectedRelicTypeListForPlayer(pAI)
         print("AI|" .. tostring(aiID) .. "|" .. tostring(civLabel) .. "|"
             .. table.concat(options, ",") .. "|selected:" .. table.concat(selectedList, ",")
-            .. "|name:" .. tostring(playerName))
+            .. "|name:" .. tostring(playerName)
+            .. "|picks:" .. tostring(Haikesi_AIPickCountForPlayer(pAI))
+            .. "|age:" .. tostring(Haikesi_PlayerAgeLabel(aiID)))
     end
 end
 

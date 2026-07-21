@@ -43,12 +43,13 @@ def test_resource_spawn_tag_warns_when_zero_cities():
 
 def test_enrich_avoids_duplicate_when_xml_has_yields():
     note = haikesi_lua.format_resource_tile_yield_note("RESOURCE_TEA")
-    assert "科技+1" in note
+    assert "茶奢侈品给地块+1科技" in note
+    assert "改良后为城市提供宜居度" in note
     assert "原版固有收益" in note
     # XML already clarifies vanilla luxury yields; enrich should not double-append
     desc = (
         "创建茶。以下为该奢侈品本身的原版固有收益（非本词条额外加成）："
-        "茶地块+1科技；需改良后收获，并提供奢侈品宜居。"
+        "茶奢侈品给地块+1科技，改良后为城市提供宜居度。"
     )
     out = haikesi_lua.enrich_relic_description("NW_AI_DRINK_TEA", desc)
     assert out.count("原版固有收益") == 1

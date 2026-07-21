@@ -841,7 +841,8 @@ def build_diary_full_query() -> str:
         # Age (per player)
         '  local age = "NORMAL" '
         "  pcall(function() "
-        '    if eraManager:HasHeroicAge(i) then age = "HEROIC" '
+        '    if eraManager:HasHeroicGoldenAge(i) then age = "HEROIC" '
+        '    elseif eraManager:HasHeroicAge(i) then age = "HEROIC" '
         '    elseif eraManager:HasGoldenAge(i) then age = "GOLDEN" '
         '    elseif eraManager:HasDarkAge(i) then age = "DARK" end '
         "  end) "

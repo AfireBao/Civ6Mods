@@ -534,31 +534,57 @@ local function ProcessStagedExtAI()
     if not IsGameHost() or ExposedMembers == nil then
         return
     end
+    -- 读档/回主菜单帧上 Game 可能为 nil：绝不能先清 payload / 抬高 seq，否则 LLM stage 永久丢失
+    if Game == nil then
+        return
+    end
     local seq = tonumber(ExposedMembers.Haikesi_ExtAIStagedSeq) or 0
     local payload = ExposedMembers.Haikesi_ExtAIStagedPayload
     if seq <= g_LastExtAIBroadcastSeq then
         return
     end
     if payload == nil or payload == "" then
-        g_LastExtAIBroadcastSeq = seq
+        print("[Haikesi ExtAI UI] staged seq=" .. tostring(seq)
+            .. " payload empty — keep waiting (do not consume seq)")
         return
     end
-    ExposedMembers.Haikesi_ExtAIStagedPayload = nil
-    g_LastExtAIBroadcastSeq = seq
     local localPlayer = Game.GetLocalPlayer()
     if localPlayer == nil or localPlayer < 0 then
         localPlayer = tonumber(Game:GetProperty("PROP_NW_HAIKESI_EXT_AI_REQUESTER") or -1)
     end
     if localPlayer == nil or localPlayer < 0 then
-        print("[Haikesi ExtAI UI] broadcast skip: no local player (human→AI/observer?)")
+        print("[Haikesi ExtAI UI] broadcast defer: no local player (will retry seq="
+            .. tostring(seq) .. ")")
         return
     end
+    -- 仅在确认能广播后再消费，避免 Game nil / 无席位时吞掉 stage
+    ExposedMembers.Haikesi_ExtAIStagedPayload = nil
+    g_LastExtAIBroadcastSeq = seq
     local param = {}
     param['OnStart'] = 'HaikesiSelectRelic'
     param['ExtAIApply'] = tostring(payload)
-    UI.RequestPlayerOperation(localPlayer, PlayerOperations.EXECUTE_SCRIPT, param)
+    local okReq, errReq = pcall(function()
+        UI.RequestPlayerOperation(localPlayer, PlayerOperations.EXECUTE_SCRIPT, param)
+    end)
+    if not okReq then
+        -- 广播失败：塞回 payload，允许下帧重试同一 seq
+        ExposedMembers.Haikesi_ExtAIStagedPayload = payload
+        g_LastExtAIBroadcastSeq = seq - 1
+        print("[Haikesi ExtAI UI] broadcast FAILED seq=" .. tostring(seq)
+            .. " err=" .. tostring(errReq) .. " — restored payload for retry")
+        return
+    end
     print("[Haikesi ExtAI UI] broadcast ExtAIApply len=" .. tostring(#tostring(payload))
         .. " via P" .. tostring(localPlayer) .. " seq=" .. tostring(seq))
+    -- 单机再直调一次 Gameplay，防止 EXECUTE_SCRIPT 丢失
+    if not IsNetworkMultiplayerGame() then
+        pcall(function()
+            local fn = ExposedMembers and ExposedMembers.Haikesi_ApplyExtAIWire
+            if type(fn) == "function" then
+                fn(tostring(payload))
+            end
+        end)
+    end
 end
 
 -- ===========================================================================
@@ -589,9 +615,10 @@ local function ShortDiploStateFromIndex(idx)
     return states[(tonumber(idx) or -1) + 1]
 end
 
--- 军力/旅游/内游/外交VP/支持度 / 关系不满：仅 UI 可靠；
+-- 军力/旅游/内游/外交VP/支持度 / 关系不满 / 金英暗时代：仅 UI(InGame) 可靠；
 -- 军力与外交条一致用 GetMilitaryStrengthWithoutTreasury（含国库版会偏高）
 -- 仅在回合初 / 选卡前 / pending 时刷新，写入 ExposedMembers + Game 属性
+-- 时代戳记供 Gameplay 双选（HasGoldenAge 在 GameCore 不可用）
 local function RefreshExtAIMilitaryCache()
     local okAll, errAll = pcall(function()
         if Game == nil then
@@ -599,6 +626,7 @@ local function RefreshExtAIMilitaryCache()
         end
         local cache = {}
         local vstatCache = {}
+        local eraAgeCache = {}
         local majors = nil
         pcall(function()
             majors = PlayerManager.GetAliveMajors()
@@ -607,10 +635,42 @@ local function RefreshExtAIMilitaryCache()
             return
         end
         local ids = {}
+        local eras = nil
+        pcall(function()
+            eras = Game.GetEras()
+        end)
         for _, pPlayer in ipairs(majors) do
             if pPlayer ~= nil then
                 local pid = pPlayer:GetID()
                 table.insert(ids, pid)
+                -- 金/英/暗：Gameplay 读此戳记决定 6 选 2
+                local age = "NORMAL"
+                if eras ~= nil then
+                    local okAge, ageLabel = pcall(function()
+                        if eras.HasHeroicGoldenAge ~= nil and eras:HasHeroicGoldenAge(pid) then
+                            return "HEROIC"
+                        end
+                        if eras.HasHeroicAge ~= nil and eras:HasHeroicAge(pid) then
+                            return "HEROIC"
+                        end
+                        if eras.HasGoldenAge ~= nil and eras:HasGoldenAge(pid) then
+                            return "GOLDEN"
+                        end
+                        if eras.HasDarkAge ~= nil and eras:HasDarkAge(pid) then
+                            return "DARK"
+                        end
+                        return "NORMAL"
+                    end)
+                    if okAge and ageLabel ~= nil and ageLabel ~= "" then
+                        age = tostring(ageLabel)
+                    end
+                end
+                eraAgeCache[pid] = age
+                pcall(function()
+                    if Game.SetProperty ~= nil then
+                        Game:SetProperty("PROP_NW_HAIKESI_UI_ERA_AGE_" .. tostring(pid), age)
+                    end
+                end)
                 -- mil/techs/civics：失败时不写缓存（避免假 0 盖住 Gameplay 回退）
                 local mil = nil
                 local techs, civics = nil, nil
@@ -701,6 +761,14 @@ local function RefreshExtAIMilitaryCache()
         if ExposedMembers ~= nil then
             ExposedMembers.Haikesi_UIMilitaryByPlayer = cache
             ExposedMembers.Haikesi_UIVstatByPlayer = vstatCache
+            ExposedMembers.Haikesi_UIEraAgeByPlayer = eraAgeCache
+        end
+        local ageParts = {}
+        for _, pid in ipairs(ids) do
+            table.insert(ageParts, "P" .. tostring(pid) .. "=" .. tostring(eraAgeCache[pid] or "?"))
+        end
+        if #ageParts > 0 then
+            print("[Haikesi ExtAI UI] era ages: " .. table.concat(ageParts, " "))
         end
         for _, fromId in ipairs(ids) do
             local pFrom = Players[fromId]
@@ -764,6 +832,159 @@ local function RefreshExtAIMilitaryCache()
     end)
     if not okAll then
         print("[Haikesi ExtAI MP] RefreshExtAIUICache error: " .. tostring(errAll))
+    end
+    -- 商路独立扫描：避免嵌在大 pcall 里被前置错误整段跳过
+    RefreshExtAITradeCache()
+end
+
+-- 商路缓存（InGame GetOutgoingRoutes）；失败不影响军力/时代戳记
+function RefreshExtAITradeCache()
+    local okTrade, errTrade = pcall(function()
+        if Game == nil then
+            print("[Haikesi ExtAI UI] trade skip: Game nil")
+            return
+        end
+        local majors = nil
+        pcall(function()
+            majors = PlayerManager.GetAliveMajors()
+        end)
+        if majors == nil then
+            print("[Haikesi ExtAI UI] trade skip: no majors")
+            return
+        end
+        local ids = {}
+        local tradeSumCache = {}
+        local tradeRouteCache = {}
+        for _, pPlayer in ipairs(majors) do
+            if pPlayer ~= nil then
+                local pid = pPlayer:GetID()
+                table.insert(ids, pid)
+                tradeSumCache[pid] = { cap = 0, out = 0, dom = 0, intlOut = 0, intlIn = 0 }
+                tradeRouteCache[pid] = {}
+            end
+        end
+        local function SafeLocName(obj)
+            if obj == nil then
+                return "?"
+            end
+            local n = "?"
+            pcall(function()
+                n = Locale.Lookup(obj:GetName())
+            end)
+            return tostring(n):gsub("|", "/")
+        end
+        local function SafeCivName(pid)
+            local n = "?"
+            pcall(function()
+                n = Locale.Lookup(PlayerConfigurations[pid]:GetCivilizationShortDescription())
+            end)
+            return tostring(n):gsub("|", "/")
+        end
+        local function PushRoute(pid, packed)
+            if tradeRouteCache[pid] == nil or #tradeRouteCache[pid] >= 12 then
+                return
+            end
+            table.insert(tradeRouteCache[pid], packed)
+        end
+        -- 仅扫主要文明出站（城邦入向对互利海克斯次要；避免 GetAlive 兼容坑）
+        for _, fromId in ipairs(ids) do
+            local pOwner = Players[fromId]
+            if pOwner ~= nil then
+                local cap = 0
+                pcall(function()
+                    local tr = pOwner:GetTrade()
+                    if tr ~= nil and tr.GetOutgoingRouteCapacity ~= nil then
+                        cap = tonumber(tr:GetOutgoingRouteCapacity()) or 0
+                    end
+                end)
+                tradeSumCache[fromId].cap = cap
+                local seen = {}
+                pcall(function()
+                    for _, city in pOwner:GetCities():Members() do
+                        local routes = nil
+                        pcall(function()
+                            local ct = city:GetTrade()
+                            if ct ~= nil then
+                                routes = ct:GetOutgoingRoutes()
+                            end
+                        end)
+                        if routes ~= nil then
+                            for _, r in ipairs(routes) do
+                                local destPid = r.DestinationCityPlayer
+                                local key = tostring(r.TraderUnitID or 0)
+                                    .. "_" .. tostring(destPid)
+                                    .. "_" .. tostring(r.DestinationCityID)
+                                if not seen[key] then
+                                    seen[key] = true
+                                    local origName = "?"
+                                    pcall(function()
+                                        local oc = Players[r.OriginCityPlayer]
+                                            :GetCities():FindID(r.OriginCityID)
+                                        origName = SafeLocName(oc)
+                                    end)
+                                    local destName = "?"
+                                    pcall(function()
+                                        local dc = Players[destPid]
+                                            :GetCities():FindID(r.DestinationCityID)
+                                        destName = SafeLocName(dc)
+                                    end)
+                                    tradeSumCache[fromId].out =
+                                        tradeSumCache[fromId].out + 1
+                                    if destPid == fromId then
+                                        tradeSumCache[fromId].dom =
+                                            tradeSumCache[fromId].dom + 1
+                                        PushRoute(fromId,
+                                            "OUT|dom|" .. origName .. "|-|" .. destName)
+                                    else
+                                        tradeSumCache[fromId].intlOut =
+                                            tradeSumCache[fromId].intlOut + 1
+                                        PushRoute(fromId,
+                                            "OUT|intl|" .. origName
+                                                .. "|" .. SafeCivName(destPid)
+                                                .. "|" .. destName)
+                                        if tradeSumCache[destPid] ~= nil then
+                                            tradeSumCache[destPid].intlIn =
+                                                tradeSumCache[destPid].intlIn + 1
+                                            PushRoute(destPid,
+                                                "IN|intl|" .. SafeCivName(fromId)
+                                                    .. "|" .. origName .. "|" .. destName)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+        local tradeSumPacked = {}
+        local tradeParts = {}
+        for _, pid in ipairs(ids) do
+            local s = tradeSumCache[pid]
+            local packed = tostring(s.cap) .. ";" .. tostring(s.out) .. ";"
+                .. tostring(s.dom) .. ";" .. tostring(s.intlOut) .. ";"
+                .. tostring(s.intlIn)
+            tradeSumPacked[pid] = packed
+            pcall(function()
+                if Game.SetProperty ~= nil then
+                    Game:SetProperty("PROP_NW_HAIKESI_UI_TRADE_" .. tostring(pid), packed)
+                    Game:SetProperty(
+                        "PROP_NW_HAIKESI_UI_TROUTES_" .. tostring(pid),
+                        table.concat(tradeRouteCache[pid] or {}, "#"))
+                end
+            end)
+            table.insert(tradeParts,
+                "P" .. tostring(pid) .. "=" .. tostring(s.out) .. "/"
+                    .. tostring(s.cap) .. "(入" .. tostring(s.intlIn) .. ")")
+        end
+        if ExposedMembers ~= nil then
+            ExposedMembers.Haikesi_UITradeSumByPlayer = tradeSumPacked
+            ExposedMembers.Haikesi_UITradeRoutesByPlayer = tradeRouteCache
+        end
+        print("[Haikesi ExtAI UI] trade: " .. table.concat(tradeParts, " "))
+    end)
+    if not okTrade then
+        print("[Haikesi ExtAI UI] trade cache error: " .. tostring(errTrade))
     end
 end
 
@@ -833,6 +1054,10 @@ local function CanBroadcastExtAI()
 end
 
 local function IsExtAIPending()
+    -- 读档/回主菜单等帧上 Game 可能暂为 nil；横幅 tick 每帧调用
+    if Game == nil or Game.GetProperty == nil then
+        return false
+    end
     return (Game:GetProperty(EXT_AI_PENDING_PROP) or 0) == 1
 end
 
@@ -1366,9 +1591,9 @@ local function Initialize()
     end)
     -- 攻城通知 + ExtAI：帧末捞 staged（Gameplay→UI 的 LuaEvents 常丢）+ 联机横幅重试
     Events.GameCoreEventPublishComplete.Add(function()
-        ProcessAssaultNotifyQueue()
-        ProcessStagedExtAI()
-        TickExtAIBannerRetry()
+        pcall(ProcessAssaultNotifyQueue)
+        pcall(ProcessStagedExtAI)
+        pcall(TickExtAIBannerRetry)
     end)
 
     if LuaEvents ~= nil then

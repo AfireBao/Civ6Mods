@@ -218,6 +218,8 @@ def _build_decision_log_body(
         f"- **request_id**: `{request_id}`",
         f"- **model**: `{model}`",
         f"- **reason_mode**: `{reason_mode()}`",
+        f"- **thinking**: `{'ON' if llm_thinking_enabled() else 'OFF'}` (`HAIKESI_LLM_THINKING`)",
+        f"- **review_rounds**: `{llm_review_rounds()}` (`HAIKESI_LLM_REVIEW_ROUNDS`)",
         f"- **thinking_chars**: {len(reasoning or '')}",
     ]
     if archive_path is not None:
@@ -238,7 +240,11 @@ def _build_decision_log_body(
         "",
         "模型思考过程（不注入游戏）。",
         "",
-        reasoning or "*(empty — enable `HAIKESI_LLM_THINKING=1` to capture)*",
+        reasoning
+        or (
+            "*(empty — set `HAIKESI_LLM_THINKING=1` for prompt-dev thinking capture; "
+            "set `0` when playing to save tokens)*"
+        ),
         "",
         "## Raw Response",
         "",
@@ -353,7 +359,12 @@ def sanitize_decision_reason(reason: str, *, max_chars: int = _REASON_MAX_CHARS)
 
 
 class _ChatClient(Protocol):
-    def complete(self, prompt: str) -> str: ...
+    def complete(
+        self,
+        prompt: str,
+        *,
+        required_ids: list[str] | None = None,
+    ) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -415,7 +426,11 @@ def load_haikesi_llm_config() -> HaikesiLLMConfig:
 
 
 def load_deepseek_config() -> HaikesiLLMConfig:
-    """Load DeepSeek API config (OpenAI-compatible)."""
+    """Load DeepSeek API config (OpenAI-compatible).
+
+    If DEEPSEEK_* is unset but HAIKESI_LLM_* points at another gateway (e.g. xAI),
+    fall back to those so mis-running deepseek_watch with a Grok .env still works.
+    """
     load_dotenv_file()
     api_key = os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("HAIKESI_LLM_API_KEY")
     if not api_key:
@@ -428,16 +443,32 @@ def load_deepseek_config() -> HaikesiLLMConfig:
         or os.environ.get("HAIKESI_LLM_MODEL")
         or DEEPSEEK_DEFAULT_MODEL
     )
-    base_url = os.environ.get("DEEPSEEK_BASE_URL") or DEEPSEEK_BASE_URL
+    base_url = (
+        os.environ.get("DEEPSEEK_BASE_URL")
+        or os.environ.get("HAIKESI_LLM_BASE_URL")
+        or DEEPSEEK_BASE_URL
+    )
     return HaikesiLLMConfig(api_key=api_key, model=model, base_url=base_url)
 
 
-_LLM_MAX_TOKENS = int(os.environ.get("HAIKESI_LLM_MAX_TOKENS", "4096"))
-# thinking 开启时推理占用大量 tokens；未显式设置时抬到 8192，降低 content 被截空概率
-_LLM_MAX_TOKENS_THINKING = int(
-    os.environ.get("HAIKESI_LLM_MAX_TOKENS_THINKING")
-    or max(_LLM_MAX_TOKENS, 8192)
-)
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    try:
+        return int(str(raw).strip())
+    except ValueError:
+        return default
+
+
+def _llm_max_tokens(*, thinking: bool) -> int:
+    """每次请求时读 env（须先 load_dotenv）；勿在 import 时固化。"""
+    base = _env_int("HAIKESI_LLM_MAX_TOKENS", 4096)
+    if not thinking:
+        return max(256, base)
+    # 默认抬到 16384：grok-4.5 内部 reasoning + 可见推演 + JSON 很吃额度
+    thinking_cap = _env_int("HAIKESI_LLM_MAX_TOKENS_THINKING", max(base, 16384))
+    return max(base, thinking_cap)
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -447,23 +478,125 @@ def _env_flag(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def llm_thinking_enabled() -> bool:
+    """开发开：捕获思考过程写 decision 日志；正常游玩关：省 output/reasoning token。"""
+    return _env_flag("HAIKESI_LLM_THINKING", False)
+
+
+def _is_deepseek_base(base_url: str) -> bool:
+    return "deepseek" in (base_url or "").lower()
+
+
+def _is_xai_base(base_url: str) -> bool:
+    u = (base_url or "").lower()
+    return "x.ai" in u or "xai" in u
+
+
+def _xai_supports_reasoning_none(model: str) -> bool:
+    """grok-4.5 等不能 reasoning_effort=none；grok-4.3 可以。"""
+    m = (model or "").lower()
+    if "4.5" in m or "grok-4-5" in m:
+        return False
+    if "4.3" in m or "grok-4-3" in m:
+        return True
+    # 未知新模型：保守不用 none，避免 400
+    return False
+
+
+def _xai_reasoning_effort(*, model: str, thinking: bool) -> str:
+    supports_none = _xai_supports_reasoning_none(model)
+    if thinking:
+        effort = (os.environ.get("HAIKESI_LLM_REASONING_EFFORT") or "high").strip().lower()
+        if effort not in {"none", "low", "medium", "high"}:
+            effort = "high"
+        if effort == "none" and not supports_none:
+            effort = "low"
+        return effort
+    return "none" if supports_none else "low"
+
+
+def _cleanup_thinking_text(text: str) -> str:
+    """去掉半截草稿、未闭合标签，保留最后一套完整『### 领袖』推演。"""
+    t = (text or "").strip()
+    if not t:
+        return ""
+    t = re.sub(r"</?thinking>", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"</?think>", "", t, flags=re.IGNORECASE)
+    # 若模型先写了一截再重写：保留从最后一个「完整领袖1块」或最密的连续 ### 领袖 段
+    markers = list(re.finditer(r"(?m)^###\s*领袖\s+\d+", t))
+    if len(markers) >= 2:
+        # 若同一领袖编号重复出现，从最后一次「领袖 1」或最小编号的最后一轮开始
+        last_starts: dict[str, int] = {}
+        for m in markers:
+            key = m.group(0)
+            last_starts[key] = m.start()
+        # 取所有领袖标题最后一次出现位置的最小值（一轮完整重写的起点）
+        # 更稳：若「### 领袖 1」出现多次，从最后一次领袖1起切
+        m1 = list(re.finditer(r"(?m)^###\s*领袖\s+1\b", t))
+        if len(m1) >= 2:
+            t = t[m1[-1].start() :].strip()
+        elif markers:
+            # 否则从最后一个「看似新一轮」的最小编号标题起
+            t = t[markers[-min(5, len(markers))].start() :].strip()
+    return t.strip()
+
+
+_THINK_TAG_RE = re.compile(
+    r"<thinking>(.*?)</thinking>|<think>(.*?)</think>",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _split_visible_thinking(text: str) -> tuple[str, str]:
+    """从回复中拆出可见推演与最终正文（JSON 仍可夹杂在正文里）。"""
+    parts: list[str] = []
+
+    def _keep(m: re.Match[str]) -> str:
+        chunk = (m.group(1) or m.group(2) or "").strip()
+        if chunk:
+            parts.append(chunk)
+        return ""
+
+    rest = _THINK_TAG_RE.sub(_keep, text).strip()
+    reasoning = "\n\n".join(parts)
+    if reasoning:
+        return _cleanup_thinking_text(reasoning), rest or text
+
+    # 未闭合 <thinking>：剥掉标签后按前言处理
+    raw = re.sub(r"</?thinking>|</?think>", "", text, flags=re.IGNORECASE)
+    extracted = _extract_json_object(raw)
+    if extracted:
+        idx = raw.find(extracted)
+        if idx > 0:
+            preamble = raw[:idx].strip()
+            if preamble and not preamble.startswith("{"):
+                cleaned = _strip_code_fences(preamble).strip()
+                if cleaned and cleaned.lower() not in {"json", "```", "```json"}:
+                    return _cleanup_thinking_text(cleaned), extracted
+    return "", rest or text
+
+
 class _OpenAICompatibleClient:
     def __init__(self, config: HaikesiLLMConfig) -> None:
         from openai import OpenAI
 
         self._client = OpenAI(api_key=config.api_key, base_url=config.base_url)
         self._model = config.model
+        self._base_url = (config.base_url or "").lower()
+        self._is_deepseek = _is_deepseek_base(self._base_url)
+        self._is_xai = _is_xai_base(self._base_url)
         # DeepSeek 官方：JSON Output 会偶发空 content；默认关闭，靠 prompt + 解析容错。
+        # 开发 thinking 模式要求 <thinking> 前言，与 response_format=json_object 冲突。
         self._json_mode = _env_flag("HAIKESI_LLM_JSON_MODE", False)
-        # DeepSeek V4 thinking：默认关（省延迟/费用）。开 HAIKESI_LLM_THINKING=1 可提升策略深度。
-        self._thinking_enabled = _env_flag("HAIKESI_LLM_THINKING", False)
-        self._thinking_requested = self._thinking_enabled
+        self._thinking_requested = llm_thinking_enabled()
+        if self._thinking_requested:
+            self._json_mode = False
+        self._thinking_enabled = self._thinking_requested
         self._last_reasoning = ""
 
     def _build_kwargs(self, prompt: str) -> dict[str, Any]:
-        max_tokens = (
-            _LLM_MAX_TOKENS_THINKING if self._thinking_enabled else _LLM_MAX_TOKENS
-        )
+        load_dotenv_file()
+        max_tokens = _llm_max_tokens(thinking=self._thinking_enabled)
         kwargs: dict[str, Any] = {
             "model": self._model,
             "messages": [{"role": "user", "content": prompt}],
@@ -471,33 +604,132 @@ class _OpenAICompatibleClient:
         }
         if self._json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        # OpenAI SDK：thinking 走 extra_body（DeepSeek V4）
-        kwargs["extra_body"] = {
-            "thinking": {"type": "enabled" if self._thinking_enabled else "disabled"}
-        }
+        extra: dict[str, Any] = {}
+        if self._is_deepseek:
+            # DeepSeek V4：thinking extra_body
+            extra["thinking"] = {
+                "type": "enabled" if self._thinking_enabled else "disabled"
+            }
+        elif self._is_xai:
+            # xAI：grok-4.5 禁止 none；关 thinking 时用 low
+            extra["reasoning_effort"] = _xai_reasoning_effort(
+                model=self._model, thinking=self._thinking_enabled
+            )
+        if extra:
+            kwargs["extra_body"] = extra
         return kwargs
 
-    def _extract_content(self, response: Any) -> tuple[str, str]:
+    def _extract_content(self, response: Any) -> tuple[str, str, str]:
+        """Returns (answer_content, finish_reason, api_reasoning)."""
         choice = response.choices[0]
         msg = choice.message
         content = (msg.content or "").strip()
         finish = getattr(choice, "finish_reason", None) or ""
-        reasoning = getattr(msg, "reasoning_content", None) or ""
-        if not content and reasoning:
-            # 极少数网关把最终答案只放在 reasoning；尝试抽取 JSON
-            extracted = _extract_json_object(str(reasoning))
+        api_reasoning = ""
+        rc = getattr(msg, "reasoning_content", None)
+        if rc:
+            api_reasoning = str(rc).strip()
+        else:
+            r = getattr(msg, "reasoning", None)
+            if isinstance(r, dict):
+                api_reasoning = str(
+                    r.get("content") or r.get("text") or r.get("summary") or ""
+                ).strip()
+            elif r:
+                api_reasoning = str(r).strip()
+        if not content and api_reasoning:
+            extracted = _extract_json_object(api_reasoning)
             if extracted:
                 log.warning(
                     "message.content empty; recovered JSON from reasoning_content "
                     "(finish_reason=%s)",
                     finish,
                 )
-                return extracted, finish
-        return content, finish
+                return extracted, finish, api_reasoning
+            # grok-4.5 常见：可见正文在 reasoning，content 为空 → 整段当正文继续解析
+            log.warning(
+                "message.content empty; using reasoning_content as body "
+                "(chars=%s finish_reason=%s)",
+                len(api_reasoning),
+                finish,
+            )
+            return api_reasoning, finish, api_reasoning
+        return content, finish, api_reasoning
 
-    def complete(self, prompt: str) -> str:
+    def _json_only_followup(
+        self,
+        *,
+        draft_text: str,
+        required_ids: list[str] | None = None,
+        partial_choices: dict[str, Any] | None = None,
+    ) -> str | None:
+        """content/reasoning 有推演但无 JSON / JSON 缺人时，再要一次仅 JSON。"""
+        snippet = (draft_text or "").strip()
+        if len(snippet) < 20 and not partial_choices:
+            return None
+        if len(snippet) > 12000:
+            snippet = snippet[:12000] + "\n…(截断)"
+        req = ",".join(required_ids or [])
+        partial = ""
+        if partial_choices:
+            partial = (
+                "\n已有不完整 choices（请保留合理项并补全缺失键）：\n"
+                + json.dumps(partial_choices, ensure_ascii=False)
+                + "\n"
+            )
+        id_rule = ""
+        if required_ids:
+            id_rule = (
+                f"\nchoices 必须包含且仅需包含这些键（缺一不可）：{req}\n"
+                "六选二领袖的值用 JSON 数组。\n"
+            )
+        follow = (
+            "根据以下策略推演（及已有不完整结果），输出唯一合法 JSON 对象。\n"
+            "格式必须是对象（不是数组）：\n"
+            '{"choices": {"1": "NW_AI_...", "2": ["NW_AI_A", "NW_AI_B"]}, '
+            '"reasons": {"1": "...", "2": "..."}}\n'
+            f"{id_rule}{partial}"
+            "禁止 markdown，禁止再写 <thinking>，禁止解释。\n\n"
+            f"{snippet or '（推演原文过短；请严格按局面补全全部领袖 choices）'}"
+        )
+        # 跟随时用较低 effort，把额度留给 JSON
+        prev_think = self._thinking_enabled
+        prev_json = self._json_mode
+        try:
+            self._thinking_enabled = False
+            self._json_mode = False
+            kwargs = self._build_kwargs(follow)
+            # 强制给足 JSON 空间
+            kwargs["max_tokens"] = max(1024, min(4096, int(kwargs.get("max_tokens") or 4096)))
+            if self._is_xai:
+                kwargs.setdefault("extra_body", {})
+                kwargs["extra_body"]["reasoning_effort"] = (
+                    "low" if not _xai_supports_reasoning_none(self._model) else "none"
+                )
+            response = self._client.chat.completions.create(**kwargs)
+            content, _finish, api_reasoning = self._extract_content(response)
+            body = content or api_reasoning
+            if not body:
+                return None
+            extracted = _extract_json_object(body)
+            return extracted or body
+        except Exception as exc:  # noqa: BLE001
+            log.warning("JSON-only followup failed: %s", exc)
+            return None
+        finally:
+            self._thinking_enabled = prev_think
+            self._json_mode = prev_json
+
+    def complete(
+        self,
+        prompt: str,
+        *,
+        required_ids: list[str] | None = None,
+    ) -> str:
+        load_dotenv_file()
         last_detail = ""
-        # 空 content 时逐步降级：关 json → 保持 thinking 再试 → 最后关 thinking
+        last_reasoning = ""
+        # 空 content 时逐步降级：关 json → 保持 thinking 再试 → 最后降 effort
         want_think = self._thinking_requested
         attempts = (
             (self._json_mode, want_think),
@@ -525,26 +757,43 @@ class _OpenAICompatibleClient:
                     exc,
                 )
                 continue
-            content, finish = self._extract_content(response)
+            content, finish, api_reasoning = self._extract_content(response)
+            if api_reasoning:
+                last_reasoning = api_reasoning
             if content:
                 if want_think and not thinking:
                     log.warning("LLM fell back to thinking=disabled after empty content")
-                try:
-                    self._last_reasoning = str(
-                        getattr(response.choices[0].message, "reasoning_content", None) or ""
+                visible, answer = _split_visible_thinking(content)
+                merged = "\n\n".join(
+                    p for p in (api_reasoning, visible) if p and p.strip()
+                )
+                self._last_reasoning = merged
+                # 推演有了但 JSON 被吃掉 → 追一次仅 JSON
+                if _extract_json_object(answer) is None and (merged or answer):
+                    recovered = self._json_only_followup(
+                        draft_text=merged or answer or content,
+                        required_ids=required_ids,
                     )
-                except Exception:  # noqa: BLE001
-                    self._last_reasoning = ""
-                return content
-            reasoning_len = len(
-                getattr(response.choices[0].message, "reasoning_content", None) or ""
-            )
+                    if recovered and _extract_json_object(recovered):
+                        log.warning("Recovered JSON via followup after thinking-only body")
+                        return recovered
+                return answer
             last_detail = (
                 f"empty content finish_reason={finish!r} "
-                f"reasoning_chars={reasoning_len} json={json_mode} thinking={thinking} "
-                f"max_tokens={kwargs.get('max_tokens')}"
+                f"reasoning_chars={len(api_reasoning)} json={json_mode} "
+                f"thinking={thinking} max_tokens={kwargs.get('max_tokens')}"
             )
             log.warning("LLM empty content; retrying (%s)", last_detail)
+
+        if last_reasoning:
+            self._last_reasoning = last_reasoning
+            recovered = self._json_only_followup(
+                draft_text=last_reasoning,
+                required_ids=required_ids,
+            )
+            if recovered and _extract_json_object(recovered):
+                log.warning("Recovered JSON via followup after all empty-content attempts")
+                return recovered
         raise RuntimeError(f"LLM returned empty content ({last_detail})")
 
 
@@ -555,10 +804,17 @@ class _AnthropicClient:
         self._client = Anthropic(api_key=config.api_key)
         self._model = config.model
 
-    def complete(self, prompt: str) -> str:
+    def complete(
+        self,
+        prompt: str,
+        *,
+        required_ids: list[str] | None = None,
+    ) -> str:
+        del required_ids  # Anthropic path unused
+        load_dotenv_file()
         response = self._client.messages.create(
             model=self._model,
-            max_tokens=_LLM_MAX_TOKENS,
+            max_tokens=_llm_max_tokens(thinking=False),
             messages=[{"role": "user", "content": prompt}],
         )
         return response.content[0].text
@@ -880,6 +1136,44 @@ def _cities_table(view: LeaderView) -> str:
     return "\n".join(rows)
 
 
+def _trade_block(view: LeaderView) -> str:
+    """本国商路：容量/出站/入向；两河等吃的是国际入向。"""
+    t = view.trade
+    if t is None or t.capacity < 0:
+        return (
+            "【本国商路】\n"
+            "本轮未同步到 UI 商路缓存（勿臆造商路条数；和平互利类按延迟收益评估）"
+        )
+    free = max(0, int(t.capacity) - int(t.active))
+    lines = [
+        "【本国商路】（两河/天朝/罗马和平吃「国际入向」；出站国际线不触发该加成）",
+        (
+            f"容量 {t.capacity} · 已用 {t.active}"
+            f"（国内 {t.domestic} / 国际出 {t.intl_out}）"
+            f" · 空位 {free} · 国际入向 {t.intl_in}"
+        ),
+    ]
+    outs: list[str] = []
+    inns: list[str] = []
+    for leg in t.routes:
+        if leg.direction == "OUT":
+            if leg.kind == "dom":
+                outs.append(f"{leg.a}→{leg.c}（国内）")
+            else:
+                outs.append(f"{leg.a}→{leg.b}·{leg.c}（国际）")
+        elif leg.direction == "IN":
+            inns.append(f"{leg.a}·{leg.b}→{leg.c}")
+    if outs:
+        lines.append("出站: " + "；".join(outs[:8]))
+    else:
+        lines.append("出站: （无）")
+    if inns:
+        lines.append("国际入向: " + "；".join(inns[:8]))
+    else:
+        lines.append("国际入向: （无）— 和平互利类选后需他国向你开商路才生效")
+    return "\n".join(lines)
+
+
 def _religion_block(view: LeaderView) -> str:
     """Format own pantheon / religion tenets for one leader (with effect text)."""
     rel = view.religion
@@ -1071,11 +1365,19 @@ def _format_leader_block(
         hist_block = "【历史库存摘要】（无）"
     if view is None:
         label = ai.get("player_name") or ai.get("civ_label") or str(pid)
+        picks = int(ai.get("picks") or 1)
+        age = str(ai.get("age") or "NORMAL")
+        pick_rule = (
+            "本轮六选二（黄金/英雄时代双选）"
+            if picks >= 2
+            else "本轮三选一"
+        )
         return "\n\n".join(
             [
                 f"### 领袖 {pid}（{label}）",
                 "可见情报不足（未能读取该领袖外交/视野数据）。\n"
                 "仅根据候选海克斯与历史库存，从自身发展需求选卡。",
+                f"年龄状态: {age} · {pick_rule}",
                 "候选海克斯:\n"
                 + "\n".join(haikesi_lua.format_option_lines(ai.get("options", []))),
                 hist_block,
@@ -1112,6 +1414,9 @@ def _format_leader_block(
     if vic_txt:
         parts.append(vic_txt)
     parts.append("【本国城市】\n" + _cities_table(view))
+    trade_txt = _trade_block(view)
+    if trade_txt:
+        parts.append(trade_txt)
     parts.append("【与人类】\n" + human_line)
     parts.append(
         "【已相遇文明（外交可见数值；未相遇者不出现）】\n" + _met_table(view.met)
@@ -1128,11 +1433,26 @@ def _format_leader_block(
         "【边境可见军事单位】（战争迷雾外；含中立邻国/城邦/蛮族；"
         "「可见·未交战」≠正在交战，勿一律当敌军）\n" + _threat_table(view)
     )
+    picks = int(ai.get("picks") or 1)
+    age = str(ai.get("age") or "NORMAL")
+    if picks >= 2:
+        cand_header = (
+            f"【候选海克斯】（{age}：本轮六选二，选 2 个不重复类型；"
+            "JSON 可用数组或 A+B 字符串）\n"
+        )
+    else:
+        cand_header = "【候选海克斯】（本轮三选一，必须从这里选）\n"
     parts.append(
-        "【候选海克斯】（本轮三选一，必须从这里选）\n"
+        cand_header
         + "\n".join(
             haikesi_lua.format_option_lines(
-                ai.get("options", []), cities=int(view.cities or 0)
+                ai.get("options", []),
+                cities=int(view.cities or 0),
+                intl_inbound=(
+                    int(view.trade.intl_in)
+                    if view.trade is not None
+                    else None
+                ),
             )
         )
     )
@@ -1337,20 +1657,23 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
     )
 
     mode = reason_mode()
+    think_on = llm_thinking_enabled()
     if mode == "off":
         reason_rule = (
             "- 不要输出 reasons（或给空对象 {}）；只需 choices。"
             "内心推演即可，勿把分析写进 JSON，以节省输出 token。"
         )
-        output_fmt = '{\n  "choices": {"2": "NW_AI_...", "3": "NW_AI_..."}\n}'
+        output_fmt = (
+            '{\n  "choices": {"2": "NW_AI_...", "3": ["NW_AI_A", "NW_AI_B"]}\n}'
+        )
     elif mode == "full":
         reason_rule = (
             "- reasons 仅供开发日志，不会显示在游戏内；可用 1～2 句带领袖风味的简体中文"
             "（常用汉字，约 40 字内），第一人称；禁止 emoji、英文双引号 \"、生僻字；"
-            "详细推演过程不必复述（另有 thinking 日志）。"
+            "详细推演写在 thinking 区（若已开启），勿塞进 reasons。"
         )
         output_fmt = (
-            '{\n  "choices": {"2": "NW_AI_...", "3": "NW_AI_..."},\n'
+            '{\n  "choices": {"2": "NW_AI_...", "3": ["NW_AI_A", "NW_AI_B"]},\n'
             '  "reasons": {"2": "...", "3": "..."}\n}'
         )
     else:
@@ -1360,9 +1683,42 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
             "不要复述效果全文"
         )
         output_fmt = (
-            '{\n  "choices": {"2": "NW_AI_...", "3": "NW_AI_..."},\n'
+            '{\n  "choices": {"2": "NW_AI_...", "3": ["NW_AI_A", "NW_AI_B"]},\n'
             '  "reasons": {"2": "...", "3": "..."}\n}'
         )
+
+    if think_on:
+        strategy_rule = (
+            "- 先做**详细**策略推演再选卡：推演写在 <thinking>…</thinking> 内，"
+            "**推演结束后再输出 JSON**（JSON 的 reasons 仍只保留短句）。"
+            "每位领袖必须写清：局面压力、主战略、对该领袖【每一张候选】的取/弃及理由、"
+            "最终选定与一句因果；涉及 echo 须核对在建兵种类型"
+            "（石弩/投石机=攻城≠远程）。禁止复述规则原文与元叙述；允许较长，勿注水。"
+        )
+        output_section = f"""## 输出格式（开发模式：详细推演 → 再 JSON）
+1) 先在 <thinking>…</thinking> 写**完整详细**策略推演（写入决策日志，不注入游戏）。
+   - 简体中文；必须按「### 领袖 N」覆盖**每一位**待决策领袖（禁止只写一人）。
+   - 每位领袖建议包含（可自由组织，但信息不能缺）：
+     · 局面：交战/贴脸/蛮族/军力对比/主战略/商路入向等关键事实
+     · 候选逐张：对列表中**每一张**写「取/弃 + 具体理由」（即时/延迟/空放、兑现）
+     · 选定：类型（六选二写两张）+ 为何优于被弃选项
+   - 篇幅：每位领袖约 150–350 字；总推演可到约 1500–3500 字。密度优先，禁止复读 Prompt。
+2) </thinking> 之后只输出一个合法 JSON（禁止 markdown）。reasons 仍短句风味，详细理由只放 thinking。
+
+<thinking>
+### 领袖 1
+……
+### 领袖 2
+……
+</thinking>
+{output_fmt}"""
+    else:
+        strategy_rule = (
+            "- 先在内心做策略推演再选卡（不必写出推演过程）：生存威胁、胜利路线、"
+            "时代与扩张节奏、产出短板、外交、与人类海克斯的对抗/跟风"
+        )
+        output_section = f"""## 输出格式（仅 JSON，无 markdown）
+{output_fmt}"""
 
     human_relic = _format_human_relic_section(payload)
     turn = int(payload.get("turn") or 0)
@@ -1405,16 +1761,17 @@ Turn {turn}
 {"\n\n".join(ai_blocks)}
 
 ## 规则
-- 每位领袖只能从其「候选海克斯」中选 1 个 relic type；必须重新决策，禁止因「历史已选」而照抄、跳过或认定本轮已选完
+- 每位领袖从其「候选海克斯」中选择：普通时代选 1 个（字符串）；区块标注六选二/picks=2（黄金或英雄时代）时选 2 个不重复类型（JSON 数组或 "A+B"）；必须重新决策，禁止因「历史已选」而照抄、跳过或认定本轮已选完
 - 「历史已选海克斯 / 各文明历史已选」仅为库存说明（名称+效果），不是本轮选项，也不是自动选卡结果
 - 只从该领袖区块列出的候选中选择；未列出的类型不可选
+- choices 的值必须是候选行里的**完整类型 ID**（如 NW_AI_ECHO_MELEE），禁止编造/改写/缩写（禁止 NW_AI_BALANCED、NW_AI_CONQUEST_* 等不存在的名字）；可从候选文本中原样复制
 - NW_AI_BARBARIAN_INVASION：对除触发者外各文明最新城附近刷蛮；远古早期且已知军力≤2 时慎选（除非以干扰人类为主）
 - NW_AI_LIGHTNING_STORM：下回合起多回合全图风暴；评估对本国与对手的净收益后再选
 - NW_AI_RIVER_FLOOD：对关系最差最多 3 名文明（未接触=中立默认分）城市附近可泛滥河，下回合起连续 5 回合洪水；无河则空放
 - 候选前缀标注生效时机：【即时】立刻生效；【条件即时·需已有城市】无城则空放；【空放·当前0城】禁止选择；【延迟】须先满足生产/商路等条件；勿在远古早期盲选尚无法使用的军事 echo
 - 资源创建类（奶龙/丝绸/烟草/茶/棉花等）依赖「最新建立的城市」：国力显示 0 城或「无城市数据」时选择=效果跳过，应改选开拓者 echo 或百分比产出
-{early_rules}- 先在内心做策略推演再选卡（不必写出推演过程）：生存威胁、胜利路线、时代与扩张节奏、产出短板、外交、与人类海克斯的对抗/跟风
-- 文明6常识（用于解释上下文，勿复述）：早期扩张与基础设施常优先于奇观；战略资源与特色单位窗口很关键；忠诚度差的新城易叛；宗教胜利靠信仰传播与神学战斗；科技靠学院链+航天；文化靠旅游压过对手国内游客；外交靠好感/宗主/世界会议；军事窗口常在特色单位与时代领先时；奢侈品种类比重复拷贝更重要；贸易路线容量是免费产出
+{early_rules}{strategy_rule}
+- 文明6常识（用于解释上下文，勿复述）：早期扩张与基础设施常优先于奇观；战略资源与特色单位窗口很关键；忠诚度差的新城易叛；宗教胜利靠信仰传播与神学战斗；科技靠学院链+航天；文化靠旅游压过对手国内游客；外交靠好感/宗主/世界会议；军事窗口常在特色单位与时代领先时；贸易路线容量是免费产出；宜居度：人口每2人需1宜居；每种独有奢侈品改良后为最多4城各+1宜居，同种多余拷贝无额外宜居（种类>重复）；宜居赤字惩罚产出与忠诚（严重时可叛乱），盈余则加成产出；娱乐区/奇观/政策/总督亦可提供宜居
 - 决策结合：局面威胁与交战状态、自身能力与议程、Real Strategy（可偏离）、本国宗教、胜利进度（注意未知/未启动）、不满与观感、世界会议、城市短板、人类公开海克斯、候选效果；历史库存仅作能力背景
 - 尽量避免多名领袖无差别抄同一张牌；只有局面高度相似时才可同选
 - 领袖皆有历史原型：仅在收益接近时用议程/不满表达风味
@@ -1422,8 +1779,7 @@ Turn {turn}
 - choices 的键必须等于上文「### 领袖 N」中的 N（本局可能从 2 起，勿强行从 1 编号）
 - 必须输出完整合法 JSON（所有字符串已闭合）；禁止 markdown 代码块
 
-## 输出格式（仅 JSON，无 markdown）
-{output_fmt}
+{output_section}
 """
 
 
@@ -1468,6 +1824,51 @@ def _extract_json_object(text: str) -> str | None:
     return text[start:] if depth > 0 else None
 
 
+def _salvage_choices_dict(text: str) -> dict[str, Any] | None:
+    """从损坏 JSON 中尽量抠出 choices（reasons 常因未转义引号炸掉整段）。"""
+    m = re.search(r'"choices"\s*:\s*\{', text)
+    if not m:
+        return None
+    start = m.end() - 1  # '{'
+    depth = 0
+    in_str = False
+    escape = False
+    end = None
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+    if end is None:
+        return None
+    blob = text[start:end]
+    try:
+        choices = json.loads(blob)
+    except json.JSONDecodeError:
+        # 再试：去掉尾逗号
+        try:
+            choices = json.loads(re.sub(r",\s*}", "}", blob))
+        except json.JSONDecodeError:
+            return None
+    if isinstance(choices, dict) and choices:
+        return {"choices": choices, "reasons": {}}
+    return None
+
+
 def parse_llm_json(raw: str) -> dict[str, Any]:
     """Parse LLM JSON; tolerate markdown fences and surrounding prose."""
     text = _strip_code_fences(raw)
@@ -1487,9 +1888,578 @@ def parse_llm_json(raw: str) -> dict[str, Any]:
             data = json.loads(cand)
             if isinstance(data, dict):
                 return data
+            # 偶发：根是 [ {choices:...} ] 或直接是 choices 列表
+            if isinstance(data, list) and data:
+                if isinstance(data[0], dict) and (
+                    "choices" in data[0] or "1" in data[0] or "2" in data[0]
+                ):
+                    return data[0] if "choices" in data[0] else {"choices": data}
+                if all(isinstance(x, dict) for x in data):
+                    return {"choices": data}
         except json.JSONDecodeError as exc:
             errors.append(exc)
+    salvaged = _salvage_choices_dict(text)
+    if salvaged is not None:
+        return salvaged
+    if extracted:
+        salvaged = _salvage_choices_dict(extracted)
+        if salvaged is not None:
+            return salvaged
     raise errors[-1] if errors else json.JSONDecodeError("no json object", text, 0)
+
+
+def coerce_choices_map(raw: Any) -> dict[str, Any]:
+    """把 LLM 各种 choices 形态收成 dict[player_id -> relic|list]."""
+    if raw is None:
+        return {}
+    if isinstance(raw, dict):
+        # 有时套一层 {"choices": {...}}
+        if "choices" in raw and len(raw) <= 2 and isinstance(raw.get("choices"), (dict, list)):
+            return coerce_choices_map(raw.get("choices"))
+        return {str(k): v for k, v in raw.items() if not str(k).startswith("_")}
+    if isinstance(raw, list):
+        out: dict[str, Any] = {}
+        for item in raw:
+            if isinstance(item, dict):
+                if "player_id" in item or "id" in item or "leader" in item:
+                    key = str(
+                        item.get("player_id")
+                        or item.get("id")
+                        or item.get("leader")
+                        or ""
+                    )
+                    val = (
+                        item.get("relic")
+                        or item.get("choice")
+                        or item.get("relics")
+                        or item.get("pick")
+                    )
+                    if key and val is not None:
+                        out[key] = val
+                        continue
+                # {"1": "NW_..."} 或 {"1": ["A","B"]}
+                for k, v in item.items():
+                    if str(k).startswith("_"):
+                        continue
+                    out[str(k)] = v
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                out[str(item[0])] = item[1]
+            elif isinstance(item, str) and "=" in item:
+                k, _, v = item.partition("=")
+                if k.strip():
+                    out[k.strip()] = v.strip()
+        return out
+    return {}
+
+
+def coerce_reasons_map(raw: Any) -> dict[str, Any]:
+    if raw is None:
+        return {}
+    if isinstance(raw, dict):
+        if "reasons" in raw and isinstance(raw.get("reasons"), (dict, list)):
+            return coerce_reasons_map(raw.get("reasons"))
+        return {str(k): v for k, v in raw.items() if not str(k).startswith("_")}
+    if isinstance(raw, list):
+        return coerce_choices_map(raw)  # 同构：[{ "1": "..." }, ...]
+    return {}
+
+
+def expected_choice_ids(payload: dict[str, Any]) -> list[str]:
+    ids = [str(ai.get("player_id")) for ai in (payload.get("ai_players") or [])]
+    return [i for i in ids if i and i != "None"]
+
+
+def missing_choice_ids(choices: dict[str, Any], expected: list[str]) -> list[str]:
+    have = {str(k) for k, v in choices.items() if v not in (None, "", [], {})}
+    return [i for i in expected if i not in have]
+
+
+def _flatten_choice_relics(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(x).strip() for x in value if str(x).strip()]
+    text = str(value or "").strip()
+    if not text:
+        return []
+    if "+" in text:
+        return [x.strip() for x in text.split("+") if x.strip()]
+    return [text]
+
+
+def options_by_player(payload: dict[str, Any]) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for ai in payload.get("ai_players") or []:
+        pid = str(ai.get("player_id") or "")
+        if not pid or pid == "None":
+            continue
+        opts = [str(x).strip() for x in (ai.get("options") or []) if str(x).strip()]
+        out[pid] = opts
+    return out
+
+
+def picks_needed_by_player(payload: dict[str, Any]) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for ai in payload.get("ai_players") or []:
+        pid = str(ai.get("player_id") or "")
+        if not pid or pid == "None":
+            continue
+        out[pid] = max(1, int(ai.get("picks") or 1))
+    return out
+
+
+def validate_choices_against_options(
+    choices: dict[str, Any],
+    payload: dict[str, Any],
+) -> list[str]:
+    """返回违规说明；空列表=全部合法。"""
+    opts_map = options_by_player(payload)
+    need_map = picks_needed_by_player(payload)
+    errors: list[str] = []
+    for pid, opts in opts_map.items():
+        opt_set = set(opts)
+        relics = _flatten_choice_relics(choices.get(pid))
+        need = need_map.get(pid, 1)
+        if not relics:
+            errors.append(f"AI {pid}: empty choice")
+            continue
+        if len(relics) != len(set(relics)):
+            errors.append(f"AI {pid}: duplicate picks {relics}")
+        if len(relics) > need:
+            errors.append(f"AI {pid}: too many picks {relics} (need <={need})")
+        if len(opts) >= need and len(relics) < need:
+            errors.append(f"AI {pid}: under-picked {relics} (need {need})")
+        for r in relics:
+            if r not in opt_set:
+                errors.append(
+                    f"AI {pid}: {r} not in options "
+                    f"[{', '.join(opts)}]"
+                )
+    return errors
+
+
+def coerce_choices_to_options(
+    choices: dict[str, Any],
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """非法/缺失选卡时，用该领袖候选池前 N 张补齐（保证可提交）。"""
+    opts_map = options_by_player(payload)
+    need_map = picks_needed_by_player(payload)
+    out: dict[str, Any] = {}
+    for pid, opts in opts_map.items():
+        need = need_map.get(pid, 1)
+        if not opts:
+            continue
+        relics = _flatten_choice_relics(choices.get(pid))
+        opt_set = set(opts)
+        kept = [r for r in relics if r in opt_set]
+        # de-dupe
+        seen: set[str] = set()
+        uniq: list[str] = []
+        for r in kept:
+            if r in seen:
+                continue
+            seen.add(r)
+            uniq.append(r)
+        for opt in opts:
+            if len(uniq) >= need:
+                break
+            if opt not in seen:
+                seen.add(opt)
+                uniq.append(opt)
+        if not uniq:
+            uniq = opts[:need]
+        out[pid] = uniq[0] if need == 1 and len(uniq) == 1 else uniq[:need]
+    return out
+
+
+def format_options_constraint(payload: dict[str, Any]) -> str:
+    lines: list[str] = []
+    for ai in payload.get("ai_players") or []:
+        pid = str(ai.get("player_id") or "")
+        opts = [str(x).strip() for x in (ai.get("options") or []) if str(x).strip()]
+        need = int(ai.get("picks") or 1)
+        if not pid or not opts:
+            continue
+        lines.append(f"- 领袖 {pid}（选 {need}）：{' | '.join(opts)}")
+    return "\n".join(lines) if lines else "(无候选)"
+
+
+def merge_choice_dicts(*parts: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for part in parts:
+        for k, v in (part or {}).items():
+            if v in (None, "", [], {}):
+                continue
+            out[str(k)] = v
+    return out
+
+
+def llm_review_rounds() -> int:
+    """自审轮数：0=一次出牌；1–5=初稿后再 Review N 次（更贵更慢，开发用）。"""
+    raw = (os.environ.get("HAIKESI_LLM_REVIEW_ROUNDS") or "0").strip()
+    try:
+        return max(0, min(5, int(raw)))
+    except ValueError:
+        return 0
+
+
+def _client_last_reasoning(client: _ChatClient) -> str:
+    if hasattr(client, "_last_reasoning"):
+        return str(getattr(client, "_last_reasoning") or "")
+    return ""
+
+
+def build_self_review_prompt(
+    base_prompt: str,
+    *,
+    previous_reasoning: str,
+    previous_raw: str,
+    round_index: int,
+    total_rounds: int,
+) -> str:
+    """在原局面 Prompt 后追加自审指令（API 无无状态，须重带局面）。"""
+    prev_json = _extract_json_object(previous_raw) or previous_raw.strip()
+    think_on = llm_thinking_enabled()
+    if think_on:
+        out_rule = (
+            "先输出完整 <thinking>…</thinking>（必须覆盖每一位领袖），再输出唯一合法 JSON。"
+            "禁止 markdown。禁止只复述一人或只写「全部维持」而不逐人说明。"
+        )
+    else:
+        out_rule = "只输出唯一合法 JSON（禁止 markdown）；内心完成审查即可。"
+    return (
+        f"{base_prompt}\n\n"
+        f"---\n"
+        f"## 自审第 {round_index}/{total_rounds} 轮（提交游戏前）\n"
+        f"你是严格审稿人。对照局面数据，审查上一轮选卡与推演；有错必改，无错也要写清为何维持。\n\n"
+        f"### 上一轮推演\n{previous_reasoning or '（无独立 thinking，见下方原文）'}\n\n"
+        f"### 上一轮 JSON\n{prev_json}\n\n"
+        f"### 审查清单（逐项对照真实数据）\n"
+        f"1. 兵种：石弩/投石机=攻城≠远程；echo 与在建单位类型是否一致\n"
+        f"2. 和平互利是否已有国际入向商路，否则近似空放\n"
+        f"3. 战时军力劣势是否仍优先开拓者/奇观等长线\n"
+        f"4. 即时/延迟/空放是否说错；资源创建是否有城\n"
+        f"5. 是否跨领袖偷看、编造未给出情报\n"
+        f"6. GOLDEN/英雄时代是否选满 2 张且不重复\n"
+        f"7. choices 是否均为该领袖候选列表中的完整类型 ID（禁止幻觉类型）\n\n"
+        f"### <thinking> 强制结构（每位领袖都要有，禁止省略）\n"
+        f"对每一位「### 领袖 N」按下列三行写（可加细节，不可合并多人）：\n"
+        f"- 上轮选择：…\n"
+        f"- 审稿结论：维持 / 改选为 XXX（必须二选一写明）\n"
+        f"- 详细原因：至少 2～4 句，说明核对了哪些数据；若改选，写清旧选错在哪、新选为何更好；"
+        f"若维持，写清为何审查项全部通过（勿空喊「没问题」）\n"
+        f"全部领袖写完后，可加一小节「本轮改动摘要」：列出所有改选的领袖与旧→新。\n\n"
+        f"{out_rule}"
+    )
+
+
+def _decision_choices_map(decision: dict[str, Any]) -> dict[str, Any]:
+    if "choices" in decision:
+        return coerce_choices_map(decision.get("choices"))
+    return coerce_choices_map(
+        {k: v for k, v in decision.items() if re.fullmatch(r"-?\d+", str(k))}
+    )
+
+
+def _complete_and_parse_decision(
+    client: _ChatClient,
+    prompt: str,
+    *,
+    request_id: str,
+    model: str,
+    verbose: bool,
+    label: str,
+    required_ids: list[str] | None = None,
+) -> tuple[str, str, dict[str, Any]]:
+    """One LLM call → (raw, reasoning, decision_dict). Retries once on bad JSON."""
+    if verbose:
+        print(f"Calling {model} [{label}] (prompt ~{len(prompt)} chars) ...", flush=True)
+    raw = client.complete(prompt, required_ids=required_ids)
+    reasoning = _client_last_reasoning(client)
+    if not reasoning:
+        reasoning, _ = _split_visible_thinking(raw)
+    try:
+        decision = parse_llm_json(raw)
+    except json.JSONDecodeError as exc:
+        _save_failed_llm_raw(
+            prompt=prompt,
+            raw_response=raw,
+            request_id=request_id,
+            model=model,
+            error=str(exc),
+        )
+        if verbose:
+            print(f"LLM JSON parse failed ({exc}); retrying once [{label}] ...", flush=True)
+        repair_prompt = (
+            prompt
+            + "\n\n【重试】你上次输出的 JSON 不合法（字符串未闭合或被截断）。"
+            "请先完成推演（若开启 thinking），再输出一个完整合法的 JSON 对象，不要 markdown；"
+            "reasons 内只用中文逗号/句号，禁止英文双引号。"
+        )
+        if required_ids:
+            repair_prompt += (
+                f"\nchoices 必须包含全部键：{','.join(required_ids)}（缺一不可）。"
+            )
+        raw = client.complete(repair_prompt, required_ids=required_ids)
+        reasoning = _client_last_reasoning(client) or reasoning
+        if not reasoning:
+            reasoning, _ = _split_visible_thinking(raw)
+        try:
+            decision = parse_llm_json(raw)
+        except json.JSONDecodeError as exc2:
+            _save_failed_llm_raw(
+                prompt=repair_prompt,
+                raw_response=raw,
+                request_id=request_id,
+                model=model,
+                error=str(exc2),
+            )
+            raise RuntimeError(
+                f"LLM returned invalid JSON after retry ({label}): {exc2}"
+            ) from exc2
+    return raw, reasoning, decision
+
+
+def _ensure_all_choices(
+    client: _ChatClient,
+    *,
+    base_prompt: str,
+    decision: dict[str, Any],
+    reasoning: str,
+    required_ids: list[str],
+    request_id: str,
+    model: str,
+    verbose: bool,
+) -> dict[str, Any]:
+    """若 choices 缺领袖，带着完整局面再补全（最多 2 次）。"""
+    choices_map = _decision_choices_map(decision)
+    missing = missing_choice_ids(choices_map, required_ids)
+    if not missing:
+        decision["choices"] = choices_map
+        return decision
+
+    for attempt in range(1, 3):
+        if verbose:
+            print(
+                f"Incomplete choices got {len(choices_map)}/{len(required_ids)} "
+                f"missing={missing}; fill attempt {attempt}/2 ...",
+                flush=True,
+            )
+        fill_prompt = (
+            f"{base_prompt}\n\n"
+            f"---\n"
+            f"## 补全缺失 choices（第 {attempt} 次）\n"
+            f"上一轮 choices 不完整：\n"
+            f"{json.dumps(choices_map, ensure_ascii=False)}\n"
+            f"缺少领袖编号：{', '.join(missing)}\n"
+            f"必须输出完整 JSON，choices 键必须全部包含："
+            f"{', '.join(required_ids)}\n"
+            f"可保留已有合理选择并补全缺失项。禁止 markdown。\n"
+        )
+        if reasoning:
+            fill_prompt += f"\n参考推演摘要：\n{reasoning[:8000]}\n"
+        raw = client.complete(fill_prompt, required_ids=required_ids)
+        try:
+            filled = parse_llm_json(raw)
+        except json.JSONDecodeError:
+            # 尝试仅 JSON followup 路径已在 complete 内；再失败则继续
+            if verbose:
+                print("Fill parse failed; retrying ...", flush=True)
+            continue
+        new_map = merge_choice_dicts(choices_map, _decision_choices_map(filled))
+        # 合并 reasons
+        old_r = coerce_reasons_map(decision.get("reasons"))
+        new_r = coerce_reasons_map(filled.get("reasons"))
+        decision = {
+            "choices": new_map,
+            "reasons": merge_choice_dicts(old_r, new_r),
+        }
+        choices_map = new_map
+        missing = missing_choice_ids(choices_map, required_ids)
+        if not missing:
+            if verbose:
+                print(f"Choices complete after fill ({len(choices_map)}/{len(required_ids)}).", flush=True)
+            return decision
+    raise RuntimeError(
+        f"incomplete choices after fill: got {len(choices_map)} expected {len(required_ids)} "
+        f"missing={missing} (request {request_id})"
+    )
+
+
+def _ensure_valid_pool_choices(
+    client: _ChatClient,
+    *,
+    base_prompt: str,
+    decision: dict[str, Any],
+    payload: dict[str, Any],
+    required_ids: list[str],
+    request_id: str,
+    model: str,
+    verbose: bool,
+) -> dict[str, Any]:
+    """拒绝幻觉类型（如 NW_AI_BALANCED）；先 LLM 重修一次，仍非法则回退候选池前 N 张。"""
+    choices_map = _decision_choices_map(decision)
+    violations = validate_choices_against_options(choices_map, payload)
+    if not violations:
+        decision["choices"] = choices_map
+        return decision
+
+    if verbose:
+        print(
+            "Invalid pool choices: "
+            + "; ".join(violations[:6])
+            + (" ..." if len(violations) > 6 else ""),
+            flush=True,
+        )
+        print("Repairing against candidate pools ...", flush=True)
+
+    constraint = format_options_constraint(payload)
+    repair_prompt = (
+        f"{base_prompt}\n\n"
+        f"---\n"
+        f"## 候选池校验失败（必须重修）\n"
+        f"上一轮 choices 含有**不在该领袖本轮候选列表**中的类型（禁止编造如 "
+        f"NW_AI_BALANCED / NW_AI_CONQUEST_* 等不存在的 ID）：\n"
+        f"{json.dumps(choices_map, ensure_ascii=False)}\n\n"
+        f"违规：\n- " + "\n- ".join(violations) + "\n\n"
+        f"每位领袖只能从下列**完整类型字符串**中原样复制（禁止改写/发明）：\n"
+        f"{constraint}\n\n"
+        f"输出合法 JSON：choices 键必须全部包含 {', '.join(required_ids)}；"
+        f"reasons 禁止英文双引号。禁止 markdown。\n"
+    )
+    try:
+        raw = client.complete(repair_prompt, required_ids=required_ids or None)
+        repaired = parse_llm_json(raw)
+        new_map = dict(choices_map)
+        new_map.update(_decision_choices_map(repaired))
+        old_r = coerce_reasons_map(decision.get("reasons"))
+        new_r = coerce_reasons_map(repaired.get("reasons"))
+        decision = {
+            "choices": new_map,
+            "reasons": merge_choice_dicts(old_r, new_r),
+        }
+        choices_map = new_map
+        violations = validate_choices_against_options(choices_map, payload)
+    except (json.JSONDecodeError, RuntimeError, OSError) as exc:
+        if verbose:
+            print(f"Pool repair LLM failed ({exc}); coercing to options.", flush=True)
+        violations = ["repair failed"]
+
+    if violations:
+        coerced = coerce_choices_to_options(choices_map, payload)
+        if verbose:
+            print(
+                f"Coerced invalid picks to pool fallback: "
+                f"{json.dumps(coerced, ensure_ascii=False)}",
+                flush=True,
+            )
+        decision = {
+            "choices": coerced,
+            "reasons": coerce_reasons_map(decision.get("reasons")),
+            "_pool_coerced": True,
+            "_pool_violations": violations,
+        }
+        still = validate_choices_against_options(coerced, payload)
+        if still:
+            raise RuntimeError(
+                f"pool coerce still invalid (request {request_id}): "
+                + "; ".join(still)
+            )
+        return decision
+
+    if verbose:
+        print("Pool repair OK.", flush=True)
+    decision["choices"] = choices_map
+    return decision
+
+
+def run_llm_decision_with_reviews(
+    client: _ChatClient,
+    model: str,
+    prompt: str,
+    *,
+    request_id: str,
+    required_ids: list[str] | None = None,
+    payload: dict[str, Any] | None = None,
+    verbose: bool = True,
+) -> tuple[str, str, dict[str, Any]]:
+    """初稿 + 可选多轮自审。返回 (final_raw, combined_reasoning_for_log, decision)."""
+    rounds = llm_review_rounds()
+    req = required_ids or []
+    raw, reasoning, decision = _complete_and_parse_decision(
+        client,
+        prompt,
+        request_id=request_id,
+        model=model,
+        verbose=verbose,
+        label="draft",
+        required_ids=req or None,
+    )
+    log_parts = [f"### Round 0 — draft\n\n{reasoning or '*(no thinking text)*'}"]
+    for i in range(1, rounds + 1):
+        if verbose:
+            print(f"Self-review {i}/{rounds} ...", flush=True)
+        review_prompt = build_self_review_prompt(
+            prompt,
+            previous_reasoning=reasoning,
+            previous_raw=raw,
+            round_index=i,
+            total_rounds=rounds,
+        )
+        if req:
+            review_prompt += (
+                f"\n\n【强制】最终 choices 必须包含全部键：{','.join(req)}（缺一不可）。"
+            )
+        if payload:
+            review_prompt += (
+                "\n【强制】每位领袖 choices 的类型字符串必须从该领袖「候选海克斯」列表"
+                "原样复制；禁止编造不存在的 NW_AI_* 类型。\n"
+            )
+        raw, reasoning, decision = _complete_and_parse_decision(
+            client,
+            review_prompt,
+            request_id=request_id,
+            model=model,
+            verbose=verbose,
+            label=f"review-{i}",
+            required_ids=req or None,
+        )
+        log_parts.append(f"### Round {i} — self-review\n\n{reasoning or '*(no thinking text)*'}")
+    if req:
+        decision = _ensure_all_choices(
+            client,
+            base_prompt=prompt,
+            decision=decision,
+            reasoning=reasoning,
+            required_ids=req,
+            request_id=request_id,
+            model=model,
+            verbose=verbose,
+        )
+    if payload:
+        decision = _ensure_valid_pool_choices(
+            client,
+            base_prompt=prompt,
+            decision=decision,
+            payload=payload,
+            required_ids=req,
+            request_id=request_id,
+            model=model,
+            verbose=verbose,
+        )
+        raw = json.dumps(
+            {
+                "choices": decision.get("choices"),
+                "reasons": decision.get("reasons"),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    elif req:
+        raw = json.dumps(decision, ensure_ascii=False, indent=2)
+    combined = "\n\n---\n\n".join(log_parts)
+    if rounds and verbose:
+        print(f"Reviews done ({rounds}); using final choices.", flush=True)
+    return raw, combined, decision
 
 
 def _save_failed_llm_raw(
@@ -1549,48 +2519,26 @@ async def decide_and_submit_once(
         print(format_context_summary(context), flush=True)
 
     prompt = build_decision_prompt(payload, context)
+    required_ids = expected_choice_ids(payload)
 
-    if verbose:
-        print(f"Calling {model} (prompt ~{len(prompt)} chars) ...", flush=True)
-    raw = client.complete(prompt)
-    try:
-        decision = parse_llm_json(raw)
-    except json.JSONDecodeError as exc:
-        _save_failed_llm_raw(
-            prompt=prompt,
-            raw_response=raw,
-            request_id=request_id,
-            model=model,
-            error=str(exc),
-        )
-        if verbose:
-            print(
-                f"LLM JSON parse failed ({exc}); retrying once ...",
-                flush=True,
-            )
-        repair_prompt = (
-            prompt
-            + "\n\n【重试】你上次输出的 JSON 不合法（字符串未闭合或被截断）。"
-            "请重新输出一个完整合法的 JSON 对象，不要 markdown；"
-            "reasons 内只用中文逗号/句号，禁止英文双引号。"
-        )
-        raw = client.complete(repair_prompt)
-        try:
-            decision = parse_llm_json(raw)
-        except json.JSONDecodeError as exc2:
-            _save_failed_llm_raw(
-                prompt=repair_prompt,
-                raw_response=raw,
-                request_id=request_id,
-                model=model,
-                error=str(exc2),
-            )
-            raise RuntimeError(
-                f"LLM returned invalid JSON after retry: {exc2}"
-            ) from exc2
+    raw, reasoning, decision = run_llm_decision_with_reviews(
+        client,
+        model,
+        prompt,
+        request_id=request_id,
+        required_ids=required_ids,
+        payload=payload,
+        verbose=verbose,
+    )
 
-    choices = {str(k): v for k, v in decision.get("choices", {}).items()}
-    raw_reasons = {str(k): v for k, v in decision.get("reasons", {}).items()}
+    choices_map = _decision_choices_map(decision)
+    choices = haikesi_lua.normalize_extai_choices(
+        choices_map,
+        payload.get("ai_players") or [],
+    )
+    raw_reasons = {
+        str(k): v for k, v in coerce_reasons_map(decision.get("reasons")).items()
+    }
     reasons: dict[str, str] = {}
     mode = reason_mode()
     if mode != "off":
@@ -1602,7 +2550,10 @@ async def decide_and_submit_once(
             if cleaned:
                 reasons[ai_id] = cleaned
     if not choices:
-        raise RuntimeError("LLM returned empty choices")
+        raise RuntimeError(
+            "LLM returned empty choices "
+            f"(raw choices type={type(decision.get('choices')).__name__})"
+        )
 
     from civ_mcp.extai_log_channel import encode_extai_apply_payload
 
@@ -1624,9 +2575,6 @@ async def decide_and_submit_once(
     parsed = json.loads(result)
     if not parsed.get("ok"):
         raise RuntimeError(parsed.get("message", "submit failed"))
-    reasoning = ""
-    if hasattr(client, "_last_reasoning"):
-        reasoning = str(getattr(client, "_last_reasoning") or "")
     try:
         save_decision_analysis_log(
             request_id=request_id,
@@ -1679,42 +2627,25 @@ async def decide_and_inject_log_channel(
 
     # Reuse the same LLM path as decide_and_submit_once (inline subset)
     prompt = build_decision_prompt(payload, context)
-    if verbose:
-        print(f"Calling {model} (prompt ~{len(prompt)} chars) ...", flush=True)
-    raw = client.complete(prompt)
-    try:
-        decision = parse_llm_json(raw)
-    except json.JSONDecodeError as exc:
-        _save_failed_llm_raw(
-            prompt=prompt,
-            raw_response=raw,
-            request_id=request_id,
-            model=model,
-            error=str(exc),
-        )
-        if verbose:
-            print(f"LLM JSON parse failed ({exc}); retrying once ...", flush=True)
-        repair_prompt = (
-            prompt
-            + "\n\n【重试】你上次输出的 JSON 不合法（字符串未闭合或被截断）。"
-            "请重新输出一个完整合法的 JSON 对象，不要 markdown；"
-            "reasons 内只用中文逗号/句号，禁止英文双引号。"
-        )
-        raw = client.complete(repair_prompt)
-        try:
-            decision = parse_llm_json(raw)
-        except json.JSONDecodeError as exc2:
-            _save_failed_llm_raw(
-                prompt=repair_prompt,
-                raw_response=raw,
-                request_id=request_id,
-                model=model,
-                error=str(exc2),
-            )
-            raise RuntimeError(f"LLM returned invalid JSON after retry: {exc2}") from exc2
+    required_ids = expected_choice_ids(payload)
+    raw, reasoning, decision = run_llm_decision_with_reviews(
+        client,
+        model,
+        prompt,
+        request_id=request_id,
+        required_ids=required_ids,
+        payload=payload,
+        verbose=verbose,
+    )
 
-    choices = {str(k): v for k, v in decision.get("choices", {}).items()}
-    raw_reasons = {str(k): v for k, v in decision.get("reasons", {}).items()}
+    choices_map = _decision_choices_map(decision)
+    choices = haikesi_lua.normalize_extai_choices(
+        choices_map,
+        payload.get("ai_players") or [],
+    )
+    raw_reasons = {
+        str(k): v for k, v in coerce_reasons_map(decision.get("reasons")).items()
+    }
     reasons: dict[str, str] = {}
     mode = reason_mode()
     if mode != "off":
@@ -1727,13 +2658,12 @@ async def decide_and_inject_log_channel(
             if cleaned:
                 reasons[ai_id] = cleaned
     if not choices:
-        raise RuntimeError("LLM returned empty choices")
+        raise RuntimeError(
+            "LLM returned empty choices "
+            f"(raw choices type={type(decision.get('choices')).__name__})"
+        )
 
-    reasoning = ""
-    if hasattr(client, "_last_reasoning"):
-        reasoning = str(getattr(client, "_last_reasoning") or "")
-
-    # 游戏内只注入选卡；理由仅留在 decision 日志
+    # 游戏内只注入选卡；理由仅留在 decision 日志（金/英双选 wire 为 A+B）
     wire = encode_extai_apply_payload(
         request_id,
         choices,

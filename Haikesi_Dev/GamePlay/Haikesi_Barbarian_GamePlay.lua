@@ -28,6 +28,8 @@ local g_BarbarianTribeNameLocByPlot = {}
 local BARB_TRIBE_MAP_PROP = 'PROP_NW_HAIKESI_BARB_TRIBE_MAP'
 -- Gameplay 排队，UI 桥接取专名后发通知（GetTribeNameType 仅 UI 可靠）
 local BARB_ASSAULT_NOTIFY_PROP = 'PROP_NW_HAIKESI_BARB_ASSAULT_NOTIFY'
+-- 建城前选中南蛮：挂起触发者 ID，有城后再刷
+local BARB_INVASION_PENDING_PROP = 'PROP_NW_HAIKESI_BARB_INVASION_PENDING'
 local BARB_TRIBE_LOOKUP_RADIUS = 8
 local HAIKESI_BARB_HORSEMAN_TAG = 'CLASS_HAIKESI_BARB_HORSEMAN'
 local HAIKESI_BARB_HORSE_ARCHER_TAG = 'CLASS_HAIKESI_BARB_HORSE_ARCHER'
@@ -1066,6 +1068,24 @@ function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
         return
     end
 
+    -- 回合初/建城前无人有城时：挂起，等有城再刷（否则 camps=0 空放）
+    local targetCities = 0
+    for _, pScan in ipairs(PlayerManager.GetAliveMajors()) do
+        if pScan ~= nil and not pScan:IsBarbarian()
+            and pScan:GetID() ~= triggeringAIPlayerID
+            and GetNewestCityForPlayer(pScan) ~= nil then
+            targetCities = targetCities + 1
+        end
+    end
+    if targetCities <= 0 then
+        Game:SetProperty(BARB_INVASION_PENDING_PROP, triggeringAIPlayerID)
+        print(string.format(
+            "[Haikesi GamePlay] BARBARIAN_INVASION deferred: no target cities yet "
+                .. "(trigger=P%d) — will flush on TurnBegin/CityBuilt",
+            triggeringAIPlayerID))
+        return
+    end
+
     local usedPlotIDs = {}
     local totalCampsSpawned = 0
     local totalUnitsSpawned = 0
@@ -1077,19 +1097,24 @@ function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
         rebuilt = RebuildTribeIndexFromNearbyUnits(iBarbCampIndex)
     end
     print(string.format(
-        "[Haikesi GamePlay] BARBARIAN_INVASION start clansMode=%s cachedTribes=%d rebuilt=%d",
+        "[Haikesi GamePlay] BARBARIAN_INVASION start clansMode=%s cachedTribes=%d rebuilt=%d targets=%d",
         tostring(clansEnabled),
         (function()
             local n = 0
             for _ in pairs(g_BarbarianTribeIndexByPlot) do n = n + 1 end
             return n
         end)(),
-        rebuilt))
+        rebuilt,
+        targetCities))
 
     for _, pPlayer in ipairs(PlayerManager.GetAliveMajors()) do
         if pPlayer ~= nil and not pPlayer:IsBarbarian() and pPlayer:GetID() ~= triggeringAIPlayerID then
             local pCity = GetNewestCityForPlayer(pPlayer)
-            if pCity ~= nil then
+            if pCity == nil then
+                print(string.format(
+                    "[Haikesi GamePlay] BARBARIAN_INVASION skip player=%d (no city)",
+                    pPlayer:GetID()))
+            else
                 local centerX, centerY = pCity:GetX(), pCity:GetY()
                 local spawnedCamps, candidateCount = SpawnBarbarianCampsAtDistance(
                     centerX, centerY, iBarbCampIndex, usedPlotIDs,
@@ -1149,15 +1174,47 @@ function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
         end
     end
 
+    -- 已对有城目标执行过一轮，清除挂起（避免每回合重复刷）
+    Game:SetProperty(BARB_INVASION_PENDING_PROP, nil)
     print(string.format(
         "[Haikesi GamePlay] BARBARIAN_INVASION total camps=%d units=%d",
         totalCampsSpawned, totalUnitsSpawned))
+end
+
+local function Haikesi_TryFlushPendingBarbarianInvasion(reason)
+    local pending = tonumber(Game:GetProperty(BARB_INVASION_PENDING_PROP))
+    if pending == nil then
+        return
+    end
+    local targetCities = 0
+    for _, pScan in ipairs(PlayerManager.GetAliveMajors()) do
+        if pScan ~= nil and not pScan:IsBarbarian()
+            and pScan:GetID() ~= pending
+            and GetNewestCityForPlayer(pScan) ~= nil then
+            targetCities = targetCities + 1
+        end
+    end
+    if targetCities <= 0 then
+        return
+    end
+    print(string.format(
+        "[Haikesi GamePlay] BARBARIAN_INVASION flush deferred (%s) trigger=P%d targets=%d",
+        tostring(reason), pending, targetCities))
+    Haikesi_SpawnBarbarianInvasionCamps(pending)
 end
 
 -- 各 AddGameplayScripts 互不共享 _G；经 ExposedMembers 供主脚本调用
 local function InitializeBarbarianGamePlay()
     if ExposedMembers ~= nil then
         ExposedMembers.Haikesi_SpawnBarbarianInvasionCamps = Haikesi_SpawnBarbarianInvasionCamps
+    end
+    Events.TurnBegin.Add(function()
+        Haikesi_TryFlushPendingBarbarianInvasion("TurnBegin")
+    end)
+    if GameEvents ~= nil and GameEvents.CityBuilt ~= nil then
+        GameEvents.CityBuilt.Add(function()
+            Haikesi_TryFlushPendingBarbarianInvasion("CityBuilt")
+        end)
     end
     print("[Haikesi Barbarian] GamePlay bridge ready (ExposedMembers.Haikesi_SpawnBarbarianInvasionCamps)")
 end

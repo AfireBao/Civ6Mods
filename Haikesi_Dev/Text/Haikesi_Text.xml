@@ -1450,7 +1450,7 @@
             <Text>南蛮入侵</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>【混乱干扰】除触发该海克斯的 AI 外，在其他每位玩家最新建立的城市 5 环尝试生成 3 个遵循原版间距的蛮族营地；每少生成 1 个，则仅在该城 5 环内已有蛮族营地均分补充 3 个蛮族战士；若该城 5 环内无可用蛮寨，则在该城 4 环生成 6 个蛮族战士。每轮 AI 海克斯选择中，混乱干扰类（含南蛮入侵、闪电风暴、仇水连汛）至多 1 个 AI 可抽中。</Text>
+            <Text>【混乱干扰】除触发该海克斯的 AI 外，在其他每位玩家最新建立的城市 5 环尝试生成 3 个遵循原版间距的蛮族营地；每少生成 1 个，则仅在该城 5 环内已有蛮族营地均分补充 3 个蛮族战士；若该城 5 环内无可用蛮寨，则在该城 4 环生成 6 个蛮族战士。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_FLAVOR" Language="zh_Hans_CN">
             <Text>烟起蛮帐，铁骑叩城，南地风雷一夜至。</Text>
@@ -1460,7 +1460,7 @@
             <Text>闪电风暴</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_LIGHTNING_STORM_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>【混乱干扰】选中后从下一游戏回合起连续 10 回合，每回合按当前场上存活主要文明数量触发同等场次的官方风暴（尘暴/暴风雪/龙卷风/飓风，强度随机）；落点由引擎按灾种规则选取。每轮 AI 海克斯选择中，混乱干扰类（含南蛮入侵、闪电风暴、仇水连汛）至多 1 个 AI 可抽中。</Text>
+            <Text>【混乱干扰】选中后从下一游戏回合起连续 10 回合，每回合按当前场上存活主要文明数量触发同等场次的官方风暴（尘暴/暴风雪/龙卷风/飓风，强度随机）；落点由引擎按灾种规则选取。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_LIGHTNING_STORM_FLAVOR" Language="zh_Hans_CN">
             <Text>雷达屏上先亮一点，然后全世界一起闪。</Text>
@@ -1470,7 +1470,7 @@
             <Text>仇水连汛</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_RIVER_FLOOD_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>【混乱干扰】选取与触发者关系最差的最多 3 名存活主要文明（未接触视为中立默认分）；收集这些文明城市 3 环内可泛滥命名河，从下一游戏回合起连续 5 回合对这些河触发官方洪水（70% 千年洪水、30% 重大洪水）。无可用河则空放。每轮混乱干扰类至多 1 个 AI 可抽中。</Text>
+            <Text>【混乱干扰】选取与触发者关系最差的最多 3 名存活主要文明（未接触视为中立默认分）；收集这些文明城市 3 环内可泛滥命名河，从下一游戏回合起连续 5 回合对这些河触发官方洪水（70% 千年洪水、30% 重大洪水）。无可用河则空放。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_RIVER_FLOOD_FLAVOR" Language="zh_Hans_CN">
             <Text>先看谁最讨厌你，再让他们的河记住这件事。</Text>
@@ -1480,7 +1480,7 @@
             <Text>勇敢的木</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个棉花奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：棉花地块+3金币；需改良后收获，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个棉花奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：棉花奢侈品给地块+3金币，改良后为城市提供宜居度。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BRAVE_WOOD_FLAVOR" Language="zh_Hans_CN">
             <Text>丁丁给我GoWork</Text>
@@ -1490,7 +1490,7 @@
             <Text>妈妈生的</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个烟草奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：烟草地块+1信仰；需改良后收获，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个烟草奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：烟草奢侈品给地块+1信仰，改良后为城市提供宜居度。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MAMA_BORN_FLAVOR" Language="zh_Hans_CN">
             <Text>这可是妈妈生的。</Text>
@@ -1500,7 +1500,7 @@
             <Text>我是奶龙</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个糖奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：糖地块+2食物；需改良后收获，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个糖奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：糖奢侈品给地块+2食物，改良后为城市提供宜居度。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MILK_DRAGON_FLAVOR" Language="zh_Hans_CN">
             <Text>我是奶龙，我才是奶龙。</Text>
@@ -1510,7 +1510,7 @@
             <Text>丝绸之乡</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个丝绸奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：丝绸地块+1文化；需改良后收获，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个丝绸奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：丝绸奢侈品给地块+1文化，改良后为城市提供宜居度。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SILK_LAND_FLAVOR" Language="zh_Hans_CN">
             <Text>一匹绸缎，万里商路。</Text>
@@ -1520,7 +1520,7 @@
             <Text>饮茶先啦</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个茶奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：茶地块+1科技；需改良后收获，并提供奢侈品宜居。</Text>
+            <Text>在本文明最新建立的城市 3 环合法地块上创建 4 个茶奢侈品资源。以下为该奢侈品本身的原版固有收益（非本词条额外加成）：茶奢侈品给地块+1科技，改良后为城市提供宜居度。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_DRINK_TEA_FLAVOR" Language="zh_Hans_CN">
             <Text>三点几咯，饮茶先啦。</Text>

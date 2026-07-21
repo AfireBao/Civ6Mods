@@ -102,6 +102,7 @@
         <LoadOrder>16796</LoadOrder>
       </Properties>
       <File>GamePlay/Haikesi_ExtAI_Context.lua</File>
+      <File>GamePlay/Haikesi_ExtAI_AgePick.lua</File>
       <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
     </AddGameplayScripts>
     <AddGameplayScripts id="Haikesi_ExtAIInject">
@@ -183,6 +184,7 @@
     <File>Data/Haikesi_Relic_Prerequisites.sql</File>
     <File>Data/ModCore.sql</File>
     <File>GamePlay/Haikesi_ExtAI_Context.lua</File>
+    <File>GamePlay/Haikesi_ExtAI_AgePick.lua</File>
     <File>GamePlay/Haikesi_ExtAI_Inject.lua</File>
     <File>GamePlay/Haikesi_GamePlay_Script.lua</File>
     <File>GamePlay/Haikesi_Planter_GamePlay.lua</File>

@@ -538,6 +538,54 @@ local function readUiVstatPacked(pid)
   end
   return nil
 end
+local function printTrade(vid)
+  -- 商路仅 InGame 可扫；读 UI 戳记（cap;out;dom;intlOut;intlIn）
+  -- 缺缓存时仍 dump TRADE|vid|-1|... 以便提示词标明「未同步」
+  local packed = nil
+  if ExposedMembers ~= nil and ExposedMembers.Haikesi_UITradeSumByPlayer ~= nil then
+    packed = ExposedMembers.Haikesi_UITradeSumByPlayer[vid]
+      or ExposedMembers.Haikesi_UITradeSumByPlayer[tostring(vid)]
+  end
+  if packed == nil or tostring(packed) == "" then
+    packed = Game:GetProperty("PROP_NW_HAIKESI_UI_TRADE_" .. tostring(vid))
+  end
+  if packed == nil or tostring(packed) == "" then
+    print("TRADE|" .. vid .. "|-1|-1|-1|-1|-1")
+    return
+  end
+  local cap, outN, dom, intlOut, intlIn = string.match(
+    tostring(packed), "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+)$")
+  if cap == nil then
+    print("TRADE|" .. vid .. "|-1|-1|-1|-1|-1")
+    return
+  end
+  print("TRADE|" .. vid .. "|" .. cap .. "|" .. outN .. "|" .. dom
+    .. "|" .. intlOut .. "|" .. intlIn)
+  if tonumber(cap) ~= nil and tonumber(cap) < 0 then
+    return
+  end
+  local routes = nil
+  if ExposedMembers ~= nil and ExposedMembers.Haikesi_UITradeRoutesByPlayer ~= nil then
+    routes = ExposedMembers.Haikesi_UITradeRoutesByPlayer[vid]
+      or ExposedMembers.Haikesi_UITradeRoutesByPlayer[tostring(vid)]
+  end
+  if type(routes) == "table" then
+    for _, body in ipairs(routes) do
+      if body ~= nil and tostring(body) ~= "" then
+        print("TROUTE|" .. vid .. "|" .. tostring(body))
+      end
+    end
+    return
+  end
+  local routeProp = Game:GetProperty("PROP_NW_HAIKESI_UI_TROUTES_" .. tostring(vid))
+  if routeProp ~= nil and tostring(routeProp) ~= "" then
+    for body in string.gmatch(tostring(routeProp), "[^#]+") do
+      if body ~= "" then
+        print("TROUTE|" .. vid .. "|" .. body)
+      end
+    end
+  end
+end
 local function resolveMilitaryStrength(pid, p)
   -- 优先 UI 缓存（仅在 UI 成功读到时写入；缺键=未知）
   if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIMilitaryByPlayer ~= nil then
@@ -804,6 +852,7 @@ for _, vid in ipairs(viewers) do
     printRst(vid)
     printFaith(vid)
     printVStat(vid, vid, civName)
+    printTrade(vid)
     pcall(function()
       for _, c in Players[vid]:GetCities():Members() do
         local cID = c:GetID()

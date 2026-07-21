@@ -21,6 +21,14 @@ _RESOURCE_TILE_YIELDS: dict[str, list[tuple[str, int]]] = {
     "RESOURCE_TOBACCO": [("信仰", 1)],
 }
 
+_RESOURCE_CN_NAMES: dict[str, str] = {
+    "RESOURCE_COTTON": "棉花",
+    "RESOURCE_SILK": "丝绸",
+    "RESOURCE_SUGAR": "糖",
+    "RESOURCE_TEA": "茶",
+    "RESOURCE_TOBACCO": "烟草",
+}
+
 _DEFAULT_SPAWN_SQL = (
     Path(__file__).resolve().parents[4]
     / "Haikesi_Dev"
@@ -124,7 +132,7 @@ def _parse_kv_line(line: str) -> tuple[str, str] | None:
     return key.strip(), value.strip()
 
 def _parse_ai_line(line: str) -> dict[str, Any] | None:
-    # AI|playerID|civLabel|options,list|selected:sel1,sel2|name:DisplayName
+    # AI|playerID|civLabel|options,list|selected:sel1,sel2|name:DisplayName|picks:N|age:GOLDEN
     if not line.startswith("AI|"):
         return None
     parts = line.split("|")
@@ -137,16 +145,63 @@ def _parse_ai_line(line: str) -> dict[str, Any] | None:
         selected_part = selected_part[len("selected:") :]
     selected = [x for x in selected_part.split(",") if x]
     player_name = ""
+    picks = 1
+    age = "NORMAL"
     for extra in parts[5:]:
         if extra.startswith("name:"):
             player_name = extra[len("name:") :]
+        elif extra.startswith("picks:"):
+            raw = extra[len("picks:") :]
+            if raw.isdigit():
+                picks = max(1, int(raw))
+        elif extra.startswith("age:"):
+            age = extra[len("age:") :] or "NORMAL"
     return {
         "player_id": int(player_id),
         "civ_label": civ_label,
         "player_name": player_name,
         "options": options,
         "selected": selected,
+        "picks": picks,
+        "age": age,
     }
+
+
+def normalize_extai_choices(
+    choices: dict[str, Any],
+    ai_players: list[dict[str, Any]] | None = None,
+) -> dict[str, str]:
+    """Flatten LLM choices to wire strings (REL or REL1+REL2)."""
+    picks_by_id: dict[str, int] = {}
+    if ai_players:
+        for ai in ai_players:
+            picks_by_id[str(ai.get("player_id"))] = int(ai.get("picks") or 1)
+    out: dict[str, str] = {}
+    for key, value in choices.items():
+        need = picks_by_id.get(str(key), 1)
+        relics: list[str]
+        if isinstance(value, list):
+            relics = [str(x).strip() for x in value if str(x).strip()]
+        else:
+            text = str(value or "").strip()
+            if "+" in text:
+                relics = [x.strip() for x in text.split("+") if x.strip()]
+            else:
+                relics = [text] if text else []
+        # de-dupe preserve order
+        seen: set[str] = set()
+        uniq: list[str] = []
+        for r in relics:
+            if r in seen:
+                continue
+            seen.add(r)
+            uniq.append(r)
+        if need > 1 and len(uniq) > need:
+            uniq = uniq[:need]
+        if not uniq:
+            continue
+        out[str(key)] = "+".join(uniq)
+    return out
 
 
 def parse_game_session_value(value: str) -> dict[str, Any]:
@@ -313,12 +368,13 @@ def get_resource_spawn_map(spawn_sql: Path | None = None) -> dict[str, str]:
 def format_resource_tile_yield_note(resource_type: str) -> str:
     """Chinese note: yields are the luxury's vanilla benefits, not an extra hex bonus."""
     yields = _RESOURCE_TILE_YIELDS.get(resource_type)
-    if not yields:
+    label = _RESOURCE_CN_NAMES.get(resource_type)
+    if not yields or not label:
         return ""
-    parts = [f"{name}+{amount}" for name, amount in yields]
+    parts = [f"+{amount}{name}" for name, amount in yields]
     return (
         "以下为该奢侈品本身的原版固有收益（非本词条额外加成）："
-        f"{'、'.join(parts)}；需改良后收获，并提供奢侈品宜居。"
+        f"{label}奢侈品给地块{'、'.join(parts)}，改良后为城市提供宜居度。"
     )
 
 
@@ -430,10 +486,16 @@ _MUTUAL_TRADE_RELICS: frozenset[str] = frozenset(
 )
 
 
-def relic_timing_tag(relic_type: str, *, cities: int | None = None) -> str:
+def relic_timing_tag(
+    relic_type: str,
+    *,
+    cities: int | None = None,
+    intl_inbound: int | None = None,
+) -> str:
     """Prompt label: when the hex pays off (instant vs delayed).
 
     cities: 当前城市数；0 城时资源创建会空放（Gameplay skip），必须醒目标出。
+    intl_inbound: 打入本文明的国际商路条数（两河/天朝/罗马和平吃入向）。
     """
     if relic_type == "NW_AI_BARBARIAN_INVASION":
         return "【即时·触发者免疫】"
@@ -449,7 +511,9 @@ def relic_timing_tag(relic_type: str, *, cities: int | None = None) -> str:
         yield_hint = _STATS_YIELD_HINTS.get(relic_type, "产出")
         return f"【即时·全城市{yield_hint}%】"
     if relic_type in _MUTUAL_TRADE_RELICS:
-        return "【延迟·需国际商路生效】"
+        if intl_inbound is not None and intl_inbound > 0:
+            return f"【条件即时·已有{intl_inbound}条国际入向商路】"
+        return "【延迟·需他国商路打入本文明】"
     if relic_type in get_resource_spawn_map() or "MILK" in relic_type:
         if cities is not None and cities <= 0:
             return "【空放·当前0城无落点·勿选】"
@@ -593,6 +657,7 @@ def format_option_lines(
     text_xml: Path | None = None,
     *,
     cities: int | None = None,
+    intl_inbound: int | None = None,
 ) -> list[str]:
     catalog = get_ai_relic_catalog(text_xml)
     lines: list[str] = []
@@ -602,7 +667,7 @@ def format_option_lines(
         desc = enrich_relic_description(
             opt, _strip_civ_icons(info.get("description", ""))
         )
-        tag = relic_timing_tag(opt, cities=cities)
+        tag = relic_timing_tag(opt, cities=cities, intl_inbound=intl_inbound)
         lines.append(f"- {tag} {opt}: {name} — {desc}")
     return lines
 
@@ -811,6 +876,29 @@ class CityView:
 
 
 @dataclass
+class TradeRouteLeg:
+    """One outbound or inbound trade route leg for ExtAI prompts."""
+
+    direction: str  # OUT / IN
+    kind: str  # dom / intl
+    a: str = ""
+    b: str = ""
+    c: str = ""
+
+
+@dataclass
+class TradeView:
+    """Per-civ trade capacity and legs (UI-stamped; InGame GetOutgoingRoutes)."""
+
+    capacity: int = 0
+    active: int = 0
+    domestic: int = 0
+    intl_out: int = 0
+    intl_in: int = 0
+    routes: list[TradeRouteLeg] = field(default_factory=list)
+
+
+@dataclass
 class LeaderView:
     """One AI leader's self-knowledge + fog/diplo-filtered world view."""
 
@@ -839,6 +927,7 @@ class LeaderView:
     religion: CivReligionBeliefs | None = None
     victory_peers: list[VictoryPeerStat] = field(default_factory=list)
     favor: int = 0  # diplomatic favor (世界会议投票资源)
+    trade: TradeView | None = None
 
 
 def _leader_trait_corpus(view: LeaderView) -> str:
@@ -1214,6 +1303,52 @@ local function readUiVstatPacked(pid)
   end
   return nil
 end
+local function printTrade(vid)
+  local packed = nil
+  if ExposedMembers ~= nil and ExposedMembers.Haikesi_UITradeSumByPlayer ~= nil then
+    packed = ExposedMembers.Haikesi_UITradeSumByPlayer[vid]
+      or ExposedMembers.Haikesi_UITradeSumByPlayer[tostring(vid)]
+  end
+  if packed == nil or tostring(packed) == "" then
+    packed = Game:GetProperty("PROP_NW_HAIKESI_UI_TRADE_" .. tostring(vid))
+  end
+  if packed == nil or tostring(packed) == "" then
+    print("TRADE|" .. vid .. "|-1|-1|-1|-1|-1")
+    return
+  end
+  local cap, outN, dom, intlOut, intlIn = string.match(
+    tostring(packed), "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+)$")
+  if cap == nil then
+    print("TRADE|" .. vid .. "|-1|-1|-1|-1|-1")
+    return
+  end
+  print("TRADE|" .. vid .. "|" .. cap .. "|" .. outN .. "|" .. dom
+    .. "|" .. intlOut .. "|" .. intlIn)
+  if tonumber(cap) ~= nil and tonumber(cap) < 0 then
+    return
+  end
+  local routes = nil
+  if ExposedMembers ~= nil and ExposedMembers.Haikesi_UITradeRoutesByPlayer ~= nil then
+    routes = ExposedMembers.Haikesi_UITradeRoutesByPlayer[vid]
+      or ExposedMembers.Haikesi_UITradeRoutesByPlayer[tostring(vid)]
+  end
+  if type(routes) == "table" then
+    for _, body in ipairs(routes) do
+      if body ~= nil and tostring(body) ~= "" then
+        print("TROUTE|" .. vid .. "|" .. tostring(body))
+      end
+    end
+    return
+  end
+  local routeProp = Game:GetProperty("PROP_NW_HAIKESI_UI_TROUTES_" .. tostring(vid))
+  if routeProp ~= nil and tostring(routeProp) ~= "" then
+    for body in string.gmatch(tostring(routeProp), "[^#]+") do
+      if body ~= "" then
+        print("TROUTE|" .. vid .. "|" .. body)
+      end
+    end
+  end
+end
 local function resolveMilitaryStrength(pid, p)
   -- 优先 UI 缓存（仅在 UI 成功读到时写入；缺键=未知）
   if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIMilitaryByPlayer ~= nil then
@@ -1480,6 +1615,7 @@ for _, vid in ipairs(viewers) do
     printRst(vid)
     printFaith(vid)
     printVStat(vid, vid, civName)
+    printTrade(vid)
     pcall(function()
       for _, c in Players[vid]:GetCities():Members() do
         local cID = c:GetID()
@@ -1767,6 +1903,41 @@ def parse_leader_views(lines: list[str]) -> tuple[dict[int, LeaderView], bool | 
                 current_research=p[14] or "无",
                 current_civic=p[15] or "无",
                 favor=int(float(p[16] or 0)) if len(p) > 16 else 0,
+            )
+        elif line.startswith("TRADE|"):
+            p = line.split("|")
+            if len(p) < 7:
+                continue
+            vid = int(p[1])
+            view = views.get(vid)
+            if view is None:
+                continue
+            view.trade = TradeView(
+                capacity=int(float(p[2] or 0)),
+                active=int(float(p[3] or 0)),
+                domestic=int(float(p[4] or 0)),
+                intl_out=int(float(p[5] or 0)),
+                intl_in=int(float(p[6] or 0)),
+            )
+        elif line.startswith("TROUTE|"):
+            # TROUTE|vid|OUT|intl|orig|destCiv|destCity  or IN|intl|fromCiv|fromCity|myCity
+            p = line.split("|")
+            if len(p) < 5:
+                continue
+            vid = int(p[1])
+            view = views.get(vid)
+            if view is None:
+                continue
+            if view.trade is None:
+                view.trade = TradeView()
+            view.trade.routes.append(
+                TradeRouteLeg(
+                    direction=p[2],
+                    kind=p[3],
+                    a=p[4] if len(p) > 4 else "",
+                    b=p[5] if len(p) > 5 else "",
+                    c=p[6] if len(p) > 6 else "",
+                )
             )
         elif line.startswith("TRAIT|"):
             p = line.split("|", 4)

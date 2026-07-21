@@ -51,7 +51,7 @@ local function HasMetPlayer(fromId, towardId)
     return met
 end
 
-local function ReadUiDipScore(fromId, towardId)
+local function ReadUiDipPacked(fromId, towardId)
     local key = tostring(fromId) .. '_' .. tostring(towardId)
     local packed = nil
     if ExposedMembers ~= nil and ExposedMembers.Haikesi_UIDipByPair ~= nil then
@@ -63,25 +63,40 @@ local function ReadUiDipScore(fromId, towardId)
     if packed == nil or tostring(packed) == '' then
         return nil
     end
-    local _, sc = string.match(tostring(packed), '^([^;]*);([^;]*);')
-    return tonumber(sc)
+    return tostring(packed)
+end
+
+-- 返回 stateName, relScore（packed=STATE;score;griev）
+local function ReadUiDipFields(fromId, towardId)
+    local packed = ReadUiDipPacked(fromId, towardId)
+    if packed == nil then
+        return nil, nil
+    end
+    local state, sc = string.match(packed, '^([^;]*);([^;]*);')
+    return state, tonumber(sc)
 end
 
 local function ResolveDiploStateScore(fromId, towardId)
     local name = nil
-    pcall(function()
-        local d = Players[fromId]:GetDiplomacy()
-        if d == nil then
-            return
-        end
-        if d.IsAtWarWith and d:IsAtWarWith(towardId) then
-            name = 'WAR'
-        elseif d.HasAllied and d:HasAllied(towardId) then
-            name = 'ALLIED'
-        elseif d.HasDeclaredFriendship and d:HasDeclaredFriendship(towardId) then
-            name = 'DECLARED_FRIEND'
-        end
-    end)
+    local uiState = select(1, ReadUiDipFields(fromId, towardId))
+    if uiState ~= nil and uiState ~= '' then
+        name = tostring(uiState):gsub('^DIPLO_STATE_', '')
+    end
+    if name == nil then
+        pcall(function()
+            local d = Players[fromId]:GetDiplomacy()
+            if d == nil then
+                return
+            end
+            if d.IsAtWarWith and d:IsAtWarWith(towardId) then
+                name = 'WAR'
+            elseif d.HasAllied and d:HasAllied(towardId) then
+                name = 'ALLIED'
+            elseif d.HasDeclaredFriendship and d:HasDeclaredFriendship(towardId) then
+                name = 'DECLARED_FRIEND'
+            end
+        end)
+    end
     if name == nil then
         pcall(function()
             local ai = Players[fromId]:GetDiplomaticAI()
@@ -102,51 +117,51 @@ local function ResolveDiploStateScore(fromId, towardId)
         end)
     end
     if name ~= nil and DIPlo_STATE_SCORE[name] ~= nil then
-        return DIPlo_STATE_SCORE[name]
+        return DIPlo_STATE_SCORE[name], name
     end
-    return nil
+    return nil, name
 end
 
--- 触发者 fromId 对 towardId 的关系分；越低越差。未接触 → DEFAULT_REL_SCORE
+-- 排序键：越低越差。状态档位为主（未接触=0=中立），同分内再用明细分。
+-- 避免 GetDiplomaticScore 把 FRIENDLY 排到未相遇/UNFRIENDLY 之前的错序。
 local function GetRelationshipScore(fromId, towardId)
     if not HasMetPlayer(fromId, towardId) then
-        return DEFAULT_REL_SCORE
+        return DEFAULT_REL_SCORE, 'UNMET'
     end
-    local uiScore = ReadUiDipScore(fromId, towardId)
-    if uiScore ~= nil then
-        return uiScore
-    end
-    local score = nil
-    pcall(function()
-        local ai = Players[fromId]:GetDiplomaticAI()
-        if ai == nil then
-            return
-        end
-        if ai.GetDiplomaticScore ~= nil then
-            local s = ai:GetDiplomaticScore(towardId)
-            if s ~= nil then
-                score = tonumber(s)
+    local stateScore, stateName = ResolveDiploStateScore(fromId, towardId)
+    local _, uiScore = ReadUiDipFields(fromId, towardId)
+    local rawScore = uiScore
+    if rawScore == nil then
+        pcall(function()
+            local ai = Players[fromId]:GetDiplomaticAI()
+            if ai == nil then
+                return
             end
-        end
-        if score == nil and ai.GetDiplomaticModifiers ~= nil then
-            local mods = ai:GetDiplomaticModifiers(towardId)
-            if mods ~= nil then
-                local sum = 0
-                for _, mod in ipairs(mods) do
-                    sum = sum + (mod.Score or 0)
+            if ai.GetDiplomaticScore ~= nil then
+                local s = ai:GetDiplomaticScore(towardId)
+                if s ~= nil then
+                    rawScore = tonumber(s)
                 end
-                score = sum
             end
-        end
-    end)
-    if score ~= nil then
-        return score
+            if rawScore == nil and ai.GetDiplomaticModifiers ~= nil then
+                local mods = ai:GetDiplomaticModifiers(towardId)
+                if mods ~= nil then
+                    local sum = 0
+                    for _, mod in ipairs(mods) do
+                        sum = sum + (mod.Score or 0)
+                    end
+                    rawScore = sum
+                end
+            end
+        end)
     end
-    local stateScore = ResolveDiploStateScore(fromId, towardId)
-    if stateScore ~= nil then
-        return stateScore
+    rawScore = tonumber(rawScore) or 0
+    if stateScore == nil then
+        -- 无状态时退回明细分（与旧行为兼容）
+        return rawScore, stateName or 'UNKNOWN'
     end
-    return DEFAULT_REL_SCORE
+    -- 状态×1000 + 明细分：同为 UNFRIENDLY 时更负者更差；FRIENDLY 永远优于未接触(0)
+    return stateScore * 1000 + rawScore, stateName or 'UNKNOWN'
 end
 
 local function PickWorstRelatedPlayers(ownerId, maxCount)
@@ -155,9 +170,14 @@ local function PickWorstRelatedPlayers(ownerId, maxCount)
         if pOther ~= nil and not pOther:IsBarbarian() then
             local oid = pOther:GetID()
             if oid ~= ownerId then
-                local score = GetRelationshipScore(ownerId, oid)
+                local score, stateName = GetRelationshipScore(ownerId, oid)
                 local met = HasMetPlayer(ownerId, oid)
-                table.insert(ranked, { id = oid, score = score, met = met })
+                table.insert(ranked, {
+                    id = oid,
+                    score = score,
+                    state = stateName,
+                    met = met,
+                })
             end
         end
     end
@@ -337,7 +357,8 @@ function Haikesi_ApplyRiverFloodRelic(iPlayer)
     local targetDesc = {}
     for _, t in ipairs(targets) do
         table.insert(targetDesc, string.format(
-            'P%d(score=%s,met=%s)', t.id, tostring(t.score), tostring(t.met)))
+            'P%d(state=%s,key=%s,met=%s)',
+            t.id, tostring(t.state), tostring(t.score), tostring(t.met)))
         local rivers = CollectRiversForPlayer(t.id)
         for _, r in ipairs(rivers) do
             if not riverSet[r] then

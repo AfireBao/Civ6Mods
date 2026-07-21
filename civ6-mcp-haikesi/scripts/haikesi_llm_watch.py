@@ -25,6 +25,8 @@ from civ_mcp.haikesi_llm import (
     create_chat_client,
     decide_and_inject_log_channel,
     decide_and_submit_once,
+    llm_review_rounds,
+    llm_thinking_enabled,
     load_haikesi_llm_config,
     poll_pending_request,
 )
@@ -62,6 +64,11 @@ async def main() -> None:
     print("=== Haikesi LLM Watch ===")
     print(f"Provider: {config.provider_label}")
     print(f"Model: {config.model}")
+    print(
+        f"Thinking: {'ON' if llm_thinking_enabled() else 'OFF'} "
+        f"| ReviewRounds: {llm_review_rounds()} "
+        f"(HAIKESI_LLM_THINKING / HAIKESI_LLM_REVIEW_ROUNDS)",
+    )
     print(f"Mode: {mode} | Poll every {interval}s — Ctrl+C to stop\n")
 
     if mode in ("auto", "tuner"):

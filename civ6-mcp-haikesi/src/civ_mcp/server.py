@@ -2760,7 +2760,7 @@ async def get_haikesi_ai_request(ctx: Context) -> str:
 async def submit_haikesi_ai_choices(
     ctx: Context,
     request_id: str,
-    choices: dict[str, str],
+    choices: dict[str, str | list[str]],
     reasons: dict[str, str] | None = None,
 ) -> str:
     """Submit external LLM AI relic choices for a pending Haikesi request.
@@ -2771,8 +2771,10 @@ async def submit_haikesi_ai_choices(
 
     Args:
         request_id: Value from get_haikesi_ai_request (e.g. \"1_2_0\")
-        choices: Map of AI player ID string to relic type
-                 (e.g. {\"3\": \"NW_AI_BARBARIAN_INVASION\"})
+        choices: Map of AI player ID string to relic type, or dual-pick as
+                 \"A+B\" / [\"A\",\"B\"] for golden/heroic age AIs
+                 (e.g. {\"3\": \"NW_AI_BARBARIAN_INVASION\",
+                 \"4\": [\"NW_AI_STATS_1\", \"NW_AI_STATS_2\"]})
         reasons: Map of AI player ID string to a short Chinese decision reason
                  (1-2 sentences). Displayed in-game as:
                  \"[领袖名]觉得[reason]，故选择[海克斯名称]\".
@@ -2784,7 +2786,8 @@ async def submit_haikesi_ai_choices(
     gs = _get_game(ctx)
 
     async def _run() -> str:
-        lua = haikesi_lua.build_submit_ai_choices_lua(request_id, choices, reasons)
+        normalized = haikesi_lua.normalize_extai_choices(dict(choices))
+        lua = haikesi_lua.build_submit_ai_choices_lua(request_id, normalized, reasons)
         lines = await gs.conn.execute_haikesi(lua)
         return haikesi_lua.summarize_submit_result(lines)
 

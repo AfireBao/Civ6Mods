@@ -79,7 +79,29 @@ def test_mutual_trade_relics_share_delayed_tag():
         "NW_AI_FERTILE_CRESCENT",
         "NW_AI_PAX_ROMANA",
     ):
-        assert "国际商路" in haikesi_lua.relic_timing_tag(relic)
+        assert "商路" in haikesi_lua.relic_timing_tag(relic)
+        assert "入向" in haikesi_lua.relic_timing_tag(relic, intl_inbound=2)
+
+
+def test_parse_trade_wire_into_leader_view():
+    views, _ = haikesi_lua.parse_leader_views(
+        [
+            "VIEWER|2|马普切|劳塔罗|90|4|12|48.5|41.5|26.0|190|8|8|5.0|建筑学|戏剧和诗歌|0",
+            "TRADE|2|2|1|0|1|0",
+            "TROUTE|2|OUT|intl|特木科|蒙古|卡拉库姆",
+        ]
+    )
+    v = views[2]
+    assert v.trade is not None
+    assert v.trade.capacity == 2
+    assert v.trade.active == 1
+    assert v.trade.intl_out == 1
+    assert v.trade.intl_in == 0
+    assert len(v.trade.routes) == 1
+    assert v.trade.routes[0].direction == "OUT"
+    block = haikesi_llm._trade_block(v)
+    assert "国际入向 0" in block
+    assert "特木科→蒙古·卡拉库姆" in block
 
 
 def test_markdownify_keeps_blank_line_before_gfm_table():

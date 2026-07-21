@@ -105,7 +105,7 @@ def test_rst_block_and_prompt_include_strategy():
     prompt = build_decision_prompt(payload, ctx)
     assert "Real Strategy 战略意图" in prompt
     assert "主战略: 征服" in prompt
-    assert "选卡应优先契合主战略" in prompt
+    assert "仅作选卡倾向参考" in prompt or "主战略仅作倾向" in prompt
 
 
 def test_build_rst_query_soft():
