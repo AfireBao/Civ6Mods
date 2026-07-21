@@ -69,6 +69,7 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-21 | **ExtAI 黄金/英雄双选与 LLM 加固**：金/英雄时代 AI 六选二（`Haikesi_ExtAI_AgePick.lua`，wire `A+B`）；时代戳记与入向商路经 UI→GamePlay 桥接，避免和平互利类空放误判；南蛮无城延迟触发、混乱卡互斥与 Stage 广播重试同步。MCP：`haikesi_llm_watch` 支持 xAI/Grok（thinking / 可选自审）；损坏 JSON salvage；提交前校验候选池，幻觉类型（如 `NW_AI_BALANCED`）重修或回退合法选项。 |
 | 2026-07-21 | **创造万神殿 Dev v19**：AI 第二词条（Power）将丰产 / 工匠 / 神农 / 文曲提为最高档（权重 2.6），高于神圣之光（2.2）；原版 AI 不会为万神殿优化区域落点，优先推格产出类词条。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |
 | 2026-07-20 | **单机 ExtAI**：不弹联机 Ctrl+V 横幅；帧末捞 FireTuner Stage 暂存并广播（修复跨 Context LuaEvent 丢失导致 Submit OK 却不落地）。 |
 | 2026-07-20 | **AI 混乱干扰「仇水连汛」**：关系最差最多 3 文明（未接触=默认分 0）城市附近可泛滥河，下回合起连续 5 回合官方洪水（70% 千年 / 30% 重大）；与南蛮入侵/闪电风暴共享每轮混乱互斥（候选池互斥，提示词不写互斥）。 |
