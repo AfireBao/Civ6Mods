@@ -229,3 +229,36 @@ def test_civ6_kb_offline():
     text = resolve_tool(ctx, "civ6_kb", '{"topic": "amenity"}')
     assert "宜居" in text
     assert "Nothing surfaces" not in text
+
+
+def test_civilopedia_lookup_unit_and_haikesi():
+    from civ_mcp import civilopedia_index
+
+    civ_n, hk_n = civilopedia_index.chapter_counts()
+    assert civ_n >= 100
+    assert hk_n >= 50
+
+    ctx = DecisionToolContext(
+        context=HaikesiGameContext(overview=_overview(), human_player_id=0),
+        payload=_payload(),
+        channel="tuner",
+    )
+    balloon = resolve_tool(
+        ctx,
+        "civilopedia_lookup",
+        '{"query": "UNIT_OBSERVATION_BALLOON", "limit": 1}',
+    )
+    assert "UNIT_OBSERVATION_BALLOON" in balloon
+    assert "观测气球" in balloon or "气球" in balloon
+
+    punch = resolve_tool(
+        ctx,
+        "civilopedia_lookup",
+        '{"query": "秘术冲拳", "chapter": "haikesi", "limit": 1}',
+    )
+    assert "ARCANEPUNCHRUNE" in punch
+    assert "武僧" in punch or "战斗力" in punch
+
+    # civ6_kb falls back to dictionary for entity names
+    via_kb = resolve_tool(ctx, "civ6_kb", '{"topic": "观测气球"}')
+    assert "UNIT_OBSERVATION_BALLOON" in via_kb or "气球" in via_kb

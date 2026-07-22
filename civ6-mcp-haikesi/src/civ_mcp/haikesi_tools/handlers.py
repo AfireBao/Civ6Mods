@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from civ_mcp import civilopedia_index
 from civ_mcp.lua import haikesi as haikesi_lua
 
 from civ_mcp.haikesi_tools.context_cache import DecisionToolContext
@@ -49,6 +50,8 @@ def resolve_tool(ctx: DecisionToolContext, name: str, arguments_json: str) -> st
             result = _check_echo_feasibility(ctx, args)
         elif name == "civ6_kb":
             result = _civ6_kb(args)
+        elif name == "civilopedia_lookup":
+            result = _civilopedia_lookup(args)
         else:
             result = f"未知工具: {name}"
     except Exception as exc:  # noqa: BLE001
@@ -237,28 +240,53 @@ def _check_echo_feasibility(ctx: DecisionToolContext, args: dict[str, Any]) -> s
 
 
 def _civ6_kb(args: dict[str, Any]) -> str:
-    topic = str(args.get("topic") or "").strip().lower()
+    raw = str(args.get("topic") or "").strip()
+    topic = raw.lower()
     if not topic:
-        return "缺少 topic。可用：amenity / district / victory / trade"
+        return "缺少 topic。可用：amenity / district / victory / trade；或专名走 civilopedia_lookup"
     fname = _KB_ALIASES.get(topic)
     if fname is None:
         for key, name in _KB_ALIASES.items():
             if key in topic or topic in key:
                 fname = name
                 break
-    if fname is None:
-        # fuzzy file stem
-        if _KB_DIR.is_dir():
-            for p in _KB_DIR.glob("*.md"):
-                if topic in p.stem.lower():
-                    fname = p.name
-                    break
-    if not fname:
-        return NOTHING_SURFACES + f"（无本地条目匹配 topic={topic!r}）"
-    path = _KB_DIR / fname
-    if not path.is_file():
+    if fname is None and _KB_DIR.is_dir():
+        for p in _KB_DIR.glob("*.md"):
+            if topic in p.stem.lower():
+                fname = p.name
+                break
+    if fname:
+        path = _KB_DIR / fname
+        if path.is_file():
+            text = path.read_text(encoding="utf-8").strip()
+            if len(text) > 2500:
+                text = text[:2500].rstrip() + "…"
+            return text
         return NOTHING_SURFACES + f"（文件缺失 {fname}）"
-    text = path.read_text(encoding="utf-8").strip()
-    if len(text) > 2500:
-        text = text[:2500].rstrip() + "…"
-    return text
+
+    # Fall back to Civilopedia dictionary for entity names / ids
+    hits = civilopedia_index.search(raw, limit=3)
+    if hits:
+        return civilopedia_index.format_search_result(raw, hits)
+    return NOTHING_SURFACES + f"（无本地条目匹配 topic={raw!r}）"
+
+
+def _civilopedia_lookup(args: dict[str, Any]) -> str:
+    query = str(args.get("query") or "").strip()
+    if not query:
+        return "缺少 query。"
+    chapter = str(args.get("chapter") or "").strip() or None
+    if chapter and chapter not in ("civilopedia", "haikesi"):
+        return f"chapter 须为 civilopedia 或 haikesi（收到 {chapter!r}）"
+    try:
+        limit = int(args.get("limit") or 3)
+    except (TypeError, ValueError):
+        limit = 3
+    limit = max(1, min(limit, 8))
+    hits = civilopedia_index.search(query, chapter=chapter, limit=limit)
+    civ_n, hk_n = civilopedia_index.chapter_counts()
+    empty = (
+        f"无匹配；词典规模 civilopedia={civ_n} / haikesi={hk_n}。"
+        "可换中文名、UNIT_/TECH_ ID，或 chapter=haikesi"
+    )
+    return civilopedia_index.format_search_result(query, hits, empty_hint=empty)

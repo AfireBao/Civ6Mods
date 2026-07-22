@@ -101,18 +101,45 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
     ToolDefinition(
         name="civ6_kb",
         description=(
-            "查阅本地离线文明6规则摘要（宜居、区域、胜利条件等）。"
-            "不联网；海克斯词条请用 lookup_relic。"
+            "查阅本地离线规则摘要：优先短篇策略笔记（宜居/区域/胜利/商路）；"
+            "否则回落到 Civilopedia 词典检索。单位/建筑/科技专名更推荐 civilopedia_lookup。"
+            "不联网。"
         ),
         parameters={
             "type": "object",
             "properties": {
                 "topic": {
                     "type": "string",
-                    "description": "主题关键词，如 amenity / district / victory / trade",
+                    "description": "主题或专名，如 amenity / district / victory / trade / 观测气球",
                 }
             },
             "required": ["topic"],
+        },
+    ),
+    ToolDefinition(
+        name="civilopedia_lookup",
+        description=(
+            "查询本地 Civilopedia 词典（内置中文名+说明+部分 Gameplay 数值）与海克斯章节。"
+            "可用中文名、类型 ID（如 UNIT_OBSERVATION_BALLOON、ARCANEPUNCHRUNE）或关键词。"
+            "chapter 可选 civilopedia / haikesi。"
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "中文名、类型 ID 或关键词",
+                },
+                "chapter": {
+                    "type": "string",
+                    "description": "可选：civilopedia | haikesi",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "返回条数，默认 3，最大 8",
+                },
+            },
+            "required": ["query"],
         },
     ),
 ]

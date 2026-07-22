@@ -2502,7 +2502,7 @@ def build_decision_prompt_slim(
     return f"""你是文明6资深玩家，代入下列领袖为本轮选择海克斯。{channel_note}
 
 你可以使用工具按需索取：leader_snapshot / met_civ_detail / lookup_relic /
-inventory_brief / check_echo_feasibility / civ6_kb。
+inventory_brief / check_echo_feasibility / civ6_kb / civilopedia_lookup。
 对局工具必须带正确的 player_id（迷雾主体=该领袖自己）；禁止跨领袖偷看。
 查完后输出最终 JSON（不要 markdown）。
 
@@ -2510,6 +2510,7 @@ inventory_brief / check_echo_feasibility / civ6_kb。
 - 每位领袖只用自己区块与自己 player_id 的工具结果。
 - 候选全文已在下方；choices 值必须是候选里的完整类型 ID。
 - 历史库存仅短名；需要效果时用 lookup_relic。
+- 内置单位/建筑/科技中文与数值、以及海克斯章节：用 civilopedia_lookup（中文名或类型 ID）。
 
 ## 当前回合
 Turn {turn}
