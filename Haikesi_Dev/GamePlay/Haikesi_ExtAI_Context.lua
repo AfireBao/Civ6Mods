@@ -141,7 +141,7 @@ table.sort(ubParts, function(a, b)
 end)
 print("UNITBREAKDOWN|" .. table.concat(ubParts, ",") .. "|" .. unitMaint)
 pcall(function()
-    -- 与 ScaleTurnForGameSpeed / Haikesi_PrintGameSpeedKV 一致
+    -- Prefer GameConfiguration (same as Haikesi ScaleTurn); Game.GetGameSpeedType often fails in scripts
     local gsIdx = GameConfiguration.GetGameSpeedType()
     local gsRow = gsIdx ~= nil and GameInfo.GameSpeeds[gsIdx] or nil
     if not gsRow and Game.GetGameSpeedType then
@@ -547,8 +547,6 @@ local function readUiVstatPacked(pid)
   return nil
 end
 local function printTrade(vid)
-  -- 商路仅 InGame 可扫；读 UI 戳记（cap;out;dom;intlOut;intlIn）
-  -- 缺缓存时仍 dump TRADE|vid|-1|... 以便提示词标明「未同步」
   local packed = nil
   if ExposedMembers ~= nil and ExposedMembers.Haikesi_UITradeSumByPlayer ~= nil then
     packed = ExposedMembers.Haikesi_UITradeSumByPlayer[vid]
@@ -1028,6 +1026,83 @@ for _, vid in ipairs(viewers) do
     for pid, agg in pairs(threatAgg) do
       print("THREAT|" .. vid .. "|" .. pid .. "|" .. agg.name .. "|" .. agg.count
         .. "|" .. agg.dist .. "|" .. tostring(agg.war or 0) .. "|" .. tostring(agg.minor or 0))
+    end
+    -- 仇水预见：已遇主要文明中、观察者可见城市的可泛滥命名河（对齐 RiverFlood 半径3）
+    local CITY_RIVER_RADIUS = 3
+    if pVis == nil then
+      print("FLOOD_API|" .. vid .. "|0")
+    elseif RiverManager == nil or RiverManager.GetRiverForFloodplain == nil then
+      print("FLOOD_API|" .. vid .. "|0")
+    else
+      print("FLOOD_API|" .. vid .. "|1")
+      for tid = 0, 62 do
+        if tid ~= vid and Players[tid] and Players[tid]:IsAlive() and Players[tid]:IsMajor() then
+          local metFlood = false
+          pcall(function() metFlood = pDiplo:HasMet(tid) end)
+          if metFlood then
+            pcall(function()
+              for _, city in Players[tid]:GetCities():Members() do
+                if city ~= nil then
+                  local cx, cy = city:GetX(), city:GetY()
+                  local cityVis = false
+                  pcall(function() cityVis = pVis:IsVisible(cx, cy) end)
+                  if cityVis then
+                    local riverSet = {}
+                    local nRivers = 0
+                    for dx = -CITY_RIVER_RADIUS, CITY_RIVER_RADIUS do
+                      for dy = -CITY_RIVER_RADIUS, CITY_RIVER_RADIUS do
+                        if Map.GetPlotDistance(cx, cy, cx + dx, cy + dy) <= CITY_RIVER_RADIUS then
+                          local plot = Map.GetPlot(cx + dx, cy + dy)
+                          if plot ~= nil and plot:GetOwner() == tid then
+                            local can = true
+                            if RiverManager.CanBeFlooded ~= nil then
+                              can = RiverManager.CanBeFlooded(plot) == true
+                            end
+                            if can then
+                              local eRiver = RiverManager.GetRiverForFloodplain(plot:GetX(), plot:GetY())
+                              if eRiver ~= nil and eRiver >= 0 then
+                                local namedIndex = eRiver
+                                if RiverManager.GetRiverType ~= nil then
+                                  local okRT, rType = pcall(function()
+                                    return RiverManager.GetRiverType(eRiver)
+                                  end)
+                                  if okRT and rType ~= nil and GameInfo.NamedRivers ~= nil then
+                                    local row = GameInfo.NamedRivers[rType]
+                                    if row ~= nil and row.Index ~= nil then
+                                      namedIndex = row.Index
+                                    end
+                                  end
+                                end
+                                if not riverSet[namedIndex] then
+                                  local okPlots = true
+                                  if RiverManager.GetFloodplainPlots ~= nil then
+                                    local plots = RiverManager.GetFloodplainPlots(eRiver)
+                                    if plots == nil then
+                                      plots = RiverManager.GetFloodplainPlots(namedIndex)
+                                    end
+                                    if plots == nil then okPlots = false end
+                                  end
+                                  if okPlots then
+                                    riverSet[namedIndex] = true
+                                    nRivers = nRivers + 1
+                                  end
+                                end
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                    local cname = safeLookup(city:GetName()):gsub("|", "/")
+                    print("FLOOD|" .. vid .. "|" .. tid .. "|" .. tostring(city:GetID())
+                      .. "|" .. cname .. "|" .. cx .. "|" .. cy .. "|" .. nRivers)
+                  end
+                end
+              end
+            end)
+          end
+        end
+      end
     end
   end
 end

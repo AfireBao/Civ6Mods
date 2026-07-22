@@ -13,20 +13,97 @@ _CATALOG: dict[str, dict[str, str]] | None = None
 _RESOURCE_SPAWN_MAP: dict[str, str] | None = None
 
 # Vanilla Resource_YieldChanges (tile bonus from the resource itself).
+# ExtAI prompts use civilopedia Keys (YIELD_*), not Chinese nouns.
 _RESOURCE_TILE_YIELDS: dict[str, list[tuple[str, int]]] = {
-    "RESOURCE_COTTON": [("金币", 3)],
-    "RESOURCE_SILK": [("文化", 1)],
-    "RESOURCE_SUGAR": [("食物", 2)],
-    "RESOURCE_TEA": [("科技", 1)],
-    "RESOURCE_TOBACCO": [("信仰", 1)],
+    "RESOURCE_COTTON": [("YIELD_GOLD", 3)],
+    "RESOURCE_SILK": [("YIELD_CULTURE", 1)],
+    "RESOURCE_SUGAR": [("YIELD_FOOD", 2)],
+    "RESOURCE_TEA": [("YIELD_SCIENCE", 1)],
+    "RESOURCE_TOBACCO": [("YIELD_FAITH", 1)],
 }
 
-_RESOURCE_CN_NAMES: dict[str, str] = {
-    "RESOURCE_COTTON": "棉花",
-    "RESOURCE_SILK": "丝绸",
-    "RESOURCE_SUGAR": "糖",
-    "RESOURCE_TEA": "茶",
-    "RESOURCE_TOBACCO": "烟草",
+# ExtAI LLM descriptions for NW_AI_* (Keys for civilopedia_lookup). Name stays Chinese.
+AI_LLM_DESCRIPTIONS: dict[str, str] = {
+    "NW_AI_STATS_1": "All cities YIELD_CULTURE +18%.",
+    "NW_AI_STATS_2": "All cities YIELD_SCIENCE +18%.",
+    "NW_AI_STATS_3": "All cities YIELD_GOLD +24%.",
+    "NW_AI_STATS_4": "All cities YIELD_FAITH +24%.",
+    "NW_AI_STATS_5": "All cities YIELD_FOOD +12%.",
+    "NW_AI_STATS_6": "All cities YIELD_PRODUCTION +18%.",
+    "NW_AI_ECHO_SETTLER": "On produce UNIT_SETTLER, gain 1 copy.",
+    "NW_AI_ECHO_BUILDER": "On produce UNIT_BUILDER, gain 1 copy.",
+    "NW_AI_ECHO_MELEE": "On produce CLASS_MELEE, gain 1 copy.",
+    "NW_AI_ECHO_RANGED": "On produce CLASS_RANGED, gain 1 copy.",
+    "NW_AI_ECHO_LIGHT_CAVALRY": "On produce CLASS_LIGHT_CAVALRY, gain 1 copy.",
+    "NW_AI_ECHO_HEAVY_CAVALRY": "On produce CLASS_HEAVY_CAVALRY, gain 1 copy.",
+    "NW_AI_ECHO_ANTI_CAVALRY": "On produce CLASS_ANTI_CAVALRY, gain 1 copy.",
+    "NW_AI_ECHO_SIEGE": "On produce CLASS_SIEGE, gain 1 copy.",
+    "NW_AI_BARBARIAN_INVASION": (
+        "[Chaos] Except picker: try spawn 3 barb camps in each other major's newest "
+        "city r5 (vanilla spacing). Per missing camp, pad 3 barb warriors into "
+        "existing camps in that r5; if no camp, spawn 6 warriors in city r4. Picker immune."
+    ),
+    "NW_AI_LIGHTNING_STORM": (
+        "[Chaos] From next turn, 10 turns: each turn fire N official storms "
+        "(dust/blizzard/tornado/hurricane, random intensity) where N = living majors; "
+        "engine picks tiles."
+    ),
+    "NW_AI_RIVER_FLOOD": (
+        "[Chaos] Up to 3 worst-relation living majors (unmet = neutral default). "
+        "Collect named floodable rivers within their cities r3. From next turn, 5 turns: "
+        "official floods on those rivers (70% 1000yr / 30% major). No river = noop."
+    ),
+    "NW_AI_BRAVE_WOOD": (
+        "Spawn 4x RESOURCE_COTTON in newest city r3. "
+        "Vanilla tile: +3 YIELD_GOLD; improved amenity."
+    ),
+    "NW_AI_MAMA_BORN": (
+        "Spawn 4x RESOURCE_TOBACCO in newest city r3. "
+        "Vanilla tile: +1 YIELD_FAITH; improved amenity."
+    ),
+    "NW_AI_MILK_DRAGON": (
+        "Spawn 4x RESOURCE_SUGAR in newest city r3. "
+        "Vanilla tile: +2 YIELD_FOOD; improved amenity."
+    ),
+    "NW_AI_SILK_LAND": (
+        "Spawn 4x RESOURCE_SILK in newest city r3. "
+        "Vanilla tile: +1 YIELD_CULTURE; improved amenity."
+    ),
+    "NW_AI_DRINK_TEA": (
+        "Spawn 4x RESOURCE_TEA in newest city r3. "
+        "Vanilla tile: +1 YIELD_SCIENCE; improved amenity."
+    ),
+    "NW_AI_CELESTIAL_EMPIRE": (
+        "[Mutual trade] Inbound international TradeRoute to this civ: "
+        "origin city +1 YIELD_SCIENCE +1 YIELD_CULTURE; "
+        "destination (this civ) +4 YIELD_GOLD +2 YIELD_FAITH."
+    ),
+    "NW_AI_FERTILE_CRESCENT": (
+        "[Mutual trade] Inbound international TradeRoute to this civ: "
+        "origin city +1 YIELD_FOOD +1 YIELD_PRODUCTION; "
+        "destination (this civ) +3 YIELD_GOLD +1 YIELD_FOOD."
+    ),
+    "NW_AI_PAX_ROMANA": (
+        "[Mutual trade] Inbound international TradeRoute to this civ: "
+        "origin city +1 YIELD_PRODUCTION +1 YIELD_GOLD; "
+        "destination (this civ) +3 YIELD_GOLD +1 YIELD_PRODUCTION."
+    ),
+    "NW_AI_SPY_BUREAU": (
+        "+2 spy capacity; +25% YIELD_PRODUCTION when training UNIT_SPY "
+        "(needs CIVIC_DIPLOMATIC_SERVICE)."
+    ),
+    "NW_AI_ENVOY_FOOTHOLD": (
+        "For each met city-state with >=1 envoy already: immediately +2 envoys."
+    ),
+    "NW_AI_WONDER_WORKSHOP": "+30% YIELD_PRODUCTION when building Wonders.",
+    "NW_AI_WALL_ENGINEERING": (
+        "+50% YIELD_PRODUCTION for BUILDING_WALLS / BUILDING_CASTLE / BUILDING_STAR_FORT; "
+        "BUILDING_WALLS +2 YIELD_FAITH; BUILDING_CASTLE +2 YIELD_SCIENCE; "
+        "BUILDING_STAR_FORT +2 YIELD_CULTURE."
+    ),
+    "NW_AI_MISSIONARY_WAVE": (
+        "UNIT_MISSIONARY faith purchase cost -50% (needs faith buy unlock)."
+    ),
 }
 
 _DEFAULT_SPAWN_SQL = (
@@ -420,15 +497,14 @@ def get_resource_spawn_map(spawn_sql: Path | None = None) -> dict[str, str]:
 
 
 def format_resource_tile_yield_note(resource_type: str) -> str:
-    """Chinese note: yields are the luxury's vanilla benefits, not an extra hex bonus."""
+    """Key note: yields are the luxury's vanilla benefits, not an extra hex bonus."""
     yields = _RESOURCE_TILE_YIELDS.get(resource_type)
-    label = _RESOURCE_CN_NAMES.get(resource_type)
-    if not yields or not label:
+    if not yields or not resource_type:
         return ""
-    parts = [f"+{amount}{name}" for name, amount in yields]
+    parts = [f"+{amount} {name}" for name, amount in yields]
     return (
-        "以下为该奢侈品本身的原版固有收益（非本词条额外加成）："
-        f"{label}奢侈品给地块{'、'.join(parts)}，改良后为城市提供宜居度。"
+        f"Vanilla tile: {'; '.join(parts)}; improved amenity. "
+        f"({resource_type} inherent, not hex extra.)"
     )
 
 
@@ -446,15 +522,36 @@ def enrich_relic_description(
     note = format_resource_tile_yield_note(resource_type)
     if not note:
         return desc
-    # XML 已写明「原版固有收益」或已含产量+宜居时，不再追加
-    if "原版固有收益" in desc or "奢侈品本身" in desc:
+    # Overlay / XML already clarifies vanilla luxury yields — do not double-append
+    if (
+        "原版固有收益" in desc
+        or "奢侈品本身" in desc
+        or "Vanilla tile" in desc
+        or "improved amenity" in desc
+    ):
         return desc
-    if any(token in desc for token, _ in _RESOURCE_TILE_YIELDS.get(resource_type, [])):
-        if "宜居" in desc or "地块" in desc:
-            return desc
+    if resource_type in desc and any(
+        y in desc for y, _ in _RESOURCE_TILE_YIELDS.get(resource_type, [])
+    ):
+        return desc
     if note in desc:
         return desc
     return f"{desc} {note}".strip() if desc else note
+
+
+def _llm_relic_description(
+    relic_type: str,
+    catalog_description: str = "",
+    *,
+    spawn_sql: Path | None = None,
+) -> str:
+    """Prefer Key overlay for NW_AI_*; else enrich catalog/XML description."""
+    overlay = AI_LLM_DESCRIPTIONS.get(relic_type)
+    if overlay:
+        return overlay
+    return enrich_relic_description(
+        relic_type, catalog_description, spawn_sql=spawn_sql
+    )
 
 
 def _strip_civ_icons(text: str) -> str:
@@ -468,7 +565,7 @@ def format_relic_display(relic_type: str, text_xml: Path | None = None) -> str:
         return "(无)"
     info = get_ai_relic_catalog(text_xml).get(relic_type, {})
     name = _strip_civ_icons(info.get("name", relic_type))
-    desc = enrich_relic_description(
+    desc = _llm_relic_description(
         relic_type, _strip_civ_icons(info.get("description", ""))
     )
     if desc:
@@ -510,7 +607,20 @@ def format_relic_inventory_lines(
     return [f"  · {format_relic_display(t, text_xml)}" for t in types]
 
 
+# Timing / desc Keys (aligned with SQL UnitType / Tag).
 _ECHO_UNIT_LABELS: dict[str, str] = {
+    "SETTLER": "UNIT_SETTLER",
+    "BUILDER": "UNIT_BUILDER",
+    "MELEE": "CLASS_MELEE",
+    "RANGED": "CLASS_RANGED",
+    "LIGHT_CAVALRY": "CLASS_LIGHT_CAVALRY",
+    "HEAVY_CAVALRY": "CLASS_HEAVY_CAVALRY",
+    "ANTI_CAVALRY": "CLASS_ANTI_CAVALRY",
+    "SIEGE": "CLASS_SIEGE",
+}
+
+# Chinese tokens for matching civ ability corpus (not for prompt Keys).
+_ECHO_CORPUS_TOKENS: dict[str, str] = {
     "SETTLER": "开拓者",
     "BUILDER": "建造者",
     "MELEE": "近战",
@@ -522,12 +632,12 @@ _ECHO_UNIT_LABELS: dict[str, str] = {
 }
 
 _STATS_YIELD_HINTS: dict[str, str] = {
-    "NW_AI_STATS_1": "文化",
-    "NW_AI_STATS_2": "科技",
-    "NW_AI_STATS_3": "金币",
-    "NW_AI_STATS_4": "信仰",
-    "NW_AI_STATS_5": "食物",
-    "NW_AI_STATS_6": "生产力",
+    "NW_AI_STATS_1": "YIELD_CULTURE",
+    "NW_AI_STATS_2": "YIELD_SCIENCE",
+    "NW_AI_STATS_3": "YIELD_GOLD",
+    "NW_AI_STATS_4": "YIELD_FAITH",
+    "NW_AI_STATS_5": "YIELD_FOOD",
+    "NW_AI_STATS_6": "YIELD_PRODUCTION",
 }
 
 # 和平互利：入向国际商路双方产出（天朝 / 两河 / 罗马和平）
@@ -568,6 +678,22 @@ def relic_timing_tag(
         if intl_inbound is not None and intl_inbound > 0:
             return f"【条件即时·已有{intl_inbound}条国际入向商路】"
         return "【延迟·需他国商路打入本文明】"
+    if relic_type == "NW_AI_ENVOY_FOOTHOLD":
+        return "【条件即时·仅对已有使者的相遇城邦+2】"
+    if relic_type == "NW_AI_SPY_BUREAU":
+        return (
+            "【即时·间谍容量+2·造间谍+25%·"
+            "造UNIT_SPY需市政CIVIC_DIPLOMATIC_SERVICE】"
+        )
+    if relic_type == "NW_AI_WONDER_WORKSHOP":
+        return "【即时·奇观产能+30%】"
+    if relic_type == "NW_AI_WALL_ENGINEERING":
+        return (
+            "【即时·BUILDING_WALLS/CASTLE/STAR_FORT +50%产·"
+            "分档+2 YIELD_FAITH/SCIENCE/CULTURE】"
+        )
+    if relic_type == "NW_AI_MISSIONARY_WAVE":
+        return "【即时·UNIT_MISSIONARY信仰价-50%·需能购UNIT_MISSIONARY】"
     if relic_type in get_resource_spawn_map() or "MILK" in relic_type:
         if cities is not None and cities <= 0:
             return "【空放·当前0城无落点·勿选】"
@@ -723,7 +849,7 @@ def format_option_lines(
     for opt in options:
         info = catalog.get(opt, {})
         name = _strip_civ_icons(info.get("name", opt))
-        desc = enrich_relic_description(
+        desc = _llm_relic_description(
             opt, _strip_civ_icons(info.get("description", ""))
         )
         tag = relic_timing_tag(opt, cities=cities, intl_inbound=intl_inbound)
@@ -892,6 +1018,23 @@ class VisibleThreatAgg:
 
 
 @dataclass
+class FloodCityForesight:
+    """Observer-visible city of a met major with floodable named-river count.
+
+    Mirrors Haikesi_RiverFlood_GamePlay CollectRiversForPlayer (radius 3,
+    owner plots, CanBeFlooded / GetRiverForFloodplain). Only cities with
+    PlayersVisibility[viewer]:IsVisible(cx,cy) are dumped.
+    """
+
+    target_id: int
+    city_id: int
+    city_name: str
+    x: int
+    y: int
+    floodable_rivers: int = 0
+
+
+@dataclass
 class VictoryPeerStat:
     """Victory-relevant stats for self or a met major (viewer fog)."""
 
@@ -987,6 +1130,9 @@ class LeaderView:
     victory_peers: list[VictoryPeerStat] = field(default_factory=list)
     favor: int = 0  # diplomatic favor (世界会议投票资源)
     trade: TradeView | None = None
+    flood_targets: list[FloodCityForesight] = field(default_factory=list)
+    # InGame dump 若无 RiverManager，gather 会标 False 并走 GamePlay 回退
+    flood_api_ok: bool | None = None
 
 
 def _leader_trait_corpus(view: LeaderView) -> str:
@@ -1056,9 +1202,10 @@ def build_trait_option_synergy_hints(
             k in corpus for k in ("征集", "雇佣", "军队", "战斗力", "黑军", "骑兵")
         ):
             suffix = opt.removeprefix("NW_AI_ECHO_")
-            unit = _ECHO_UNIT_LABELS.get(suffix, "")
-            if unit and unit in corpus:
-                hints.append(f"能力文案提及{unit}，与对应 echo 直接协同")
+            token = _ECHO_CORPUS_TOKENS.get(suffix, "")
+            if token and token in corpus:
+                key = _ECHO_UNIT_LABELS.get(suffix, token)
+                hints.append(f"能力文案提及{token}（{key}），与对应 echo 直接协同")
         if (
             opt in get_resource_spawn_map()
             and int(view.cities or 0) > 0
@@ -1086,10 +1233,13 @@ def build_trait_option_synergy_hints(
 def build_leader_views_query(viewer_ids: list[int]) -> str:
     """FireTuner query that simulates each AI's diplo + fog view.
 
-    Emits VIEWER / TRAIT / AGENDA / CITY / MET / DIPMOD / THREAT lines per viewer.
+    Emits VIEWER / TRAIT / AGENDA / CITY / MET / DIPMOD / THREAT / FLOOD lines
+    per viewer.
     Soft-reads Real Strategy when present: RST_MOD / RST lines.
     Also emits FAITH / FBELIEF for pantheon + religion tenets.
     Also emits VSTAT for self+met victory progress (per-viewer fog).
+    FLOOD: met majors' cities visible to viewer → floodable named-river counts
+    (RiverFlood radius 3); FLOOD_API|vid|0 if RiverManager missing.
     """
     ids = sorted({int(i) for i in viewer_ids if int(i) >= 0})
     if not ids:
@@ -1843,6 +1993,83 @@ for _, vid in ipairs(viewers) do
       print("THREAT|" .. vid .. "|" .. pid .. "|" .. agg.name .. "|" .. agg.count
         .. "|" .. agg.dist .. "|" .. tostring(agg.war or 0) .. "|" .. tostring(agg.minor or 0))
     end
+    -- 仇水预见：已遇主要文明中、观察者可见城市的可泛滥命名河（对齐 RiverFlood 半径3）
+    local CITY_RIVER_RADIUS = 3
+    if pVis == nil then
+      print("FLOOD_API|" .. vid .. "|0")
+    elseif RiverManager == nil or RiverManager.GetRiverForFloodplain == nil then
+      print("FLOOD_API|" .. vid .. "|0")
+    else
+      print("FLOOD_API|" .. vid .. "|1")
+      for tid = 0, 62 do
+        if tid ~= vid and Players[tid] and Players[tid]:IsAlive() and Players[tid]:IsMajor() then
+          local metFlood = false
+          pcall(function() metFlood = pDiplo:HasMet(tid) end)
+          if metFlood then
+            pcall(function()
+              for _, city in Players[tid]:GetCities():Members() do
+                if city ~= nil then
+                  local cx, cy = city:GetX(), city:GetY()
+                  local cityVis = false
+                  pcall(function() cityVis = pVis:IsVisible(cx, cy) end)
+                  if cityVis then
+                    local riverSet = {{}}
+                    local nRivers = 0
+                    for dx = -CITY_RIVER_RADIUS, CITY_RIVER_RADIUS do
+                      for dy = -CITY_RIVER_RADIUS, CITY_RIVER_RADIUS do
+                        if Map.GetPlotDistance(cx, cy, cx + dx, cy + dy) <= CITY_RIVER_RADIUS then
+                          local plot = Map.GetPlot(cx + dx, cy + dy)
+                          if plot ~= nil and plot:GetOwner() == tid then
+                            local can = true
+                            if RiverManager.CanBeFlooded ~= nil then
+                              can = RiverManager.CanBeFlooded(plot) == true
+                            end
+                            if can then
+                              local eRiver = RiverManager.GetRiverForFloodplain(plot:GetX(), plot:GetY())
+                              if eRiver ~= nil and eRiver >= 0 then
+                                local namedIndex = eRiver
+                                if RiverManager.GetRiverType ~= nil then
+                                  local okRT, rType = pcall(function()
+                                    return RiverManager.GetRiverType(eRiver)
+                                  end)
+                                  if okRT and rType ~= nil and GameInfo.NamedRivers ~= nil then
+                                    local row = GameInfo.NamedRivers[rType]
+                                    if row ~= nil and row.Index ~= nil then
+                                      namedIndex = row.Index
+                                    end
+                                  end
+                                end
+                                if not riverSet[namedIndex] then
+                                  local okPlots = true
+                                  if RiverManager.GetFloodplainPlots ~= nil then
+                                    local plots = RiverManager.GetFloodplainPlots(eRiver)
+                                    if plots == nil then
+                                      plots = RiverManager.GetFloodplainPlots(namedIndex)
+                                    end
+                                    if plots == nil then okPlots = false end
+                                  end
+                                  if okPlots then
+                                    riverSet[namedIndex] = true
+                                    nRivers = nRivers + 1
+                                  end
+                                end
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                    local cname = safeLookup(city:GetName()):gsub("|", "/")
+                    print("FLOOD|" .. vid .. "|" .. tid .. "|" .. tostring(city:GetID())
+                      .. "|" .. cname .. "|" .. cx .. "|" .. cy .. "|" .. nRivers)
+                  end
+                end
+              end
+            end)
+          end
+        end
+      end
+    end
   end
 end
 print("{SENTINEL}")
@@ -2109,4 +2336,170 @@ def parse_leader_views(lines: list[str]) -> tuple[dict[int, LeaderView], bool | 
                         is_minor=(len(p) > 7 and p[7] == "1"),
                     )
                 )
+        elif line.startswith("FLOOD_API|"):
+            p = line.split("|")
+            if len(p) < 3:
+                continue
+            vid = int(p[1])
+            view = views.get(vid)
+            if view is not None:
+                view.flood_api_ok = p[2] == "1"
+        elif line.startswith("FLOOD|"):
+            p = line.split("|")
+            if len(p) < 8:
+                continue
+            vid = int(p[1])
+            view = views.get(vid)
+            if view is None:
+                continue
+            view.flood_targets.append(
+                FloodCityForesight(
+                    target_id=int(p[2]),
+                    city_id=int(float(p[3] or 0)),
+                    city_name=p[4] or "",
+                    x=int(float(p[5] or 0)),
+                    y=int(float(p[6] or 0)),
+                    floodable_rivers=int(float(p[7] or 0)),
+                )
+            )
     return views, rst_available
+
+
+def build_flood_foresight_query(viewer_ids: list[int]) -> str:
+    """GamePlay-only dump of FLOOD lines (RiverManager reliable here).
+
+    Same wire as the FLOOD segment inside build_leader_views_query; used when
+    InGame leader_views reports FLOOD_API|0.
+    """
+    ids = sorted({int(i) for i in viewer_ids if int(i) >= 0})
+    if not ids:
+        return f'print("{SENTINEL}")'
+    id_list = ", ".join(str(i) for i in ids)
+    return f"""
+local viewers = {{{id_list}}}
+local CITY_RIVER_RADIUS = 3
+local function safeLookup(key)
+  if key == nil then return "" end
+  local ok, t = pcall(function() return Locale.Lookup(key) end)
+  if ok and t and t ~= "" then return tostring(t) end
+  return tostring(key)
+end
+for _, vid in ipairs(viewers) do
+  if Players[vid] and Players[vid]:IsAlive() then
+    local pDiplo = Players[vid]:GetDiplomacy()
+    local pVis = PlayersVisibility[vid]
+    if pVis == nil or RiverManager == nil or RiverManager.GetRiverForFloodplain == nil then
+      print("FLOOD_API|" .. vid .. "|0")
+    else
+      print("FLOOD_API|" .. vid .. "|1")
+      for tid = 0, 62 do
+        if tid ~= vid and Players[tid] and Players[tid]:IsAlive() and Players[tid]:IsMajor() then
+          local metFlood = false
+          pcall(function() metFlood = pDiplo:HasMet(tid) end)
+          if metFlood then
+            pcall(function()
+              for _, city in Players[tid]:GetCities():Members() do
+                if city ~= nil then
+                  local cx, cy = city:GetX(), city:GetY()
+                  local cityVis = false
+                  pcall(function() cityVis = pVis:IsVisible(cx, cy) end)
+                  if cityVis then
+                    local riverSet = {{}}
+                    local nRivers = 0
+                    for dx = -CITY_RIVER_RADIUS, CITY_RIVER_RADIUS do
+                      for dy = -CITY_RIVER_RADIUS, CITY_RIVER_RADIUS do
+                        if Map.GetPlotDistance(cx, cy, cx + dx, cy + dy) <= CITY_RIVER_RADIUS then
+                          local plot = Map.GetPlot(cx + dx, cy + dy)
+                          if plot ~= nil and plot:GetOwner() == tid then
+                            local can = true
+                            if RiverManager.CanBeFlooded ~= nil then
+                              can = RiverManager.CanBeFlooded(plot) == true
+                            end
+                            if can then
+                              local eRiver = RiverManager.GetRiverForFloodplain(plot:GetX(), plot:GetY())
+                              if eRiver ~= nil and eRiver >= 0 then
+                                local namedIndex = eRiver
+                                if RiverManager.GetRiverType ~= nil then
+                                  local okRT, rType = pcall(function()
+                                    return RiverManager.GetRiverType(eRiver)
+                                  end)
+                                  if okRT and rType ~= nil and GameInfo.NamedRivers ~= nil then
+                                    local row = GameInfo.NamedRivers[rType]
+                                    if row ~= nil and row.Index ~= nil then
+                                      namedIndex = row.Index
+                                    end
+                                  end
+                                end
+                                if not riverSet[namedIndex] then
+                                  local okPlots = true
+                                  if RiverManager.GetFloodplainPlots ~= nil then
+                                    local plots = RiverManager.GetFloodplainPlots(eRiver)
+                                    if plots == nil then
+                                      plots = RiverManager.GetFloodplainPlots(namedIndex)
+                                    end
+                                    if plots == nil then okPlots = false end
+                                  end
+                                  if okPlots then
+                                    riverSet[namedIndex] = true
+                                    nRivers = nRivers + 1
+                                  end
+                                end
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                    local cname = safeLookup(city:GetName()):gsub("|", "/")
+                    print("FLOOD|" .. vid .. "|" .. tid .. "|" .. tostring(city:GetID())
+                      .. "|" .. cname .. "|" .. cx .. "|" .. cy .. "|" .. nRivers)
+                  end
+                end
+              end
+            end)
+          end
+        end
+      end
+    end
+  end
+end
+print("{SENTINEL}")
+""".replace("{SENTINEL}", SENTINEL)
+
+
+def merge_flood_foresight_lines(
+    views: dict[int, LeaderView], lines: list[str]
+) -> None:
+    """Merge FLOOD / FLOOD_API lines into existing LeaderView map (in-place)."""
+    for raw in lines:
+        line = raw.strip()
+        if not line or line == SENTINEL:
+            continue
+        if line.startswith("FLOOD_API|"):
+            p = line.split("|")
+            if len(p) < 3:
+                continue
+            vid = int(p[1])
+            view = views.get(vid)
+            if view is not None:
+                view.flood_api_ok = p[2] == "1"
+                if p[2] == "1":
+                    view.flood_targets = []
+        elif line.startswith("FLOOD|"):
+            p = line.split("|")
+            if len(p) < 8:
+                continue
+            vid = int(p[1])
+            view = views.get(vid)
+            if view is None:
+                continue
+            view.flood_targets.append(
+                FloodCityForesight(
+                    target_id=int(p[2]),
+                    city_id=int(float(p[3] or 0)),
+                    city_name=p[4] or "",
+                    x=int(float(p[5] or 0)),
+                    y=int(float(p[6] or 0)),
+                    floodable_rivers=int(float(p[7] or 0)),
+                )
+            )

@@ -221,6 +221,32 @@ The server maintains a persistent TCP connection to Civ 6 via the FireTuner debu
 
 The repo includes an [AGENTS.md](AGENTS.md) playbook (symlinked as `CLAUDE.md` for Claude Code) with detailed instructions for agents: turn loop, combat, diplomacy, common pitfalls. See the [devlog](docs/devlog/) for the full development story, including reverse-engineering the FireTuner protocol and the many API quirks discovered along the way.
 
+## Haikesi fork（本仓库扩展）
+
+本目录是 [civ6-mcp](https://github.com/lmwilki/civ6-mcp) 的 Haikesi 本地副本（见 [UPSTREAM.md](UPSTREAM.md)），额外包含 **海克斯 ExtAI**（LLM 代 AI 选 `NW_AI_*`）相关能力：
+
+| 能力 | 说明 |
+|------|------|
+| Watch / Decide | `scripts/haikesi_llm_watch.py` 等；环境变量见 `.env.example` |
+| ToolLoop | `HAIKESI_LLM_TOOLS=1`：薄 prompt + 按需工具（词典、压力、威胁、洪水等） |
+| AI 卡描述 | `AI_LLM_DESCRIPTIONS`：候选效果用词典 Key（`UNIT_SPY`/`YIELD_*`…），短名仍中文 |
+| 领袖风格 | 信号推断 + cosplay/payoff 掷骰 → 注入选卡 Skill；**不**改局内 AI 行为 |
+| 离线词典 | `knowledge/civilopedia/`（`civilopedia_lookup`） |
+
+**领袖风格文档：** [knowledge/styles/README.md](knowledge/styles/README.md)  
+**词典：** [knowledge/civilopedia/README.md](knowledge/civilopedia/README.md)
+
+常用开关（完整列表见 `.env.example`）：
+
+```bash
+HAIKESI_LLM_TOOLS=1
+HAIKESI_LLM_STYLES=1                 # 默认开
+HAIKESI_LLM_STYLE_COSPLAY_P=0.5      # cosplay 概率；其余为收益优先
+# HAIKESI_LLM_STYLE_DICE_SEED=demo   # 可选，复现掷骰审计
+```
+
+当前内置 **13** 种风格（恶魔督军、好战/帝国/经济/谋略督军、工匠/竞争商人、威权/侠义外交官、狂热/孤僻隐士、博学贤者、欺诈间谍）。设计规范：仓库外 `.cursor/skills/haikesi-leader-style/`（Civ6Mods）。
+
 ## Requirements
 
 - **macOS, Windows, or Linux** with Civilization VI (Steam version, Gathering Storm DLC)

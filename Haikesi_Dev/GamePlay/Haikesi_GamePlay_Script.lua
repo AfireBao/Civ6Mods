@@ -537,6 +537,9 @@ local AI_RELIC_TYPES = {
     'NW_AI_BRAVE_WOOD', 'NW_AI_MAMA_BORN', 'NW_AI_MILK_DRAGON', 'NW_AI_SILK_LAND', 'NW_AI_DRINK_TEA',
     -- 和平互利
     'NW_AI_CELESTIAL_EMPIRE', 'NW_AI_FERTILE_CRESCENT', 'NW_AI_PAX_ROMANA',
+    -- 外交 / 基建 / 宗教向
+    'NW_AI_SPY_BUREAU', 'NW_AI_ENVOY_FOOTHOLD',
+    'NW_AI_WONDER_WORKSHOP', 'NW_AI_WALL_ENGINEERING', 'NW_AI_MISSIONARY_WAVE',
 }
 local AI_RELIC_TYPE_SET = {}
 for _, t in ipairs(AI_RELIC_TYPES) do AI_RELIC_TYPE_SET[t] = true end
@@ -656,8 +659,8 @@ if type(Haikesi_SplitChoiceRelics) ~= "function" then
         return 1
     end
     function Haikesi_AIOptionsCountForPlayer(pPlayer)
-        if Haikesi_AIPickCountForPlayer(pPlayer) >= 2 then return 6 end
-        return 3
+        -- ExtAI 候选固定 6；与 Haikesi_ExtAI_AgePick.lua 一致
+        return 6
     end
     function Haikesi_SplitChoiceRelics(value)
         local list = {}
@@ -849,17 +852,24 @@ local function Haikesi_EnforceChaosMutexInChoices(choices, requesterPlayerID, co
     return choices
 end
 
-function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, countBefore, aiReasonsTable)
+-- fromExtAI=true：大模型提交，跳过混乱互斥。不可用「表是否非 nil」推断——
+-- 超时回退也会传入 BuildDeterministic 表，必须显式传 false/省略。
+function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, countBefore, aiReasonsTable, fromExtAI)
     local choices = aiChoicesTable
+    fromExtAI = (fromExtAI == true)
     if choices == nil then
         choices = Haikesi_BuildDeterministicAIChoices(requesterPlayerID, countBefore)
+        fromExtAI = false
         print("[Haikesi GamePlay] Host generated deterministic AIChoices for Player"
             .. tostring(requesterPlayerID) .. " selectCount=" .. tostring(countBefore))
     end
     if choices == nil or next(choices) == nil then
         return 0
     end
-    choices = Haikesi_EnforceChaosMutexInChoices(choices, requesterPlayerID, countBefore)
+    -- 大模型/ExtAI 提交：取消混乱互斥；房主随机/确定性/超时回退仍互斥
+    if not fromExtAI then
+        choices = Haikesi_EnforceChaosMutexInChoices(choices, requesterPlayerID, countBefore)
+    end
 
     local applied = 0
     local chaosApplied = false
@@ -892,7 +902,9 @@ function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, count
                             print("[Haikesi GamePlay] AIChoices rejected (not in AI pool): "
                                 .. tostring(aiRelic))
                         else
-                            if IsChaosInterferenceRelic(aiRelic) and chaosApplied then
+                            if (not fromExtAI)
+                                and IsChaosInterferenceRelic(aiRelic)
+                                and chaosApplied then
                                 local available = GetAIAvailableRelics(pAI, true)
                                 if #available > 0 then
                                     local salt = (countBefore or 0) * 1000 + aiID
@@ -1163,14 +1175,13 @@ local function Haikesi_PickRandomRelicsFromPool(pool, count, salt)
 end
 
 local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countBefore, createdTurn)
-    -- 混乱干扰互斥：整批候选至多 1 张混乱类（跨 AI + 同一 AI 的 6 选里也只留 1 张）。
-    -- 大模型提示词不再写互斥规则，靠候选列表自然约束；提交侧仍二次校验。
+    -- ExtAI / 大模型选卡：不施加混乱互斥（多 AI 可同时有混乱候选与多选）。
+    -- 非 ExtAI 的确定性/房主随机路径仍由 Haikesi_EnforceChaosMutexInChoices 约束。
     -- 可用池为空的 AI 本轮跳过（不进 OPTION_IDS），避免 ExtAI 空候选卡死。
-    local chaosInOptionsBatch = false
     local aiOptionIDs = {}
     for _, pAI in ipairs(Haikesi_GetAliveAIPlayers()) do
         local aiID = pAI:GetID()
-        local available = GetAIAvailableRelics(pAI, chaosInOptionsBatch)
+        local available = GetAIAvailableRelics(pAI, false)
         if available == nil or #available == 0 then
             Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, nil)
             print("[Haikesi GamePlay] External AI skip empty pool Player" .. aiID
@@ -1181,41 +1192,9 @@ local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countB
             local salt = countBefore * 1000 + aiID * 17 + requesterPlayerID + createdTurn * 997
             local options = Haikesi_PickRandomRelicsFromPool(available, optCount, salt)
 
-            -- 同一 AI 选项里若抽到多张混乱，只保留第一张，其余用非混乱补满
-            local filtered = {}
-            local chaosKeptHere = false
-            for _, opt in ipairs(options) do
-                if IsChaosInterferenceRelic(opt) then
-                    if not chaosInOptionsBatch and not chaosKeptHere then
-                        table.insert(filtered, opt)
-                        chaosKeptHere = true
-                        chaosInOptionsBatch = true
-                    end
-                else
-                    table.insert(filtered, opt)
-                end
-            end
-            if #filtered < optCount then
-                local have = {}
-                for _, t in ipairs(filtered) do
-                    have[t] = true
-                end
-                local refill = GetAIAvailableRelics(pAI, true) -- 强制无混乱
-                for _, t in ipairs(refill) do
-                    if #filtered >= optCount then
-                        break
-                    end
-                    if not have[t] then
-                        table.insert(filtered, t)
-                        have[t] = true
-                    end
-                end
-            end
-            options = filtered
-
             if #options == 0 then
                 Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, nil)
-                print("[Haikesi GamePlay] External AI skip empty after filter Player" .. aiID)
+                print("[Haikesi GamePlay] External AI skip empty after pick Player" .. aiID)
             else
                 local pickWant = Haikesi_AIPickCountForPlayer(pAI)
                 local pickEff = math.min(pickWant, #options)
@@ -1463,19 +1442,9 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
         end
     end
 
-    local chaosCount = 0
-    for _, packed in pairs(choicesTable) do
-        for _, aiRelic in ipairs(Haikesi_SplitChoiceRelics(packed)) do
-            if IsChaosInterferenceRelic(aiRelic) then
-                chaosCount = chaosCount + 1
-            end
-        end
-    end
-    if chaosCount > 1 then
-        return false, "multiple chaos interference assignments"
-    end
+    -- ExtAI / 大模型：允许多 AI 同轮选混乱干扰（与 Store options / Apply fromExtAI 一致）
+    -- 仅校验选项合法性，不再因 chaosCount>1 拒绝提交。
 
-    local chaosAssignedInBatch = chaosCount == 1
     for aiIDStr, packed in pairs(choicesTable) do
         local aiID = tonumber(aiIDStr)
         if aiID == nil then
@@ -1488,8 +1457,7 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
         local relicList = Haikesi_SplitChoiceRelics(packed)
         local options = Haikesi_GetStoredExternalAIOptions(aiID)
         if #options == 0 then
-            local excludeChaos = chaosAssignedInBatch
-            options = GetAIAvailableRelics(pAI, excludeChaos)
+            options = GetAIAvailableRelics(pAI, false)
         end
         local expectedPicks = Haikesi_AIPickCountForPlayer(pAI)
         if #options > 0 and expectedPicks > #options then
@@ -1512,7 +1480,7 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
                 return false, "not in AI pool: " .. tostring(aiRelic)
             end
         end
-        -- 候选充足时必须选满（金/英 6 选 2；池不足时 expected 已夹紧）
+        -- 候选充足时必须选满（固定 6 选；金/英 picks=2；池不足时 expected 已夹紧）
         if #relicList < expectedPicks and #options >= expectedPicks then
             return false, "under-picked for AI " .. aiIDStr
                 .. " got " .. tostring(#relicList) .. " expected " .. tostring(expectedPicks)
@@ -1733,7 +1701,7 @@ function Haikesi_ApplyExternalAIFromNetwork(raw)
     end
     local okApply, appliedOrErr = pcall(
         Haikesi_ApplyAIChoicesForRound,
-        requester, choicesTable, countBefore, sanitizedReasons
+        requester, choicesTable, countBefore, sanitizedReasons, true
     )
     if not okApply then
         print("[Haikesi GamePlay] ExtAIApply ApplyAIChoices error: " .. tostring(appliedOrErr))
@@ -1837,7 +1805,7 @@ local function Haikesi_TryFallbackExternalAIRequest()
         fallbackReasons[aiIDStr] = "外部决策超时，依规则自动选定"
     end
     local okApply, applyErr = pcall(
-        Haikesi_ApplyAIChoicesForRound, requester, choices, countBefore, fallbackReasons
+        Haikesi_ApplyAIChoicesForRound, requester, choices, countBefore, fallbackReasons, false
     )
     if not okApply then
         print("[Haikesi GamePlay] External AI timeout apply error: " .. tostring(applyErr))
@@ -2456,6 +2424,47 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
         if not okFlood then
             print("[Haikesi GamePlay] RIVER_FLOOD apply error: " .. tostring(errFlood))
         end
+        return
+    end
+
+    -- ==============================
+    -- NW_AI_ENVOY_FOOTHOLD：已有使者的相遇城邦各 +2 使者
+    -- ==============================
+    if relicType == 'NW_AI_ENVOY_FOOTHOLD' then
+        local pInf = pPlayer:GetInfluence()
+        if pInf == nil then
+            print("[Haikesi GamePlay] ENVOY_FOOTHOLD skip — no Influence")
+            return
+        end
+        local granted = 0
+        for csID = 0, 63 do
+            local pCS = Players[csID]
+            if pCS ~= nil and pCS:IsAlive() then
+                local csInf = pCS:GetInfluence()
+                local canRecv = false
+                if csInf ~= nil then
+                    local okCR, vCR = pcall(function() return csInf:CanReceiveInfluence() end)
+                    canRecv = okCR and vCR == true
+                end
+                if canRecv and csInf ~= nil then
+                    local have = 0
+                    local okTok, vTok = pcall(function() return csInf:GetTokensReceived(iPlayer) end)
+                    if okTok and type(vTok) == "number" then
+                        have = vTok
+                    end
+                    if have >= 1 then
+                        for _ = 1, 2 do
+                            local okG = pcall(function() pInf:GiveFreeTokenToPlayer(csID) end)
+                            if okG then
+                                granted = granted + 1
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        print("[Haikesi GamePlay] ENVOY_FOOTHOLD Player" .. tostring(iPlayer)
+            .. " granted " .. tostring(granted) .. " envoys")
         return
     end
 

@@ -7,3 +7,10 @@
 - Policy: **不向 upstream 推送修改**；Haikesi 相关改动只保留在本仓库。
 
 如需同步上游更新，请手动对比上述仓库后合并到本目录（不要重新 `git clone` 覆盖本地 `.git`）。
+
+## Haikesi 扩展文档入口
+
+- [README · Haikesi fork](README.md#haikesi-fork本仓库扩展)
+- [领袖风格](knowledge/styles/README.md)
+- [Civilopedia 词典](knowledge/civilopedia/README.md)
+- 环境变量模板：`.env.example`

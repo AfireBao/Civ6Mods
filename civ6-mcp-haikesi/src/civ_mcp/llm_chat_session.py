@@ -67,6 +67,8 @@ class LlmChatSession:
     created_at: str = ""
     updated_at: str = ""
     model: str = ""
+    # ExtAI leader styles (player_id str → style_id); inferred lock across picks
+    styles: dict[str, str] = field(default_factory=dict)
 
     @property
     def short_id(self) -> str:
@@ -132,6 +134,18 @@ class LlmChatSession:
         self.updated_at = now
         self.save()
 
+    def set_styles(self, styles: dict[str, str]) -> None:
+        """Merge style locks (empty style_id removes key)."""
+        for k, v in (styles or {}).items():
+            pid = str(k)
+            sid = (v or "").strip()
+            if sid:
+                self.styles[pid] = sid
+            elif pid in self.styles:
+                del self.styles[pid]
+        self.updated_at = time.strftime("%Y-%m-%d %H:%M:%S")
+        self.save()
+
     def save(self) -> None:
         data = {
             "session_id": self.session_id,
@@ -141,6 +155,7 @@ class LlmChatSession:
             "updated_at": self.updated_at or time.strftime("%Y-%m-%d %H:%M:%S"),
             "model": self.model,
             "messages": self.messages,
+            "styles": self.styles,
         }
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(
@@ -235,6 +250,12 @@ def load_or_create_chat_session(
                 content = str(m.get("content") or "")
                 if role in {"system", "user", "assistant"} and content:
                     clean.append({"role": role, "content": content})
+            raw_styles = data.get("styles") or {}
+            styles: dict[str, str] = {}
+            if isinstance(raw_styles, dict):
+                for sk, sv in raw_styles.items():
+                    if str(sv).strip():
+                        styles[str(sk)] = str(sv).strip()
             return LlmChatSession(
                 session_id=str(data["session_id"]),
                 game_key=key,
@@ -246,6 +267,7 @@ def load_or_create_chat_session(
                 created_at=str(data.get("created_at") or now),
                 updated_at=str(data.get("updated_at") or now),
                 model=str(data.get("model") or model or ""),
+                styles=styles,
             )
 
     # created or recovered (file missing / corrupt)

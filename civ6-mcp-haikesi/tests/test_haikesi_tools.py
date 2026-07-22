@@ -239,9 +239,27 @@ def test_tool_loop_runner():
 
 def test_slim_prompt_keeps_candidate_ids():
     payload = _payload()
+    from civ_mcp.lua.models import CivReligionBeliefs, ReligionBeliefOption
+
+    v2 = _view(2)
+    v2.religion = CivReligionBeliefs(
+        player_id=2,
+        civ_name="Civ2",
+        leader_name="Leader2",
+        pantheon_type="BELIEF_CP_COMBO_DEMO",
+        pantheon_name="海神与神圣之光",
+        beliefs=[
+            ReligionBeliefOption(
+                belief_class="BELIEF_CLASS_CP_COMBO",
+                belief_type="BELIEF_CP_COMBO_DEMO",
+                name="海神与神圣之光",
+                description="海岸单元格+1信仰；相邻海岸的特色区域+1伟人点数。",
+            )
+        ],
+    )
     context = HaikesiGameContext(
         overview=_overview(),
-        leader_views={2: _view(2), 3: _view(3)},
+        leader_views={2: v2, 3: _view(3)},
         human_player_id=0,
     )
     prompt = build_decision_prompt_slim(payload, context)
@@ -250,6 +268,9 @@ def test_slim_prompt_keeps_candidate_ids():
     assert "city_pressure" in prompt
     assert "border_threats" in prompt
     assert "极短况" in prompt
+    assert "各文明万神殿" in prompt
+    assert "海神与神圣之光" in prompt
+    assert "创造万神殿" in prompt
     assert "科12/文10" not in prompt
     assert "### 领袖 4" not in prompt
     assert "效果说明（同词条只列一次）" not in prompt

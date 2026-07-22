@@ -1556,6 +1556,56 @@
             <Text>条条大路通罗马，商旅无虞。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SPY_BUREAU_NAME" Language="zh_Hans_CN">
+            <Text>间谍署</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SPY_BUREAU_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【外交基建】间谍容量 +2；训练间谍时 +25% [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SPY_BUREAU_FLAVOR" Language="zh_Hans_CN">
+            <Text>档案柜里多两张空白通行证。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ENVOY_FOOTHOLD_NAME" Language="zh_Hans_CN">
+            <Text>使者立足</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ENVOY_FOOTHOLD_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【外交基建】对所有已有至少 1 名使者、且已相遇的城邦，立即各再派驻 2 名 [ICON_Envoy] 使者。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ENVOY_FOOTHOLD_FLAVOR" Language="zh_Hans_CN">
+            <Text>既已立足，便再添两名随从。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_WONDER_WORKSHOP_NAME" Language="zh_Hans_CN">
+            <Text>奇观工坊</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_WONDER_WORKSHOP_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【基建】建造奇观时 +30% [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_WONDER_WORKSHOP_FLAVOR" Language="zh_Hans_CN">
+            <Text>脚手架与蓝图同日齐备。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_WALL_ENGINEERING_NAME" Language="zh_Hans_CN">
+            <Text>城墙工程</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_WALL_ENGINEERING_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【基建】建造远古城墙、中世纪城墙、文艺复兴城墙时 +50% [ICON_Production] 生产力。远古城墙 +2 [ICON_Faith] 信仰；中世纪城墙 +2 [ICON_Science] 科技；文艺复兴城墙 +2 [ICON_Culture] 文化。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_WALL_ENGINEERING_FLAVOR" Language="zh_Hans_CN">
+            <Text>灰浆未干，城堞已成。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MISSIONARY_WAVE_NAME" Language="zh_Hans_CN">
+            <Text>传教浪</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MISSIONARY_WAVE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【宗教】购买传教士的 [ICON_Faith] 信仰花费 -50%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MISSIONARY_WAVE_FLAVOR" Language="zh_Hans_CN">
+            <Text>经文一折再折，信众一浪接一浪。</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_BARB_INVASION_ASSAULT_TITLE" Language="zh_Hans_CN">
             <Text>南蛮入侵</Text>
         </Replace>

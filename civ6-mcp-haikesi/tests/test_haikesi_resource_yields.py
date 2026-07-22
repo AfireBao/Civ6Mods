@@ -24,13 +24,40 @@ def test_option_lines_include_tile_yields():
     silk = next(x for x in lines if "SILK_LAND" in x)
     sugar = next(x for x in lines if "MILK_DRAGON" in x)
     stats = next(x for x in lines if "STATS_2" in x)
-    assert "文化+1" in silk or "+1文化" in silk or "文化" in silk
-    assert "原版固有收益" in silk or "奢侈品本身" in silk
+    assert "RESOURCE_SILK" in silk
+    assert "YIELD_CULTURE" in silk
+    assert "amenity" in silk
     assert "需已有城市" in silk
-    assert "宜居" in silk
-    assert "食物+2" in sugar or "+2食物" in sugar or "食物" in sugar
-    assert "创建" not in stats or "资源" not in stats  # non-spawn unchanged shape
+    assert "RESOURCE_SUGAR" in sugar
+    assert "YIELD_FOOD" in sugar
+    assert "YIELD_SCIENCE" in stats
     assert "—" in stats
+
+
+def test_ai_llm_descriptions_use_keys_not_cn_nouns():
+    lines = haikesi_lua.format_option_lines(
+        [
+            "NW_AI_SPY_BUREAU",
+            "NW_AI_WALL_ENGINEERING",
+            "NW_AI_ECHO_MELEE",
+            "NW_AI_CELESTIAL_EMPIRE",
+        ],
+        cities=1,
+    )
+    spy = next(x for x in lines if "SPY_BUREAU" in x)
+    wall = next(x for x in lines if "WALL_ENGINEERING" in x)
+    echo = next(x for x in lines if "ECHO_MELEE" in x)
+    trade = next(x for x in lines if "CELESTIAL" in x)
+    assert "UNIT_SPY" in spy
+    assert "CIVIC_DIPLOMATIC_SERVICE" in spy
+    assert "间谍" not in spy.split("—", 1)[-1]
+    assert "BUILDING_WALLS" in wall
+    assert "BUILDING_CASTLE" in wall
+    assert "BUILDING_STAR_FORT" in wall
+    assert "CLASS_MELEE" in echo
+    assert "近战" not in echo.split("—", 1)[-1]
+    assert "YIELD_SCIENCE" in trade
+    assert "[ICON_" not in trade
 
 
 def test_resource_spawn_tag_warns_when_zero_cities():
@@ -41,16 +68,14 @@ def test_resource_spawn_tag_warns_when_zero_cities():
     assert "空放" not in one
 
 
-def test_enrich_avoids_duplicate_when_xml_has_yields():
+def test_format_resource_tile_yield_note_uses_keys():
     note = haikesi_lua.format_resource_tile_yield_note("RESOURCE_TEA")
-    assert "茶奢侈品给地块+1科技" in note
-    assert "改良后为城市提供宜居度" in note
-    assert "原版固有收益" in note
-    # XML already clarifies vanilla luxury yields; enrich should not double-append
-    desc = (
-        "创建茶。以下为该奢侈品本身的原版固有收益（非本词条额外加成）："
-        "茶奢侈品给地块+1科技，改良后为城市提供宜居度。"
-    )
+    assert "YIELD_SCIENCE" in note
+    assert "+1 YIELD_SCIENCE" in note
+    assert "amenity" in note
+    assert "RESOURCE_TEA" in note
+    # Overlay already has full note; enrich should not double-append
+    desc = haikesi_lua.AI_LLM_DESCRIPTIONS["NW_AI_DRINK_TEA"]
     out = haikesi_lua.enrich_relic_description("NW_AI_DRINK_TEA", desc)
-    assert out.count("原版固有收益") == 1
-    assert "科技" in out
+    assert out.count("Vanilla tile") == 1
+    assert "YIELD_SCIENCE" in out

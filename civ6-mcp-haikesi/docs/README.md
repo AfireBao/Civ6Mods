@@ -4,6 +4,9 @@
 
 - [Getting Started](../README.md#quick-start) — Setup and first game
 - [Tool Reference](https://civbench.vercel.app/docs/tools) — All 76 MCP tools (web)
+- [Haikesi fork](../README.md#haikesi-fork本仓库扩展) — ExtAI watch / ToolLoop / leader styles
+- [Leader styles](../knowledge/styles/README.md) — 13 inferred personas for hex picks (cosplay vs payoff)
+- [Civilopedia dictionary](../knowledge/civilopedia/README.md) — Offline ExtAI lookup index
 
 ## For Developers
 

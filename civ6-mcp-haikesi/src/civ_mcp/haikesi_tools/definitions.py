@@ -35,7 +35,8 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
         name="city_pressure",
         description=(
             "读取缓存中的本国城市：人口、在建项目与剩余回合、宜居赤字。"
-            "军事 echo / 产线协同前应调用（石弩=攻城≠远程）。只读本轮 gather 缓存。"
+            "军事 echo 前建议调用（石弩=攻城≠远程）。"
+            "无同系在建≠禁止选 echo，仅表示尚未对齐产线。"
         ),
         parameters={
             "type": "object",
@@ -103,11 +104,35 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
         },
     ),
     ToolDefinition(
+        name="flood_targets",
+        description=(
+            "仇水连汛预见：读取缓存中、本领袖视野可见的已遇主要文明城市，"
+            "及其城 3 环属地可泛滥命名河数量（对齐落地逻辑）。"
+            "考虑 NW_AI_RIVER_FLOOD 前应调用；河数=0 的可见城选仇水易空放。"
+            "只读本轮 gather；不可见/未遇文明不会出现。"
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "player_id": {
+                    "type": "integer",
+                    "description": "观察者领袖 id（迷雾主体）",
+                },
+                "other_id": {
+                    "type": "integer",
+                    "description": "可选：只看某一已遇文明的可见城",
+                },
+            },
+            "required": ["player_id"],
+        },
+    ),
+    ToolDefinition(
         name="check_echo_feasibility",
         description=(
             "评估某词条对该领袖是否可立即兑现、延迟或空放"
             "（0 城资源创建、军事 echo、商路条件等）。"
-            "军事 echo 建议先 city_pressure 核对在建兵种。"
+            "军事 echo：先 city_pressure；无同系在建≠禁止，可改队列兑现（延迟）；"
+            "仅长期造不出才近似空放。"
         ),
         parameters={
             "type": "object",
@@ -139,8 +164,9 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
     ToolDefinition(
         name="civilopedia_lookup",
         description=(
-            "本地 Civilopedia/海克斯词典：中文名或类型 ID（UNIT_/TECH_/BUILDING_ 等）。"
-            "用于兵种分类、科技解锁等原版专名；chapter=haikesi 可查海克斯章节。"
+            "本地 Civilopedia/海克斯词典：优先传类型 ID（UNIT_SPY、TECH_CASTLES、"
+            "CIVIC_DIPLOMATIC_SERVICE、BUILDING_* 等），中文名可作辅。"
+            "用于兵种分类、科技/市政解锁；chapter=haikesi 可查海克斯章节。"
             "本轮候选海克斯效果已在首包，勿重复查询。不联网。"
         ),
         parameters={
@@ -148,7 +174,7 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "中文名、类型 ID 或关键词",
+                    "description": "优先 UNIT_/TECH_/CIVIC_/BUILDING_ ID；或中文名",
                 },
                 "chapter": {
                     "type": "string",

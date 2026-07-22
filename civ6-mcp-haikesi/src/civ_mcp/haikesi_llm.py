@@ -217,6 +217,8 @@ def _build_decision_log_body(
     archive_path: Path | None = None,
     tool_trace: list[dict[str, Any]] | None = None,
     tool_channel: str | None = None,
+    style_meta: str | None = None,
+    style_dice_json: str | None = None,
 ) -> str:
     prompt_md = markdownify_pipe_tables(prompt)
     meta_lines = [
@@ -232,6 +234,8 @@ def _build_decision_log_body(
     ]
     if tool_channel:
         meta_lines.append(f"- **tool_channel**: `{tool_channel}`")
+    if style_meta:
+        meta_lines.append(f"- **styles**: `{style_meta}` (`HAIKESI_LLM_STYLES`)")
     if archive_path is not None:
         meta_lines.append(f"- **archive_file**: `{archive_path}`")
     raw_fence = "json" if raw_response.strip().startswith("{") else ""
@@ -242,6 +246,22 @@ def _build_decision_log_body(
         "",
         *meta_lines,
         "",
+    ]
+    if style_dice_json:
+        parts.extend(
+            [
+                "## Style Dice（审计）",
+                "",
+                "每位有风格标签的领袖独立掷骰：`u < p` → cosplay，否则收益优先。",
+                "",
+                "```json",
+                style_dice_json,
+                "```",
+                "",
+            ]
+        )
+    parts.extend(
+        [
         "## Prompt",
         "",
         prompt_md,
@@ -256,7 +276,8 @@ def _build_decision_log_body(
             "set `0` when playing to save tokens)*"
         ),
         "",
-    ]
+        ]
+    )
     if tool_trace is not None:
         from civ_mcp.haikesi_tools.runner import format_tool_trace_markdown
 
@@ -314,6 +335,8 @@ def save_decision_analysis_log(
     payload: dict[str, Any] | None = None,
     tool_trace: list[dict[str, Any]] | None = None,
     tool_channel: str | None = None,
+    style_meta: str | None = None,
+    style_dice_json: str | None = None,
 ) -> Path | None:
     """Append per-game decision log + mirror latest to haikesi_last_decision.md."""
     if not decision_log_enabled():
@@ -337,6 +360,8 @@ def save_decision_analysis_log(
                 wire=wire,
                 tool_trace=tool_trace,
                 tool_channel=tool_channel,
+                style_meta=style_meta,
+                style_dice_json=style_dice_json,
             )
             archive_path = get_decision_archive().append_decision(
                 payload,
@@ -360,6 +385,8 @@ def save_decision_analysis_log(
         archive_path=archive_path,
         tool_trace=tool_trace,
         tool_channel=tool_channel,
+        style_meta=style_meta,
+        style_dice_json=style_dice_json,
     )
     path.write_text(text, encoding="utf-8")
     _prune_legacy_flat_decision_logs(log_dir)
@@ -1128,23 +1155,35 @@ class _OpenAICompatibleClient:
                 ).strip()
             elif r:
                 api_reasoning = str(r).strip()
-        if not content and api_reasoning:
+        # DeepSeek/部分模型：tool 轮 content 空、思考在 reasoning；勿把思考当正文，
+        # 否则 ToolLoop 会把推演片段当成 spoken → JSON 解析失败再整轮重试。
+        raw_calls = getattr(msg, "tool_calls", None) or []
+        if raw_calls or str(finish).lower() in {"tool_calls", "tool_call"}:
+            return content, finish, api_reasoning
+        # 终局：优先用 content 里的 JSON；content 无 JSON 时从 reasoning 抠。
+        # DeepSeek tools+thinking 常见：content 是中文推演、JSON 只在 reasoning_content。
+        content_json = _extract_json_object(content) if content else None
+        if content_json:
+            return content_json, finish, api_reasoning
+        if api_reasoning:
             extracted = _extract_json_object(api_reasoning)
             if extracted:
                 log.warning(
-                    "message.content empty; recovered JSON from reasoning_content "
-                    "(finish_reason=%s)",
+                    "message.content missing JSON; recovered from reasoning_content "
+                    "(content_chars=%s finish_reason=%s)",
+                    len(content),
                     finish,
                 )
                 return extracted, finish, api_reasoning
-            # grok-4.5 常见：可见正文在 reasoning，content 为空 → 整段当正文继续解析
-            log.warning(
-                "message.content empty; using reasoning_content as body "
-                "(chars=%s finish_reason=%s)",
-                len(api_reasoning),
-                finish,
-            )
-            return api_reasoning, finish, api_reasoning
+            if not content:
+                # grok-4.5 常见：可见正文在 reasoning，content 为空 → 整段当正文继续解析
+                log.warning(
+                    "message.content empty; using reasoning_content as body "
+                    "(chars=%s finish_reason=%s)",
+                    len(api_reasoning),
+                    finish,
+                )
+                return api_reasoning, finish, api_reasoning
         return content, finish, api_reasoning
 
     def _json_only_followup(
@@ -1153,35 +1192,62 @@ class _OpenAICompatibleClient:
         draft_text: str,
         required_ids: list[str] | None = None,
         partial_choices: dict[str, Any] | None = None,
+        payload: dict[str, Any] | None = None,
+        violations: list[str] | None = None,
     ) -> str | None:
-        """content/reasoning 有推演但无 JSON / JSON 缺人时，再要一次仅 JSON。"""
+        """content/reasoning 有推演但无 JSON / JSON 缺人/越池时，再要一次仅 JSON。"""
         snippet = (draft_text or "").strip()
-        if len(snippet) < 20 and not partial_choices:
+        if len(snippet) < 20 and not partial_choices and not payload:
             return None
-        if len(snippet) > 12000:
-            snippet = snippet[:12000] + "\n…(截断)"
+        if len(snippet) > 8000:
+            snippet = snippet[:8000] + "\n…(截断)"
         req = ",".join(required_ids or [])
         partial = ""
         if partial_choices:
             partial = (
-                "\n已有不完整 choices（请保留合理项并补全缺失键）：\n"
+                "\n已有不完整/可疑 choices（可保留仍合法的项，其余必须改正）：\n"
                 + json.dumps(partial_choices, ensure_ascii=False)
                 + "\n"
+            )
+        viol_block = ""
+        if violations:
+            viol_block = (
+                "\n上一版违规（必须消除）：\n- "
+                + "\n- ".join(violations[:12])
+                + "\n"
+            )
+        pool_block = ""
+        if payload:
+            pool_block = (
+                "\n【硬约束·每人独立】禁止把 A 领袖的候选填到 B 领袖；"
+                "禁止编造未列出的 NW_AI_*；"
+                "GOLDEN/英雄 picks≥2 必须数组满员，NORMAL/DARK 选1 必须是字符串。\n"
+                f"{format_options_constraint(payload)}\n"
             )
         id_rule = ""
         if required_ids:
             id_rule = (
                 f"\nchoices 必须包含且仅需包含这些键（缺一不可）：{req}\n"
-                "六选二领袖的值用 JSON 数组。\n"
             )
         follow = (
             "根据以下策略推演（及已有不完整结果），输出唯一合法 JSON 对象。\n"
             "格式必须是对象（不是数组）：\n"
-            '{"choices": {"1": "NW_AI_...", "2": ["NW_AI_A", "NW_AI_B"]}, '
-            '"reasons": {"1": "...", "2": "..."}}\n'
-            f"{id_rule}{partial}"
+        )
+        if reason_mode() == "off":
+            follow += (
+                '{"choices": {"1": "NW_AI_...", "5": ["NW_AI_A", "NW_AI_B"]}}\n'
+                "不要输出 reasons（或给 {}）。\n"
+            )
+        else:
+            follow += (
+                '{"choices": {"1": "NW_AI_...", "5": ["NW_AI_A", "NW_AI_B"]}, '
+                '"reasons": {"1": "...", "5": "..."}}\n'
+                "reasons 各 1 句中文，禁止英文双引号。\n"
+            )
+        follow += (
+            f"{id_rule}{pool_block}{viol_block}{partial}"
             "禁止 markdown，禁止再写 <thinking>，禁止解释。\n\n"
-            f"{snippet or '（推演原文过短；请严格按局面补全全部领袖 choices）'}"
+            f"{snippet or '（推演原文过短；请严格按上方每位领袖候选 ID 与 picks 补全）'}"
         )
         # 跟随时用较低 effort，把额度留给 JSON
         prev_think = self._thinking_enabled
@@ -1456,6 +1522,9 @@ async def gather_haikesi_game_context(
 
     leader_views: dict[int, LeaderView] = {}
     ids = [int(i) for i in (viewer_ids or []) if int(i) >= 0]
+    # 人类也进 FAITH 转储：公开万神殿名册 + 创造万神殿组合效果（civilopedia 查不到）
+    if human_id is not None and int(human_id) >= 0 and int(human_id) not in ids:
+        ids.append(int(human_id))
     if ids:
 
         async def _fetch_views():
@@ -1501,6 +1570,24 @@ async def gather_haikesi_game_context(
                 notes.append(
                     f"Real Strategy: {with_rst}/{len(leader_views)} 位领袖有战略意图"
                 )
+
+        # 仇水预见：InGame 常无 RiverManager；缺 FLOOD_API 时用 GamePlay 回退写入同一缓存
+        need_flood_fb = any(
+            v.flood_api_ok is False or v.flood_api_ok is None
+            for v in leader_views.values()
+        )
+        if need_flood_fb and leader_views:
+
+            async def _fetch_flood_fallback():
+                lines = await gs.conn.execute_haikesi(
+                    haikesi_lua.build_flood_foresight_query(ids)
+                )
+                haikesi_lua.merge_flood_foresight_lines(leader_views, lines)
+                return True
+
+            await _safe_fetch(
+                "flood_foresight_fallback", _fetch_flood_fallback(), notes
+            )
 
     async def _fetch_wc():
         return await gs.get_world_congress(soft_missing=True)
@@ -1791,6 +1878,12 @@ def _religion_block(view: LeaderView) -> str:
         (b for b in rel.beliefs if b.belief_class == "BELIEF_CLASS_PANTHEON"),
         None,
     )
+    # 创造万神殿组合词条可能不是 BELIEF_CLASS_PANTHEON；仍以 FAITH 主档 + 首条 FBELIEF 为准
+    if pan_belief is None and rel.pantheon_type:
+        pan_belief = next(
+            (b for b in rel.beliefs if b.belief_type == rel.pantheon_type),
+            None,
+        )
     if rel.pantheon_name or pan_belief:
         name = rel.pantheon_name or (pan_belief.name if pan_belief else "")
         typ = rel.pantheon_type or (pan_belief.belief_type if pan_belief else "")
@@ -1808,7 +1901,10 @@ def _religion_block(view: LeaderView) -> str:
         lines.append("创立宗教: 尚未创立")
 
     tenets = [
-        b for b in rel.beliefs if b.belief_class != "BELIEF_CLASS_PANTHEON"
+        b
+        for b in rel.beliefs
+        if b.belief_class != "BELIEF_CLASS_PANTHEON"
+        and b.belief_type != (rel.pantheon_type or "")
     ]
     if tenets:
         lines.append("教义词条:")
@@ -1821,6 +1917,67 @@ def _religion_block(view: LeaderView) -> str:
                 lines.append(f"- [{cls}] {b.name}（{b.belief_type}）— {desc}")
             else:
                 lines.append(f"- [{cls}] {b.name}（{b.belief_type}）")
+    return "\n".join(lines)
+
+
+def _pantheon_brief(view: LeaderView | None, *, desc_limit: int = 100) -> str:
+    """One-line pantheon for slim prompt (live GameInfo text; covers CreatePantheon)."""
+    if view is None or view.religion is None:
+        return "万神殿: （未知）"
+    rel = view.religion
+    pan_belief = next(
+        (b for b in rel.beliefs if b.belief_class == "BELIEF_CLASS_PANTHEON"),
+        None,
+    )
+    if pan_belief is None and rel.pantheon_type:
+        pan_belief = next(
+            (b for b in rel.beliefs if b.belief_type == rel.pantheon_type),
+            None,
+        )
+    if not (rel.pantheon_name or pan_belief):
+        return "万神殿: 尚未选择"
+    name = haikesi_lua._strip_civ_icons(
+        rel.pantheon_name or (pan_belief.name if pan_belief else "") or ""
+    ).strip()
+    desc = ""
+    if pan_belief and pan_belief.description:
+        desc = haikesi_lua._strip_civ_icons(pan_belief.description).replace("\n", " ").strip()
+        if len(desc) > desc_limit:
+            desc = desc[:desc_limit].rstrip() + "…"
+    if desc:
+        return f"万神殿: {name} — {desc}"
+    typ = rel.pantheon_type or ""
+    return f"万神殿: {name}" + (f"（{typ}）" if typ else "")
+
+
+def _format_pantheon_public_section(
+    payload: dict[str, Any],
+    context: HaikesiGameContext,
+) -> str:
+    """Public pantheon roster — Create Your Pantheon combos are not in civilopedia KB."""
+    lines: list[str] = []
+    seen: set[int] = set()
+    human_id = int(context.human_player_id)
+    hv = context.leader_views.get(human_id)
+    if hv is not None:
+        label = f"{hv.civ_name or '人类'}（人类）"
+        lines.append(f"- {label}：{_pantheon_brief(hv, desc_limit=140)}")
+        seen.add(human_id)
+    for ai in payload.get("ai_players", []) or []:
+        pid = int(ai.get("player_id", -1))
+        if pid < 0 or pid in seen:
+            continue
+        seen.add(pid)
+        view = context.leader_views.get(pid)
+        label = (
+            (f"{view.civ_name}（{view.leader_name}）" if view is not None else None)
+            or ai.get("player_name")
+            or ai.get("civ_label")
+            or f"领袖{pid}"
+        )
+        lines.append(f"- {label}：{_pantheon_brief(view, desc_limit=140)}")
+    if not lines:
+        return "- （尚无万神殿情报）"
     return "\n".join(lines)
 
 
@@ -1946,6 +2103,20 @@ def _victory_rank_block(view: LeaderView) -> str:
     )
 
 
+def _format_pick_rule(picks: int, n_options: int = 0, *, short: bool = False) -> str:
+    """选几张 vs 候选池张数分开写，避免「三选一/六选二」在池扩到 6 后误导。"""
+    picks = max(1, int(picks or 1))
+    n = max(0, int(n_options or 0))
+    pool = f"候选{n}" if n > 0 else "下列候选"
+    if short:
+        if picks >= 2:
+            return f"选{picks}/{pool}" if n else f"选{picks}"
+        return f"选1/{pool}" if n else "选1"
+    if picks >= 2:
+        return f"本轮选{picks}（黄金/英雄双选·{pool}；候选张数≠可选张数）"
+    return f"本轮选1（{pool}；勿把候选张数当成可选张数）"
+
+
 def _format_leader_block(
     ai: dict[str, Any],
     view: LeaderView | None,
@@ -1966,11 +2137,8 @@ def _format_leader_block(
         label = ai.get("player_name") or ai.get("civ_label") or str(pid)
         picks = int(ai.get("picks") or 1)
         age = str(ai.get("age") or "NORMAL")
-        pick_rule = (
-            "本轮六选二（黄金/英雄时代双选）"
-            if picks >= 2
-            else "本轮三选一"
-        )
+        opts = list(ai.get("options") or [])
+        pick_rule = _format_pick_rule(picks, len(opts))
         return "\n\n".join(
             [
                 f"### 领袖 {pid}（{label}）",
@@ -1978,7 +2146,7 @@ def _format_leader_block(
                 "仅根据候选海克斯与历史库存，从自身发展需求选卡。",
                 f"年龄状态: {age} · {pick_rule}",
                 "候选海克斯:\n"
-                + "\n".join(haikesi_lua.format_option_lines(ai.get("options", []))),
+                + "\n".join(haikesi_lua.format_option_lines(opts)),
                 hist_block,
             ]
         )
@@ -2034,13 +2202,17 @@ def _format_leader_block(
     )
     picks = int(ai.get("picks") or 1)
     age = str(ai.get("age") or "NORMAL")
+    n_opts = len(list(ai.get("options") or []))
     if picks >= 2:
         cand_header = (
-            f"【候选海克斯】（{age}：本轮六选二，选 2 个不重复类型；"
-            "JSON 可用数组或 A+B 字符串）\n"
+            f"【候选海克斯】（{age}：{_format_pick_rule(picks, n_opts)}；"
+            "不重复类型；JSON 可用数组或 A+B 字符串）\n"
         )
     else:
-        cand_header = "【候选海克斯】（本轮三选一，必须从这里选）\n"
+        cand_header = (
+            f"【候选海克斯】（{_format_pick_rule(picks, n_opts)}；"
+            "必须从这里选 1 个完整类型 ID）\n"
+        )
     parts.append(
         cand_header
         + "\n".join(
@@ -2101,6 +2273,12 @@ def format_context_summary(context: HaikesiGameContext) -> str:
     met_total = sum(len(v.met) for v in context.leader_views.values())
     threat_total = sum(len(v.threats) for v in context.leader_views.values())
     city_total = sum(len(v.own_cities) for v in context.leader_views.values())
+    flood_total = sum(len(v.flood_targets) for v in context.leader_views.values())
+    flood_rivers = sum(
+        f.floodable_rivers
+        for v in context.leader_views.values()
+        for f in v.flood_targets
+    )
     trait_total = sum(
         len(v.leader_traits) + len(v.civ_traits) + len(v.agendas)
         for v in context.leader_views.values()
@@ -2130,6 +2308,8 @@ def format_context_summary(context: HaikesiGameContext) -> str:
         f"met_edges={met_total}",
         f"diplo_modifiers={mod_total}",
         f"visible_threat_groups={threat_total}",
+        f"flood_visible_cities={flood_total}",
+        f"floodable_rivers={flood_rivers}",
         f"rst_strategies={rst_total}",
         f"religion_intel={faith_total}",
         f"victory_peer_rows={victory_peers}",
@@ -2237,7 +2417,8 @@ def _early_game_rules(
         "优先真正即时的百分比产出；"
         "有城时才优先资源创建（落在最新城 3 环）；"
         "**0 城时资源创建会空放，禁止选择**，改选开拓者/工人 echo 或百分比；"
-        f"军事 echo 需 {echo_horizon} 回合内可造对应单位才优先，否则视为延迟收益\n"
+        f"军事 echo：{echo_horizon} 回合内可造则抬权；无同系在建≠禁止，可当延迟收益"
+        f"（计划改队列仍可选）；仅长期造不出才近似空放\n"
     )
 
 
@@ -2310,7 +2491,7 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
    - 每位领袖建议包含（可自由组织，但信息不能缺）：
      · 局面：交战/贴脸/蛮族/军力对比/主战略/商路入向等关键事实
      · 候选逐张：对列表中**每一张**写「取/弃 + 具体理由」（即时/延迟/空放、兑现）
-     · 选定：类型（六选二写两张）+ 为何优于被弃选项
+     · 选定：类型（picks≥2 写两张）+ 为何优于被弃选项
    - 篇幅：每位领袖约 150–350 字；总推演可到约 1500–3500 字。密度优先，禁止复读 Prompt。
 2) </thinking> 之后只输出一个合法 JSON（禁止 markdown）。reasons 仍短句风味，详细理由只放 thinking。
 
@@ -2343,7 +2524,8 @@ def build_decision_prompt(payload: dict[str, Any], context: HaikesiGameContext) 
 情报规则（必须遵守）：
 - 每位领袖只能使用**自己区块**内的情报做决策；禁止引用其他领袖区块，也禁止臆造未给出的单位/文明。
 - 未相遇文明、战争迷雾外的敌军对本领袖不存在，不得当作已知信息。
-- 人类本轮海克斯、各文明历史已选海克斯（含效果说明）、全局时代/速度、世界会议决议是本局公开机制信息，各位领袖都可以参考。
+- 人类本轮海克斯、各文明历史已选海克斯（含效果说明）、各文明万神殿（含创造万神殿组合效果）、全局时代/速度、世界会议决议是本局公开机制信息，各位领袖都可以参考。
+- 「创造万神殿」组合词条不在 civilopedia 离线词典；效果以公开万神殿名册 / 各领袖【本国宗教】为准，禁止臆造。
 - 「历史已选 / 历史库存」不是本轮选择：不得据此认定某领袖本轮已选完，也不得照抄历史词条作为本轮 choices。
 - 已相遇文明的科/文/金/军力、双向不满值、对方对你的外交修饰语等为外交界面可见信息，可以比较；军力/科技数为「未知」时勿当成 0 或「无军队/零科技」。
 - 若区块含「已知文明胜利进度排名」：仅可比较榜内文明；未上榜者对本领袖不可见；「胜利VP未启动」时用科技项数等替代指标，勿被全员 0/50VP 误导。
@@ -2362,6 +2544,10 @@ Turn {turn}
 ## 人类玩家本轮海克斯（公开）
 {human_relic}
 
+## 各文明万神殿（公开·含创造万神殿组合效果）
+以下为局内 Locale 实时效果；「创造万神殿」组合词条不在离线 civilopedia。
+{_format_pantheon_public_section(payload, context)}
+
 ## 各文明历史已选海克斯（公开，含效果说明）
 以下为过往回合已获得的词条库存，供理解局面；与本轮选卡无关，禁止当作「本轮已选定」。
 {_format_historical_hexes_public(payload)}
@@ -2370,13 +2556,13 @@ Turn {turn}
 {"\n\n".join(ai_blocks)}
 
 ## 规则
-- 每位领袖从其「候选海克斯」中选择：普通时代选 1 个（字符串）；区块标注六选二/picks=2（黄金或英雄时代）时选 2 个不重复类型（JSON 数组或 "A+B"）；必须重新决策，禁止因「历史已选」而照抄、跳过或认定本轮已选完
+- 每位领袖从其「候选海克斯」中选择：普通时代选 1 个（字符串）；区块标注选2/picks=2（黄金或英雄时代）时选 2 个不重复类型（JSON 数组或 "A+B"）。候选池张数（常为 6）≠可选张数，禁止因「有 6 张候选」就选 2 张；必须重新决策，禁止因「历史已选」而照抄、跳过或认定本轮已选完
 - 「历史已选海克斯 / 各文明历史已选」仅为库存说明（名称+效果），不是本轮选项，也不是自动选卡结果
 - 只从该领袖区块列出的候选中选择；未列出的类型不可选
 - choices 的值必须是候选行里的**完整类型 ID**（如 NW_AI_ECHO_MELEE），禁止编造/改写/缩写（禁止 NW_AI_BALANCED、NW_AI_CONQUEST_* 等不存在的名字）；可从候选文本中原样复制
 - NW_AI_BARBARIAN_INVASION：对除触发者外各文明最新城附近刷蛮；远古早期且已知军力≤2 时慎选（除非以干扰人类为主）
 - NW_AI_LIGHTNING_STORM：下回合起多回合全图风暴；评估对本国与对手的净收益后再选
-- NW_AI_RIVER_FLOOD：对关系最差最多 3 名文明（未接触=中立默认分）城市附近可泛滥河，下回合起连续 5 回合洪水；无河则空放
+- NW_AI_RIVER_FLOOD：对关系最差最多 3 名文明（未接触=中立默认分）城市附近可泛滥河，下回合起连续 5 回合洪水；无河则空放。选前用 flood_targets 核对观察者可见城的可泛滥河数
 - 候选前缀标注生效时机：【即时】立刻生效；【条件即时·需已有城市】无城则空放；【空放·当前0城】禁止选择；【延迟】须先满足生产/商路等条件；勿在远古早期盲选尚无法使用的军事 echo
 - 资源创建类（奶龙/丝绸/烟草/茶/棉花等）依赖「最新建立的城市」：国力显示 0 城或「无城市数据」时选择=效果跳过，应改选开拓者 echo 或百分比产出
 {early_rules}{strategy_rule}
@@ -2396,12 +2582,16 @@ def _format_leader_block_slim(
     ai: dict[str, Any],
     view: LeaderView | None,
     human_player_id: int,
+    style: Any | None = None,
 ) -> str:
     """Slim leader block: age/picks + candidates; details via tools."""
     pid = int(ai["player_id"])
     picks = int(ai.get("picks") or 1)
     age = str(ai.get("age") or "NORMAL")
     opts = list(ai.get("options") or [])
+    style_line = ""
+    if style is not None and getattr(style, "slim_line", None):
+        style_line = f"{style.slim_line}\n"
     if not opts or picks < 1:
         label = (
             (view.civ_name if view else None)
@@ -2434,6 +2624,8 @@ def _format_leader_block_slim(
         return (
             f"### 领袖 {pid}（{label}）\n"
             f"极短况：视图缺失 · {age} · picks={picks}\n"
+            f"{style_line}"
+            f"万神殿: （未知）\n"
             f"{hist}\n"
             f"候选：\n{cand}"
         )
@@ -2453,11 +2645,14 @@ def _format_leader_block_slim(
             ),
         )
     )
-    pick_rule = "六选二" if picks >= 2 else "三选一"
+    pick_rule = _format_pick_rule(picks, len(opts), short=True)
+    pantheon_line = _pantheon_brief(view)
     return (
         f"### 领袖 {pid}：{view.civ_name}（{view.leader_name}）\n"
         f"极短况：{cities}城 军{mil} RST={rst} 交战={'是' if war else '否'} "
         f"· {age}/{pick_rule} · {human_bit}\n"
+        f"{style_line}"
+        f"{pantheon_line}\n"
         f"{hist}\n"
         f"候选（必须从这里选）：\n{cand}"
     )
@@ -2479,14 +2674,19 @@ def _format_historical_hexes_names_only(payload: dict[str, Any]) -> str:
 
 
 def build_decision_prompt_slim(
-    payload: dict[str, Any], context: HaikesiGameContext
+    payload: dict[str, Any],
+    context: HaikesiGameContext,
+    *,
+    style_by_pid: dict[int, Any] | None = None,
 ) -> str:
     """Thin prompt for ToolLoop: candidates + short status; details via tools."""
+    style_by_pid = style_by_pid or {}
     ai_blocks = [
         _format_leader_block_slim(
             ai,
             context.leader_views.get(int(ai["player_id"])),
             context.human_player_id,
+            style=style_by_pid.get(int(ai["player_id"])),
         )
         for ai in payload.get("ai_players", [])
         if (ai.get("options") or []) and int(ai.get("picks") or 0) > 0
@@ -2535,7 +2735,7 @@ def build_decision_prompt_slim(
 
 你可以使用工具按需索取：leader_snapshot / city_pressure / border_threats /
 met_civ_detail / lookup_relic / inventory_brief / check_echo_feasibility /
-civ6_kb / civilopedia_lookup。
+flood_targets / civ6_kb / civilopedia_lookup。
 对局工具必须带正确的 player_id（迷雾主体=该领袖自己）；禁止跨领袖偷看。
 查完后输出最终 JSON（不要 markdown）。
 
@@ -2544,9 +2744,14 @@ civ6_kb / civilopedia_lookup。
 - 候选全文已在下方；choices 值必须是候选里的完整类型 ID。禁止 NW_AI_NONE / 数字占位。
 - 极短况已含城数/军力/RST/交战：勿再 leader_snapshot，除非要商路或宜居细节。
 - 要看在建队列/人口短板 → city_pressure；贴脸可见单位 → border_threats。
+- 若极短况有「风格:…」：系统已注入对应选卡 Skill；勿再编造人格。
 - 历史库存仅短名；仅当需要**非本轮候选**的历史词条效果时用 lookup_relic（禁止复读下方候选全文）。
-- civilopedia_lookup：只查兵种/科技/建筑等原版专名；海克斯章节亦可，但本轮候选勿重复查。
+- civilopedia_lookup：优先用类型 ID（如 UNIT_SPY、CIVIC_DIPLOMATIC_SERVICE、UNIT_MISSIONARY、TECH_*），
+  中文名易串条（「间谍」会命中政策/海克斯，「城堡」可能命中改良而非 TECH_CASTLES）。
+  候选含间谍署/传教浪/特殊单位时，不确定解锁或分类应查 ID，勿凭印象臆造；本轮候选海克斯效果勿重复查。
+- 万神殿（含「创造万神殿」组合词条）效果已在下方公开名册/各领袖行；**勿**用 civilopedia_lookup 查万神殿。
 - civ6_kb：宜居/区域/胜利/商路等策略短篇；专名优先 civilopedia_lookup。
+- 候选含仇水连汛（NW_AI_RIVER_FLOOD）时 → flood_targets 核对可见城可泛滥河；河合计=0 则强烈降权（易空放）。
 
 ## 当前回合
 Turn {turn}
@@ -2560,6 +2765,9 @@ Turn {turn}
 ## 人类玩家本轮海克斯（公开）
 {human_relic}
 
+## 各文明万神殿（公开·含创造万神殿组合效果）
+{_format_pantheon_public_section(payload, context)}
+
 ## 各文明历史已选（仅短名）
 {_format_historical_hexes_names_only(payload)}
 
@@ -2567,9 +2775,10 @@ Turn {turn}
 {"\n\n".join(ai_blocks)}
 
 ## 规则
-- 普通时代选 1；六选二/picks=2 选 2 个不重复类型；picks 已按候选数量夹紧
+- 普通时代选 1；黄金/英雄 picks=2 选 2 个不重复类型；候选池张数≠可选张数（有 6 张仍可能只选 1）；picks 已按候选数量夹紧
+- 各领袖 picks 可能不同（有人 GOLDEN 选2、有人 NORMAL/DARK 选1）：按该领袖极短况 `选N` 填写，禁止把一人的选择抄给另一人
 - 只从该领袖候选中选；禁止编造 NW_AI_*
-{early_rules}- 0 城勿选资源创建；军事 echo 核对在建兵种（石弩=攻城≠远程）→ 用 city_pressure
+{early_rules}- 0 城勿选资源创建；军事 echo：核对能否生产该系（石弩=攻城≠远程）→ city_pressure；无同系在建≠禁止（可改队列兑现），勿当成空放禁选
 {reason_rule}
 - choices 键=「### 领袖 N」的 N；无候选的领袖不要出现在 choices
 - 最终只输出一个合法 JSON：
@@ -2854,12 +3063,7 @@ def validate_choices_against_options(
                     f"AI {pid}: {r} not in options "
                     f"[{', '.join(opts)}]"
                 )
-    chaos_hits = list_chaos_assignments(choices)
-    if len(chaos_hits) > 1:
-        detail = "; ".join(f"AI{pid}:{r}" for pid, r in chaos_hits)
-        errors.append(
-            f"chaos mutex: {len(chaos_hits)} chaos picks ({detail}); max 1/round"
-        )
+    # ExtAI / 大模型选卡：不再校验混乱互斥（多 AI 可同轮选混乱）
     return errors
 
 
@@ -2877,7 +3081,7 @@ def is_chaos_interference_relic(relic_type: str) -> bool:
 
 
 def list_chaos_assignments(choices: dict[str, Any]) -> list[tuple[str, str]]:
-    """[(player_id, relic_type), ...] 本轮所有混乱干扰选定。"""
+    """[(player_id, relic_type), ...] 本轮所有混乱干扰选定（审计用，不再互斥）。"""
     hits: list[tuple[str, str]] = []
     for pid, packed in choices.items():
         if str(pid).startswith("_"):
@@ -2892,75 +3096,8 @@ def enforce_chaos_mutex_choices(
     choices: dict[str, Any],
     payload: dict[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
-    """每轮至多 1 张混乱干扰；多余的用同领袖非混乱候选替换。
-
-    返回 (新 choices, 被改动的 AI id 列表)。
-    """
-    hits = list_chaos_assignments(choices)
-    if len(hits) <= 1:
-        return choices, []
-
-    opts_map = options_by_player(payload)
-    need_map = picks_needed_by_player(payload)
-    keep_pid, keep_relic = hits[0]
-    drop_set = {(pid, r) for pid, r in hits[1:]}
-    changed: list[str] = []
-    out: dict[str, Any] = {}
-
-    for pid, opts in opts_map.items():
-        need = need_map.get(pid, 1)
-        relics = _flatten_choice_relics(choices.get(pid))
-        if not relics and not opts:
-            continue
-        new_list: list[str] = []
-        seen: set[str] = set()
-        for r in relics:
-            if (pid, r) in drop_set:
-                continue
-            if is_chaos_interference_relic(r) and not (
-                pid == keep_pid and r == keep_relic
-            ):
-                continue
-            if r in seen:
-                continue
-            seen.add(r)
-            new_list.append(r)
-        for opt in opts:
-            if len(new_list) >= need:
-                break
-            if opt in seen:
-                continue
-            if is_chaos_interference_relic(opt):
-                # 已保留一张混乱时，不再补混乱
-                if keep_pid and any(is_chaos_interference_relic(x) for x in new_list):
-                    continue
-                if pid != keep_pid:
-                    continue
-            seen.add(opt)
-            new_list.append(opt)
-        if not new_list and opts:
-            for opt in opts:
-                if not is_chaos_interference_relic(opt) or (
-                    pid == keep_pid and opt == keep_relic
-                ):
-                    new_list.append(opt)
-                    break
-        final = new_list[:need] if need > 1 else (new_list[:1] or [])
-        if need == 1:
-            out[pid] = final[0] if final else (opts[0] if opts else "")
-        else:
-            out[pid] = final
-        old_flat = _flatten_choice_relics(choices.get(pid))
-        if _flatten_choice_relics(out[pid]) != old_flat:
-            changed.append(pid)
-
-    # 保留不在 opts_map 里的键（不应发生）
-    for pid, packed in choices.items():
-        if str(pid).startswith("_"):
-            continue
-        if pid not in out:
-            out[pid] = packed
-    return out, changed
+    """已废弃：大模型选卡不再互斥混乱。保留函数以免旧调用崩溃。"""
+    return choices, []
 
 
 def coerce_choices_to_options(
@@ -3038,14 +3175,24 @@ def revert_invalid_picks_to_draft(
 
 
 def format_options_constraint(payload: dict[str, Any]) -> str:
+    """每人 picks + 合法 ID 列表（供 followup / 池修复强制约束）。"""
     lines: list[str] = []
+    need_map = picks_needed_by_player(payload)
     for ai in payload.get("ai_players") or []:
         pid = str(ai.get("player_id") or "")
         opts = [str(x).strip() for x in (ai.get("options") or []) if str(x).strip()]
-        need = int(ai.get("picks") or 1)
         if not pid or not opts:
             continue
-        lines.append(f"- 领袖 {pid}（选 {need}）：{' | '.join(opts)}")
+        need = need_map.get(pid, max(1, int(ai.get("picks") or 1)))
+        age = str(ai.get("age") or "NORMAL")
+        if need >= 2:
+            shape = f"必须选 {need} 张（JSON 数组，不重复）"
+        else:
+            shape = "必须选 1 张（JSON 字符串，禁止数组）"
+        lines.append(
+            f"- 领袖 {pid}（{age}）：{shape}；仅可从下列 ID 原样复制：\n"
+            f"  {' | '.join(opts)}"
+        )
     return "\n".join(lines) if lines else "(无候选)"
 
 
@@ -3100,7 +3247,7 @@ def build_self_review_prompt(
         f"### 上一轮推演\n{previous_reasoning or '（无独立 thinking，见下方原文）'}\n\n"
         f"### 上一轮 JSON\n{prev_json}\n\n"
         f"### 审查清单（逐项对照真实数据）\n"
-        f"1. 兵种：石弩/投石机=攻城≠远程；echo 与在建单位类型是否一致\n"
+        f"1. 兵种：石弩/投石机=攻城≠远程；echo 优先同系在建，无在建可改队列仍可选（勿一律禁选）\n"
         f"2. 和平互利是否已有国际入向商路，否则近似空放\n"
         f"3. 战时军力劣势是否仍优先开拓者/奇观等长线\n"
         f"4. 即时/延迟/空放是否说错；资源创建是否有城\n"
@@ -3136,6 +3283,8 @@ def _complete_and_parse_decision(
     label: str,
     required_ids: list[str] | None = None,
     tool_ctx: Any | None = None,
+    style_injection: str | None = None,
+    payload: dict[str, Any] | None = None,
 ) -> tuple[str, str, dict[str, Any]]:
     """One LLM call (or ToolLoop draft) → (raw, reasoning, decision_dict)."""
     from civ_mcp.haikesi_tools.runner import ToolLoopRunner, llm_tools_enabled
@@ -3158,11 +3307,54 @@ def _complete_and_parse_decision(
                 client,  # type: ignore[arg-type]
                 user_prompt=prompt,
                 tool_ctx=tool_ctx,
+                style_injection=style_injection,
             )
             raw = loop_result.text
             reasoning = loop_result.reasoning or _client_last_reasoning(client)
             if not reasoning:
                 reasoning, _ = _split_visible_thinking(raw)
+            # ToolLoop 终局：DeepSeek 常把 JSON 只放在 reasoning；先抠再跟进，避免整轮 repair。
+            if _extract_json_object(raw) is None:
+                from_reasoning = (
+                    _extract_json_object(reasoning) if reasoning else None
+                )
+                if from_reasoning and '"choices"' in from_reasoning:
+                    log.warning(
+                        "ToolLoop text missing JSON; using reasoning extract "
+                        "(text_chars=%s)",
+                        len(raw or ""),
+                    )
+                    raw = from_reasoning
+                elif hasattr(client, "_json_only_followup"):
+                    recovered = client._json_only_followup(  # type: ignore[attr-defined]
+                        draft_text=reasoning or raw or "",
+                        required_ids=required_ids,
+                        payload=payload,
+                    )
+                    if recovered and _extract_json_object(recovered):
+                        log.warning(
+                            "ToolLoop recovered JSON via followup "
+                            "(text_chars=%s reasoning_chars=%s)",
+                            len(raw or ""),
+                            len(reasoning or ""),
+                        )
+                        if verbose:
+                            print(
+                                "ToolLoop: JSON followup recovered "
+                                f"[{label}] ...",
+                                flush=True,
+                            )
+                        raw = recovered
+            # 跟进 JSON 常串领袖/漏双选：有 payload 时立刻按池再跟一次
+            raw = _maybe_pool_repair_followup(
+                client,
+                raw=raw,
+                reasoning=reasoning,
+                required_ids=required_ids,
+                payload=payload,
+                verbose=verbose,
+                label=label,
+            )
         except Exception as exc:  # noqa: BLE001
             log.warning("ToolLoop failed (%s); falling back to plain complete", exc)
             if verbose:
@@ -3176,6 +3368,15 @@ def _complete_and_parse_decision(
         reasoning = _client_last_reasoning(client)
         if not reasoning:
             reasoning, _ = _split_visible_thinking(raw)
+        raw = _maybe_pool_repair_followup(
+            client,
+            raw=raw,
+            reasoning=reasoning,
+            required_ids=required_ids,
+            payload=payload,
+            verbose=verbose,
+            label=label,
+        )
 
     try:
         decision = parse_llm_json(raw)
@@ -3199,6 +3400,11 @@ def _complete_and_parse_decision(
             repair_prompt += (
                 f"\nchoices 必须包含全部键：{','.join(required_ids)}（缺一不可）。"
             )
+        if payload:
+            repair_prompt += (
+                "\n每位领袖只能从下列 ID 原样复制（注意 picks 数量）：\n"
+                f"{format_options_constraint(payload)}\n"
+            )
         raw = client.complete(repair_prompt, required_ids=required_ids)
         reasoning = _client_last_reasoning(client) or reasoning
         if not reasoning:
@@ -3217,6 +3423,71 @@ def _complete_and_parse_decision(
                 f"LLM returned invalid JSON after retry ({label}): {exc2}"
             ) from exc2
     return raw, reasoning, decision
+
+
+def _maybe_pool_repair_followup(
+    client: _ChatClient,
+    *,
+    raw: str,
+    reasoning: str,
+    required_ids: list[str] | None,
+    payload: dict[str, Any] | None,
+    verbose: bool,
+    label: str,
+) -> str:
+    """若已解析 JSON 但越池/少选，立刻用带候选表的短 followup 改正（避免盲 coerce）。"""
+    if not payload or not hasattr(client, "_json_only_followup"):
+        return raw
+    try:
+        probe = parse_llm_json(raw)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return raw
+    cmap = _decision_choices_map(probe)
+    viol = validate_choices_against_options(cmap, payload)
+    if required_ids:
+        miss = missing_choice_ids(cmap, required_ids)
+        if miss:
+            viol = list(viol) + [f"missing keys: {','.join(miss)}"]
+    if not viol:
+        return raw
+    if verbose:
+        print(
+            f"Pool check early [{label}]: "
+            + "; ".join(viol[:4])
+            + (" ..." if len(viol) > 4 else "")
+            + "; JSON followup ...",
+            flush=True,
+        )
+    recovered = client._json_only_followup(  # type: ignore[attr-defined]
+        draft_text=reasoning or raw or "",
+        required_ids=required_ids,
+        partial_choices=cmap,
+        payload=payload,
+        violations=viol,
+    )
+    if recovered and _extract_json_object(recovered):
+        try:
+            fixed = parse_llm_json(recovered)
+            fixed_map = _decision_choices_map(fixed)
+            still = validate_choices_against_options(fixed_map, payload)
+            if required_ids:
+                miss2 = missing_choice_ids(fixed_map, required_ids)
+                if miss2:
+                    still = list(still) + [f"missing keys: {','.join(miss2)}"]
+            if not still:
+                log.warning("Pool followup fixed choices after ToolLoop/parse")
+                if verbose:
+                    print(f"Pool followup OK [{label}].", flush=True)
+                return recovered
+            log.warning(
+                "Pool followup still invalid (%s); keep for later repair",
+                "; ".join(still[:4]),
+            )
+            # 仍用改进版（通常比串台版好）
+            return recovered
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+    return raw
 
 
 def _ensure_all_choices(
@@ -3253,7 +3524,8 @@ def _ensure_all_choices(
             f"缺少领袖编号：{', '.join(missing)}\n"
             f"必须输出完整 JSON，choices 键必须全部包含："
             f"{', '.join(required_ids)}\n"
-            f"可保留已有合理选择并补全缺失项。禁止 markdown。\n"
+            f"可保留已有合理选择并补全缺失项。禁止 markdown。"
+            f"禁止把 A 领袖候选填到 B；每人 picks 与合法 ID 见局面各领袖区块。\n"
         )
         if reasoning:
             fill_prompt += f"\n参考推演摘要：\n{reasoning[:8000]}\n"
@@ -3344,19 +3616,59 @@ def _ensure_valid_pool_choices(
     if verbose:
         print("Repairing against candidate pools ...", flush=True)
 
+    # 先短 followup（带每人候选表），比整份 prompt 重修便宜且更贴约束
+    if hasattr(client, "_json_only_followup"):
+        recovered = client._json_only_followup(  # type: ignore[attr-defined]
+            draft_text=json.dumps(
+                {"choices": choices_map, "violations": violations},
+                ensure_ascii=False,
+            ),
+            required_ids=required_ids or None,
+            partial_choices=choices_map,
+            payload=payload,
+            violations=violations,
+        )
+        if recovered and _extract_json_object(recovered):
+            try:
+                repaired = parse_llm_json(recovered)
+                new_map = dict(choices_map)
+                new_map.update(_decision_choices_map(repaired))
+                old_r = coerce_reasons_map(decision.get("reasons"))
+                new_r = coerce_reasons_map(repaired.get("reasons"))
+                trial = {
+                    "choices": new_map,
+                    "reasons": merge_choice_dicts(old_r, new_r),
+                }
+                trial_viol = validate_choices_against_options(new_map, payload)
+                if not trial_viol:
+                    if verbose:
+                        print("Pool repair OK (compact followup).", flush=True)
+                    return trial
+                choices_map = new_map
+                decision = trial
+                violations = trial_viol
+                if verbose:
+                    print(
+                        "Compact pool followup still invalid; full repair ...",
+                        flush=True,
+                    )
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+
     constraint = format_options_constraint(payload)
     repair_prompt = (
         f"{base_prompt}\n\n"
         f"---\n"
         f"## 候选池校验失败（必须重修）\n"
-        f"上一轮 choices 含有**不在该领袖本轮候选列表**中的类型（禁止编造如 "
-        f"NW_AI_BALANCED / NW_AI_CONQUEST_* 等不存在的 ID）：\n"
+        f"上一轮 choices 含有**不在该领袖本轮候选列表**中的类型，或 picks 数量不对"
+        f"（禁止编造如 NW_AI_BALANCED / NW_AI_CONQUEST_*；禁止把 A 的候选填给 B）：\n"
         f"{json.dumps(choices_map, ensure_ascii=False)}\n\n"
         f"违规：\n- " + "\n- ".join(violations) + "\n\n"
-        f"每位领袖只能从下列**完整类型字符串**中原样复制（禁止改写/发明）：\n"
+        f"每位领袖只能从下列**完整类型字符串**中原样复制（注意选几张）：\n"
         f"{constraint}\n\n"
         f"输出合法 JSON：choices 键必须全部包含 {', '.join(required_ids)}；"
-        f"reasons 禁止英文双引号。禁止 markdown。\n"
+        f"{'不要 reasons；' if reason_mode() == 'off' else 'reasons 禁止英文双引号；'}"
+        f"禁止 markdown。\n"
     )
     try:
         raw = client.complete(repair_prompt, required_ids=required_ids or None)
@@ -3423,12 +3735,14 @@ def run_llm_decision_with_reviews(
     review_model: str | None = None,
     verbose: bool = True,
     tool_ctx: Any | None = None,
+    style_injection: str | None = None,
 ) -> tuple[str, str, dict[str, Any]]:
     """初稿 + 可选多轮审查。
 
     ``review_client`` 若给定且不同于 draft，则为双模型（DeepSeek 初稿 / Grok 审查）。
     缺人补全与候选池修复优先用初稿客户端（DeepSeek 更稳跟格式约束）。
     ``tool_ctx`` 仅用于 draft ToolLoop（SP/MP 只读缓存）；审查轮不用 tools。
+    ``style_injection`` 仅 draft ToolLoop 追加（通用+风格 Skill）。
     """
     from civ_mcp.llm_chat_session import (
         chat_session_enabled,
@@ -3471,6 +3785,8 @@ def run_llm_decision_with_reviews(
             label="draft",
             required_ids=req or None,
             tool_ctx=tool_ctx,
+            style_injection=style_injection,
+            payload=payload,
         )
     finally:
         # 审查/修复不用多轮历史，避免把 review prompt 叠进对局记忆
@@ -3531,6 +3847,7 @@ def run_llm_decision_with_reviews(
             verbose=verbose,
             label=f"review-{i}",
             required_ids=req or None,
+            payload=payload,
         )
         rev_tag = f"review ({rev_model})" if dual else "self-review"
         log_parts.append(
@@ -3684,16 +4001,58 @@ async def decide_and_submit_once(
         print(format_context_summary(context), flush=True)
 
     from civ_mcp.haikesi_tools import DecisionToolContext, llm_tools_enabled
+    from civ_mcp.haikesi_styles import (
+        assign_styles_for_payload,
+        build_style_injection,
+        format_styles_dice_json,
+        format_styles_meta,
+        llm_styles_enabled,
+        styles_for_session_lock,
+    )
+    from civ_mcp.llm_chat_session import chat_session_enabled, load_or_create_chat_session
 
     tool_ctx = None
+    style_by_pid: dict[int, Any] = {}
+    style_injection: str | None = None
+    style_meta: str | None = None
+    style_dice_json: str | None = None
     if llm_tools_enabled():
         tool_ctx = DecisionToolContext(
             context=context, payload=payload, channel="tuner"
         )
-        prompt = build_decision_prompt_slim(payload, context)
+        if llm_styles_enabled():
+            locked: dict[str, str] = {}
+            if chat_session_enabled():
+                try:
+                    sess = load_or_create_chat_session(payload, model=model)
+                    locked = dict(sess.styles or {})
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("style lock load failed: %s", exc)
+            style_by_pid = assign_styles_for_payload(
+                payload, context, locked=locked
+            )
+            style_injection = build_style_injection(style_by_pid) or None
+            style_meta = format_styles_meta(style_by_pid) or None
+            style_dice_json = format_styles_dice_json(style_by_pid) or None
+            if chat_session_enabled() and style_by_pid:
+                try:
+                    sess = load_or_create_chat_session(payload, model=model)
+                    sess.set_styles(styles_for_session_lock(style_by_pid))
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("style lock save failed: %s", exc)
+            if verbose and style_meta:
+                print(f"Styles: {style_meta}", flush=True)
+        prompt = build_decision_prompt_slim(
+            payload, context, style_by_pid=style_by_pid
+        )
         if verbose:
             print(
-                f"Tools ON (tuner); slim prompt ~{len(prompt)} chars",
+                f"Tools ON (tuner); slim prompt ~{len(prompt)} chars"
+                + (
+                    f"; style inject ~{len(style_injection)} chars"
+                    if style_injection
+                    else ""
+                ),
                 flush=True,
             )
     else:
@@ -3730,6 +4089,7 @@ async def decide_and_submit_once(
         review_model=review_model,
         verbose=verbose,
         tool_ctx=tool_ctx,
+        style_injection=style_injection,
     )
 
     choices_map = _decision_choices_map(decision)
@@ -3796,6 +4156,8 @@ async def decide_and_submit_once(
             payload=payload,
             tool_trace=(tool_ctx.tool_trace if tool_ctx is not None else None),
             tool_channel=(tool_ctx.channel if tool_ctx is not None else None),
+            style_meta=style_meta,
+            style_dice_json=style_dice_json,
         )
     except OSError as exc:
         log.warning("Failed to save decision analysis log: %s", exc)
@@ -3838,16 +4200,58 @@ async def decide_and_inject_log_channel(
         print(format_context_summary(context), flush=True)
 
     from civ_mcp.haikesi_tools import DecisionToolContext, llm_tools_enabled
+    from civ_mcp.haikesi_styles import (
+        assign_styles_for_payload,
+        build_style_injection,
+        format_styles_dice_json,
+        format_styles_meta,
+        llm_styles_enabled,
+        styles_for_session_lock,
+    )
+    from civ_mcp.llm_chat_session import chat_session_enabled, load_or_create_chat_session
 
     tool_ctx = None
+    style_by_pid: dict[int, Any] = {}
+    style_injection: str | None = None
+    style_meta: str | None = None
+    style_dice_json: str | None = None
     if llm_tools_enabled():
         tool_ctx = DecisionToolContext(
             context=context, payload=payload, channel="log"
         )
-        prompt = build_decision_prompt_slim(payload, context)
+        if llm_styles_enabled():
+            locked: dict[str, str] = {}
+            if chat_session_enabled():
+                try:
+                    sess = load_or_create_chat_session(payload, model=model)
+                    locked = dict(sess.styles or {})
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("style lock load failed: %s", exc)
+            style_by_pid = assign_styles_for_payload(
+                payload, context, locked=locked
+            )
+            style_injection = build_style_injection(style_by_pid) or None
+            style_meta = format_styles_meta(style_by_pid) or None
+            style_dice_json = format_styles_dice_json(style_by_pid) or None
+            if chat_session_enabled() and style_by_pid:
+                try:
+                    sess = load_or_create_chat_session(payload, model=model)
+                    sess.set_styles(styles_for_session_lock(style_by_pid))
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("style lock save failed: %s", exc)
+            if verbose and style_meta:
+                print(f"Styles: {style_meta}", flush=True)
+        prompt = build_decision_prompt_slim(
+            payload, context, style_by_pid=style_by_pid
+        )
         if verbose:
             print(
-                f"Tools ON (log/CTX); slim prompt ~{len(prompt)} chars",
+                f"Tools ON (log/CTX); slim prompt ~{len(prompt)} chars"
+                + (
+                    f"; style inject ~{len(style_injection)} chars"
+                    if style_injection
+                    else ""
+                ),
                 flush=True,
             )
     else:
@@ -3877,6 +4281,7 @@ async def decide_and_inject_log_channel(
         review_model=review_model,
         verbose=verbose,
         tool_ctx=tool_ctx,
+        style_injection=style_injection,
     )
 
     choices_map = _decision_choices_map(decision)
@@ -3930,6 +4335,8 @@ async def decide_and_inject_log_channel(
             payload=payload,
             tool_trace=(tool_ctx.tool_trace if tool_ctx is not None else None),
             tool_channel=(tool_ctx.channel if tool_ctx is not None else None),
+            style_meta=style_meta,
+            style_dice_json=style_dice_json,
         )
         if verbose and analysis_path is not None:
             print(f"Decision analysis log: {analysis_path}", flush=True)

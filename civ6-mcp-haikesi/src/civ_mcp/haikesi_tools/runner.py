@@ -72,6 +72,7 @@ class ToolLoopRunner:
         tool_ctx: DecisionToolContext,
         max_rounds: int | None = None,
         system_prompt: str | None = None,
+        style_injection: str | None = None,
     ) -> ToolLoopResult:
         rounds = max_rounds if max_rounds is not None else llm_tool_rounds()
         tools = openai_tools_schema()
@@ -79,6 +80,14 @@ class ToolLoopRunner:
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": user_prompt})
+        # Leader-style Skills (universal + hits): second user turn keeps slim prompt thin
+        if style_injection and style_injection.strip():
+            messages.append(
+                {
+                    "role": "user",
+                    "content": style_injection.strip(),
+                }
+            )
 
         spoken = ""
         reasoning = ""
@@ -89,12 +98,16 @@ class ToolLoopRunner:
             )
             if result.reasoning:
                 reasoning = result.reasoning
+            # 终局或已含 JSON 时再更新 spoken，避免 tool 轮空串/推演盖住终局答案。
             if result.text and result.text.strip():
-                spoken = result.text
+                if not allow or not result.wants_tools:
+                    spoken = result.text
+                elif '"choices"' in result.text or result.text.lstrip().startswith("{"):
+                    spoken = result.text
 
             if not result.wants_tools or not allow:
                 return ToolLoopResult(
-                    text=spoken or result.text or "",
+                    text=(spoken or result.text or "").strip(),
                     reasoning=reasoning,
                     tool_trace=list(tool_ctx.tool_trace),
                 )
@@ -130,7 +143,7 @@ class ToolLoopRunner:
                 )
 
         return ToolLoopResult(
-            text=spoken,
+            text=(spoken or "").strip(),
             reasoning=reasoning,
             tool_trace=list(tool_ctx.tool_trace),
         )

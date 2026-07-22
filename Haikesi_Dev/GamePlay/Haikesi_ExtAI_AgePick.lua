@@ -11,7 +11,7 @@
 
 local AI_SELECT_ROUND_KEY = 'PROP_NW_HAIKESI_AI_SELECT_ROUND'
 local ERA_AGE_PROP_PREFIX = 'PROP_NW_HAIKESI_UI_ERA_AGE_'
-local EXT_AI_OPTIONS_SINGLE = 3
+local EXT_AI_OPTIONS_SINGLE = 6
 local EXT_AI_OPTIONS_DUAL = 6
 
 -- InGame 直播询（UI 或 EM 回调上下文）；GameCore 常全部 pcall 失败 → nil
@@ -108,10 +108,8 @@ function Haikesi_AIPickCountForPlayer(pPlayer)
 end
 
 function Haikesi_AIOptionsCountForPlayer(pPlayer)
-    if Haikesi_AIPickCountForPlayer(pPlayer) >= 2 then
-        return EXT_AI_OPTIONS_DUAL
-    end
-    return EXT_AI_OPTIONS_SINGLE
+    -- 大模型 / ExtAI：候选池固定 6 张（黄金双选仍 picks=2）
+    return EXT_AI_OPTIONS_DUAL
 end
 
 -- value: "A" / "A+B" / {"A","B"}

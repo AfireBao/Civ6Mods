@@ -52,6 +52,8 @@ def resolve_tool(ctx: DecisionToolContext, name: str, arguments_json: str) -> st
             result = _inventory_brief(ctx, args)
         elif name == "check_echo_feasibility":
             result = _check_echo_feasibility(ctx, args)
+        elif name == "flood_targets":
+            result = _flood_targets(ctx, args)
         elif name == "civ6_kb":
             result = _civ6_kb(args)
         elif name == "civilopedia_lookup":
@@ -291,13 +293,87 @@ def _check_echo_feasibility(ctx: DecisionToolContext, args: dict[str, Any]) -> s
             verdict = "延迟收益"
             reason = timing + "；早期无城时军事 echo 兑现慢"
         else:
-            verdict = "条件允许则优先核对在建兵种"
-            reason = timing
+            verdict = "可造则有效；无同系在建≠禁止（可改队列，延迟兑现）"
+            reason = timing + "；有同系在建抬权，否则仍可选若能生产该系"
     elif "条件即时" in timing and cities <= 0:
         verdict = "空放风险"
         reason = timing
 
     return f"{display}\n判定：{verdict}\n依据：{reason}"
+
+
+def _flood_targets(ctx: DecisionToolContext, args: dict[str, Any]) -> str:
+    pid = _pid(args)
+    err = _require_allowed(ctx, pid)
+    if err:
+        return err
+    assert pid is not None
+    view = _view(ctx, pid)
+    if view is None:
+        return NOTHING_SURFACES + f"（无领袖 {pid} 视图）"
+    if view.flood_api_ok is False:
+        return (
+            f"领袖 {pid}：本轮缓存无河网 API（FLOOD_API=0），"
+            "无法预判仇水空放；勿臆造可泛滥河。"
+        )
+    rows = list(view.flood_targets or [])
+    other = _pid(args, "other_id")
+    if other is not None:
+        rows = [r for r in rows if r.target_id == other]
+        if not rows:
+            return (
+                f"领袖 {pid} 可见范围内未见 other_id={other} 的城市"
+                "（未相遇、城未可见、或不在缓存）。"
+            )
+    if not rows:
+        return (
+            f"领袖 {pid}：已遇文明中无可见城市的河网记录"
+            "（可能尚未看见对方城市，或本轮未写入 FLOOD）。"
+        )
+
+    # 按目标文明聚合
+    by_tid: dict[int, list[Any]] = {}
+    for r in rows:
+        by_tid.setdefault(int(r.target_id), []).append(r)
+
+    met_name = {m.player_id: m.civ_name for m in (view.met or [])}
+    lines = [
+        f"领袖 {pid} 仇水预见（仅本方可见城；channel={ctx.channel}）："
+    ]
+    total_rivers = 0
+    for tid in sorted(
+        by_tid.keys(),
+        key=lambda t: -sum(x.floodable_rivers for x in by_tid[t]),
+    ):
+        cities = by_tid[tid]
+        rivers = sum(int(c.floodable_rivers) for c in cities)
+        total_rivers += rivers
+        label = met_name.get(tid) or f"id{tid}"
+        # 关系分：仇水按关系最差选目标
+        rel = ""
+        met = next((m for m in (view.met or []) if m.player_id == tid), None)
+        if met is not None:
+            rel = f" {met.diplomatic_state}({met.relationship_score})"
+        lines.append(
+            f"- {label}(id{tid}){rel}：可见{len(cities)}城，"
+            f"可泛滥命名河合计 {rivers}"
+        )
+        for c in sorted(cities, key=lambda x: -x.floodable_rivers)[:6]:
+            lines.append(
+                f"  · {c.city_name}({c.x},{c.y}) 河={c.floodable_rivers}"
+            )
+        if len(cities) > 6:
+            lines.append(f"  · …另有 {len(cities) - 6} 城未列")
+    if total_rivers <= 0:
+        lines.append(
+            "合计可泛滥河=0：对当前可见目标选 NW_AI_RIVER_FLOOD 极大概率空放。"
+        )
+    else:
+        lines.append(
+            f"合计可泛滥河={total_rivers}："
+            "仇水只打关系最差最多 3 名主要文明；结合 met_civ_detail 关系分选型。"
+        )
+    return "\n".join(lines)
 
 
 def _civ6_kb(args: dict[str, Any]) -> str:

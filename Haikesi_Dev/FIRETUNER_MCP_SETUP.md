@@ -520,7 +520,7 @@ uv run python scripts/test_haikesi_ai.py
 ```
 
 - 无待处理请求时：输出 `status: none`（正常）
-- 人类确认海克斯后：输出 `status: pending` 及每个 AI 的 `options` 列表（至多 3 张随机候选卡）
+- 人类确认海克斯后：输出 `status: pending` 及每个 AI 的 `options` 列表（固定至多 6 张随机候选卡）
 - 若报 `function expected instead of nil`：说明游戏内仍是旧版 Mod，需重载
 
 ### 10.4 Cursor Agent 端到端流程
@@ -532,7 +532,7 @@ uv run python scripts/test_haikesi_ai.py
 
 ```text
 检查是否有海克斯 AI 待决策请求。若有，先调用 get_game_overview 了解局势，
-再为每个 AI 从其 options 三张候选中选一个海克斯，并为每位 AI 写 1-2 句中文决策理由，
+再为每个 AI 从其 options 六张候选中选一个海克斯，并为每位 AI 写 1-2 句中文决策理由，
 最后通过 submit_haikesi_ai_choices 提交 choices 与 reasons。
 注意 NW_AI_BARBARIAN_INVASION 每轮最多给一个 AI。
 追踪面板将显示：[领袖名]觉得[reason]，故选择[海克斯名称]
