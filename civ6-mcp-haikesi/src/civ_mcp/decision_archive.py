@@ -209,6 +209,35 @@ class DecisionArchive:
         )
         return path
 
+    def write_draft_checkpoint(
+        self,
+        payload: dict[str, Any],
+        *,
+        body: str,
+        request_id: str,
+        model: str,
+    ) -> Path:
+        """审查前把初稿写入同一对局目录：``{request}__{relic}__draft.md``（可覆盖）。"""
+        session_dir = self.resolve_session_dir(payload)
+        base = _safe_request_filename(request_id)
+        human = _safe_request_filename(str(payload.get("human_relic") or "norelic"))
+        filename = f"{base}__{human}__draft.md"
+        path = session_dir / filename
+        path.write_text(body, encoding="utf-8")
+
+        index_entry = {
+            "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "request_id": request_id,
+            "turn": payload.get("turn"),
+            "human_relic": payload.get("human_relic"),
+            "model": model,
+            "file": filename,
+            "stage": "draft",
+        }
+        with (session_dir / "index.jsonl").open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(index_entry, ensure_ascii=False) + "\n")
+        return path
+
 
 _archive: DecisionArchive | None = None
 

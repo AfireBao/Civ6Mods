@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import time
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -23,6 +24,9 @@ from civ_mcp.lua.haikesi import (
 from civ_mcp.lua.models import GameOverview, WorldCongressStatus
 
 log = logging.getLogger(__name__)
+
+# 绑定当前存档的多轮对话（仅 draft 主请求使用）
+_active_chat_session: ContextVar[Any] = ContextVar("haikesi_llm_chat_session", default=None)
 
 # Lua EXT_AI_REASON_MAX_LEN=200 counts bytes; ~66 CJK chars fit safely.
 _REASON_MAX_CHARS = 66
@@ -217,6 +221,7 @@ def _build_decision_log_body(
         f"- **saved_at**: {time.strftime('%Y-%m-%d %H:%M:%S')}",
         f"- **request_id**: `{request_id}`",
         f"- **model**: `{model}`",
+        f"- **pipeline**: `{llm_pipeline_mode()}` (`HAIKESI_LLM_PIPELINE`)",
         f"- **reason_mode**: `{reason_mode()}`",
         f"- **thinking**: `{'ON' if llm_thinking_enabled() else 'OFF'}` (`HAIKESI_LLM_THINKING`)",
         f"- **review_rounds**: `{llm_review_rounds()}` (`HAIKESI_LLM_REVIEW_ROUNDS`)",
@@ -335,6 +340,83 @@ def save_decision_analysis_log(
     return archive_path or path
 
 
+def save_draft_checkpoint_log(
+    *,
+    request_id: str,
+    model: str,
+    reasoning: str,
+    raw_response: str,
+    decision: dict[str, Any],
+    payload: dict[str, Any] | None,
+    review_model: str | None = None,
+) -> Path | None:
+    """审查开始前把初稿写入对局 decision 目录（``*__draft.md``）。"""
+    if not decision_log_enabled() or payload is None:
+        return None
+    choices_map = _decision_choices_map(decision)
+    reasons_map = {
+        str(k): v
+        for k, v in coerce_reasons_map(decision.get("reasons")).items()
+        if not str(k).startswith("_")
+    }
+    await_line = (
+        f"- **awaiting_review**: `{review_model}`"
+        if review_model
+        else "- **awaiting_review**: self-review"
+    )
+    raw_fence = "json" if (raw_response or "").strip().startswith("{") else ""
+    body = "\n".join(
+        [
+            f"# Haikesi ExtAI Draft Checkpoint `{request_id}`",
+            "",
+            "## Meta",
+            "",
+            f"- **saved_at**: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            f"- **request_id**: `{request_id}`",
+            f"- **stage**: `draft`（审查前落盘；最终以同目录无 `__draft` 后缀的 md 为准）",
+            f"- **draft_model**: `{model}`",
+            await_line,
+            f"- **pipeline**: `{llm_pipeline_mode()}`",
+            "",
+            "## Reasoning",
+            "",
+            reasoning or "*(no thinking text)*",
+            "",
+            "## Choices (draft)",
+            "",
+            "```json",
+            json.dumps(choices_map, ensure_ascii=False, indent=2),
+            "```",
+            "",
+            "## Reasons (draft)",
+            "",
+            "```json",
+            json.dumps(reasons_map, ensure_ascii=False, indent=2),
+            "```",
+            "",
+            "## Raw Response",
+            "",
+            f"```{raw_fence}".rstrip(),
+            raw_response or "",
+            "```",
+            "",
+        ]
+    )
+    try:
+        from civ_mcp.decision_archive import get_decision_archive
+
+        path = get_decision_archive().write_draft_checkpoint(
+            payload,
+            body=body,
+            request_id=request_id,
+            model=model,
+        )
+        return path
+    except OSError as exc:
+        log.warning("Failed to save draft checkpoint: %s", exc)
+        return None
+
+
 def sanitize_decision_reason(reason: str, *, max_chars: int = _REASON_MAX_CHARS) -> str:
     """Strip emoji/special chars and bound length before FireTuner → game UI."""
     if not reason:
@@ -387,6 +469,10 @@ def _repo_root() -> Path:
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_DEFAULT_MODEL = "deepseek-chat"
 
+# 智谱 GLM（OpenAI 兼容）
+GLM_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
+GLM_DEFAULT_MODEL = "glm-5.2"
+
 
 def load_dotenv_file(path: Path | None = None) -> None:
     env_path = path or (_repo_root() / ".env")
@@ -428,11 +514,20 @@ def load_haikesi_llm_config() -> HaikesiLLMConfig:
 def load_deepseek_config() -> HaikesiLLMConfig:
     """Load DeepSeek API config (OpenAI-compatible).
 
-    If DEEPSEEK_* is unset but HAIKESI_LLM_* points at another gateway (e.g. xAI),
-    fall back to those so mis-running deepseek_watch with a Grok .env still works.
+    When ``DEEPSEEK_API_KEY`` is set, always use DeepSeek base/model defaults
+    (do not inherit xAI ``HAIKESI_LLM_BASE_URL`` — dual pipeline needs both).
+
+    If only ``HAIKESI_LLM_*`` is set (legacy deepseek_watch + Grok .env), fall
+    back so a misconfigured single-provider run still reaches some gateway.
     """
     load_dotenv_file()
-    api_key = os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("HAIKESI_LLM_API_KEY")
+    ds_key = (os.environ.get("DEEPSEEK_API_KEY") or "").strip()
+    if ds_key:
+        model = (os.environ.get("DEEPSEEK_MODEL") or DEEPSEEK_DEFAULT_MODEL).strip()
+        base_url = (os.environ.get("DEEPSEEK_BASE_URL") or DEEPSEEK_BASE_URL).strip()
+        return HaikesiLLMConfig(api_key=ds_key, model=model, base_url=base_url)
+
+    api_key = os.environ.get("HAIKESI_LLM_API_KEY")
     if not api_key:
         raise RuntimeError(
             "Missing DeepSeek API key. Set DEEPSEEK_API_KEY in .env "
@@ -449,6 +544,300 @@ def load_deepseek_config() -> HaikesiLLMConfig:
         or DEEPSEEK_BASE_URL
     )
     return HaikesiLLMConfig(api_key=api_key, model=model, base_url=base_url)
+
+
+def llm_pipeline_mode() -> str:
+    """``single`` = 同一模型；``dual`` = 初稿/审查可分属不同 provider（由 env 指定）。"""
+    load_dotenv_file()
+    raw = (os.environ.get("HAIKESI_LLM_PIPELINE") or "").strip().lower()
+    if raw in {"single", "solo", "one"}:
+        return "single"
+    if raw in {
+        "dual",
+        "complex",
+        "ds+grok",
+        "deepseek+grok",
+        "deepseek_grok",
+        "grok+deepseek",
+        "grok_deepseek",
+    }:
+        return "dual"
+    if _env_flag("HAIKESI_LLM_DUAL", False):
+        return "dual"
+    # 未写 PIPELINE 但显式指定了不同 draft/review → dual
+    draft = (os.environ.get("HAIKESI_LLM_DRAFT") or "").strip()
+    review = (os.environ.get("HAIKESI_LLM_REVIEW") or "").strip()
+    if draft and review and draft.lower() != review.lower():
+        return "dual"
+    return "single"
+
+
+def _normalize_provider_id(name: str) -> str:
+    n = (name or "").strip().lower().replace("-", "_")
+    aliases = {
+        "ds": "deepseek",
+        "xai": "grok",
+        "haikesi": "grok",
+        "haikesi_llm": "grok",
+        "gpt": "openai",
+        "claude": "anthropic",
+        "ant": "anthropic",
+        "zhipu": "glm",
+        "bigmodel": "glm",
+        "glm5": "glm",
+        "glm_5": "glm",
+        "glm_5_2": "glm",
+        "glm52": "glm",
+    }
+    return aliases.get(n, n)
+
+
+def llm_dual_roles() -> tuple[str, str]:
+    """返回 (draft_provider_id, review_provider_id)。
+
+    优先 ``HAIKESI_LLM_DRAFT`` / ``HAIKESI_LLM_REVIEW``；
+    否则兼容 ``HAIKESI_LLM_DUAL_ORDER`` / ``HAIKESI_LLM_PIPELINE`` 别名；
+    默认 ``grok`` → ``deepseek``。
+    """
+    load_dotenv_file()
+    draft = _normalize_provider_id(os.environ.get("HAIKESI_LLM_DRAFT") or "")
+    review = _normalize_provider_id(os.environ.get("HAIKESI_LLM_REVIEW") or "")
+    if draft and review:
+        return draft, review
+
+    order = (os.environ.get("HAIKESI_LLM_DUAL_ORDER") or "").strip().lower()
+    pipe = (os.environ.get("HAIKESI_LLM_PIPELINE") or "").strip().lower()
+    if order in {
+        "deepseek_draft",
+        "deepseek+grok",
+        "ds+grok",
+        "deepseek_first",
+        "ds_draft",
+    } or pipe in {"deepseek+grok", "ds+grok", "deepseek_grok"}:
+        return "deepseek", "grok"
+    if order in {"grok_draft", "grok+deepseek", "grok_first"} or pipe in {
+        "grok+deepseek",
+        "grok_deepseek",
+    }:
+        return "grok", "deepseek"
+
+    # 只写了一侧时补默认另一侧
+    if draft and not review:
+        return draft, "deepseek" if draft != "deepseek" else "grok"
+    if review and not draft:
+        return "grok" if review != "grok" else "deepseek", review
+    return "grok", "deepseek"
+
+
+def llm_dual_order() -> str:
+    """兼容旧日志字段：由 draft/review provider 推导。"""
+    draft, review = llm_dual_roles()
+    if draft == "deepseek" and review in {"grok", "xai", "haikesi"}:
+        return "deepseek_draft"
+    if draft in {"grok", "xai", "haikesi"} and review == "deepseek":
+        return "grok_draft"
+    return f"{draft}_to_{review}"
+
+
+def _env_first(*names: str) -> str:
+    for name in names:
+        val = (os.environ.get(name) or "").strip()
+        if val:
+            return val
+    return ""
+
+
+def load_glm_config() -> HaikesiLLMConfig:
+    """智谱 GLM（OpenAI 兼容：open.bigmodel.cn）。"""
+    load_dotenv_file()
+    api_key = _env_first(
+        "GLM_API_KEY",
+        "ZHIPU_API_KEY",
+        "BIGMODEL_API_KEY",
+        "HAIKESI_PROVIDER_GLM_API_KEY",
+    )
+    if not api_key:
+        raise RuntimeError(
+            "provider=glm 需要 GLM_API_KEY（或 ZHIPU_API_KEY / BIGMODEL_API_KEY）"
+        )
+    model = (
+        _env_first("GLM_MODEL", "ZHIPU_MODEL", "BIGMODEL_MODEL") or GLM_DEFAULT_MODEL
+    )
+    base_url = (
+        _env_first("GLM_BASE_URL", "ZHIPU_BASE_URL", "BIGMODEL_BASE_URL")
+        or GLM_BASE_URL
+    )
+    return HaikesiLLMConfig(api_key=api_key, model=model, base_url=base_url)
+
+
+def load_provider_config(provider: str) -> HaikesiLLMConfig:
+    """按 provider id 加载配置（只改 env 即可切换任意 OpenAI 兼容 / Anthropic 模型）。
+
+    内置别名：
+      - ``deepseek`` → ``DEEPSEEK_*``
+      - ``grok`` / ``xai`` / ``haikesi`` → ``HAIKESI_LLM_*``
+      - ``glm`` / ``zhipu`` / ``bigmodel`` → ``GLM_*``（智谱）
+      - ``openai`` → ``OPENAI_*``
+      - ``anthropic`` → ``ANTHROPIC_*``（无 base_url → 原生 Anthropic 客户端）
+      - ``draft`` / ``review`` → ``HAIKESI_DRAFT_*`` / ``HAIKESI_REVIEW_*``
+
+    自定义名 ``foo``：
+      ``HAIKESI_PROVIDER_FOO_API_KEY`` / ``_BASE_URL`` / ``_MODEL``
+      或简写 ``FOO_API_KEY`` / ``FOO_BASE_URL`` / ``FOO_MODEL``
+    """
+    load_dotenv_file()
+    pid = _normalize_provider_id(provider)
+    if not pid:
+        raise RuntimeError("provider id 为空")
+
+    if pid == "deepseek":
+        return load_deepseek_config()
+    if pid == "glm":
+        return load_glm_config()
+    if pid in {"grok", "haikesi"}:
+        return load_haikesi_llm_config()
+    if pid == "openai":
+        api_key = _env_first("OPENAI_API_KEY", "HAIKESI_LLM_API_KEY")
+        if not api_key:
+            raise RuntimeError("provider=openai 需要 OPENAI_API_KEY")
+        model = _env_first("OPENAI_MODEL", "HAIKESI_LLM_MODEL") or "gpt-4o"
+        base_url = _env_first(
+            "OPENAI_BASE_URL", "OPENAI_API_BASE", "HAIKESI_LLM_BASE_URL"
+        ) or "https://api.openai.com/v1"
+        return HaikesiLLMConfig(api_key=api_key, model=model, base_url=base_url)
+    if pid == "anthropic":
+        api_key = _env_first("ANTHROPIC_API_KEY", "HAIKESI_LLM_API_KEY")
+        if not api_key:
+            raise RuntimeError("provider=anthropic 需要 ANTHROPIC_API_KEY")
+        model = _env_first(
+            "ANTHROPIC_MODEL", "HAIKESI_LLM_MODEL"
+        ) or "claude-sonnet-4-20250514"
+        # base_url 空 → create_chat_client 走 Anthropic 原生
+        base_url = _env_first("ANTHROPIC_BASE_URL") or None
+        return HaikesiLLMConfig(api_key=api_key, model=model, base_url=base_url)
+
+    if pid in {"draft", "review"}:
+        prefix = "HAIKESI_DRAFT" if pid == "draft" else "HAIKESI_REVIEW"
+        api_key = _env_first(f"{prefix}_API_KEY")
+        if not api_key:
+            raise RuntimeError(f"provider={pid} 需要 {prefix}_API_KEY")
+        model = _env_first(f"{prefix}_MODEL") or "unknown-model"
+        base_raw = _env_first(f"{prefix}_BASE_URL")
+        base_url = base_raw or None
+        return HaikesiLLMConfig(api_key=api_key, model=model, base_url=base_url)
+
+    # 自定义：HAIKESI_PROVIDER_<ID>_* 或 <ID>_*
+    tag = pid.upper()
+    api_key = _env_first(
+        f"HAIKESI_PROVIDER_{tag}_API_KEY",
+        f"{tag}_API_KEY",
+    )
+    if not api_key:
+        raise RuntimeError(
+            f"未知 provider={provider!r}：请设 HAIKESI_PROVIDER_{tag}_API_KEY "
+            f"（或使用内置 deepseek/grok/glm/openai/anthropic/draft/review）"
+        )
+    model = _env_first(
+        f"HAIKESI_PROVIDER_{tag}_MODEL",
+        f"{tag}_MODEL",
+    ) or "unknown-model"
+    base_raw = _env_first(
+        f"HAIKESI_PROVIDER_{tag}_BASE_URL",
+        f"{tag}_BASE_URL",
+    )
+    base_url = base_raw or None
+    return HaikesiLLMConfig(api_key=api_key, model=model, base_url=base_url)
+
+
+@dataclass(frozen=True)
+class DecisionPipeline:
+    """Draft/review clients for ExtAI decisions."""
+
+    mode: str
+    draft_client: Any
+    draft_model: str
+    review_client: Any
+    review_model: str
+    draft_provider: str = "single"
+    review_provider: str = "single"
+    dual_order: str = "single"  # 兼容旧日志/打印
+
+    @property
+    def model_label(self) -> str:
+        if self.mode == "dual":
+            return (
+                f"{self.draft_provider}:{self.draft_model} → "
+                f"{self.review_provider}:{self.review_model}"
+            )
+        return self.draft_model
+
+
+def resolve_decision_pipeline(
+    *,
+    prefer: str = "haikesi",
+) -> DecisionPipeline:
+    """Build draft/review clients from env.
+
+    ``prefer``: for single mode, ``haikesi`` → ``load_haikesi_llm_config``,
+    ``deepseek`` → ``load_deepseek_config``.
+    """
+    load_dotenv_file()
+    mode = llm_pipeline_mode()
+    if mode == "dual":
+        draft_id, review_id = llm_dual_roles()
+        draft_cfg = load_provider_config(draft_id)
+        review_cfg = load_provider_config(review_id)
+        return DecisionPipeline(
+            mode="dual",
+            draft_client=create_chat_client(draft_cfg),
+            draft_model=draft_cfg.model,
+            review_client=create_chat_client(review_cfg),
+            review_model=review_cfg.model,
+            draft_provider=draft_id,
+            review_provider=review_id,
+            dual_order=llm_dual_order(),
+        )
+
+    if prefer == "deepseek":
+        cfg = load_deepseek_config()
+        pid = "deepseek"
+    else:
+        # single 也可用 HAIKESI_LLM_DRAFT 指定唯一模型
+        single_id = _normalize_provider_id(
+            os.environ.get("HAIKESI_LLM_DRAFT")
+            or os.environ.get("HAIKESI_LLM_PROVIDER")
+            or ""
+        )
+        if single_id:
+            cfg = load_provider_config(single_id)
+            pid = single_id
+        else:
+            cfg = load_haikesi_llm_config()
+            pid = "grok"
+    client = create_chat_client(cfg)
+    return DecisionPipeline(
+        mode="single",
+        draft_client=client,
+        draft_model=cfg.model,
+        review_client=client,
+        review_model=cfg.model,
+        draft_provider=pid,
+        review_provider=pid,
+        dual_order="single",
+    )
+
+
+def llm_effective_review_rounds(*, dual: bool = False) -> int:
+    """dual 且 REVIEW_ROUNDS=0 时至少审查 1 次（否则第二模型不会上场）。"""
+    n = llm_review_rounds()
+    if dual and n <= 0:
+        return 1
+    return n
+
+
+def _client_looks_deepseek(client: Any) -> bool:
+    base = str(getattr(client, "_base_url", "") or "").lower()
+    return "deepseek" in base or bool(getattr(client, "_is_deepseek", False))
 
 
 def _env_int(name: str, default: int) -> int:
@@ -487,9 +876,51 @@ def _is_deepseek_base(base_url: str) -> bool:
     return "deepseek" in (base_url or "").lower()
 
 
+def _is_glm_base(base_url: str) -> bool:
+    u = (base_url or "").lower()
+    return "bigmodel.cn" in u or "zhipuai" in u or "/paas/v4" in u
+
+
 def _is_xai_base(base_url: str) -> bool:
     u = (base_url or "").lower()
     return "x.ai" in u or "xai" in u
+
+
+def _glm_model_supports_reasoning_effort(model: str) -> bool:
+    """reasoning_effort 仅 GLM-5.2 及以上支持（官方文档）。"""
+    m = (model or "").lower().replace("_", "-")
+    # glm-5.2 / glm-5.1 / glm-5 / glm-5-turbo …
+    if "glm-5.2" in m or "glm-5-2" in m:
+        return True
+    if "glm-5.1" in m or "glm-5-1" in m:
+        return True
+    if re.search(r"\bglm-5\b", m) or m.startswith("glm-5"):
+        # glm-5、glm-5-turbo、glm-5v-turbo 等；排除误伤已覆盖的 5.x
+        return True
+    return False
+
+
+def _glm_reasoning_effort(*, thinking: bool) -> str | None:
+    """智谱 reasoning_effort（仅 GLM-5.2+）。
+
+    官方可选：max | xhigh | high | medium | low | minimal | none
+    服务端映射：none/minimal→放弃思考；low/medium→high；xhigh→max。
+    """
+    if not thinking:
+        return None
+    effort = (os.environ.get("HAIKESI_LLM_REASONING_EFFORT") or "high").strip().lower()
+    # 兼容旧误写 light、以及 xAI 档位名
+    aliases = {
+        "light": "low",
+        "none": "none",
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max",
+    }
+    return aliases.get(effort, "high")
 
 
 def _xai_supports_reasoning_none(model: str) -> bool:
@@ -584,6 +1015,9 @@ class _OpenAICompatibleClient:
         self._model = config.model
         self._base_url = (config.base_url or "").lower()
         self._is_deepseek = _is_deepseek_base(self._base_url)
+        self._is_glm = _is_glm_base(self._base_url) or "glm" in (
+            config.model or ""
+        ).lower()
         self._is_xai = _is_xai_base(self._base_url)
         # DeepSeek 官方：JSON Output 会偶发空 content；默认关闭，靠 prompt + 解析容错。
         # 开发 thinking 模式要求 <thinking> 前言，与 response_format=json_object 冲突。
@@ -594,12 +1028,19 @@ class _OpenAICompatibleClient:
         self._thinking_enabled = self._thinking_requested
         self._last_reasoning = ""
 
-    def _build_kwargs(self, prompt: str) -> dict[str, Any]:
+    def _build_kwargs(
+        self,
+        prompt: str,
+        *,
+        messages: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
         load_dotenv_file()
         max_tokens = _llm_max_tokens(thinking=self._thinking_enabled)
         kwargs: dict[str, Any] = {
             "model": self._model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages
+            if messages is not None
+            else [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
         }
         if self._json_mode:
@@ -610,6 +1051,18 @@ class _OpenAICompatibleClient:
             extra["thinking"] = {
                 "type": "enabled" if self._thinking_enabled else "disabled"
             }
+        elif self._is_glm:
+            # 智谱：thinking.type = enabled|disabled（与官方一致）
+            extra["thinking"] = {
+                "type": "enabled" if self._thinking_enabled else "disabled"
+            }
+            # reasoning_effort 仅 GLM-5.2+；4.7 等发了也会被忽略
+            if self._thinking_enabled and _glm_model_supports_reasoning_effort(
+                self._model
+            ):
+                effort = _glm_reasoning_effort(thinking=True)
+                if effort is not None:
+                    extra["reasoning_effort"] = effort
         elif self._is_xai:
             # xAI：grok-4.5 禁止 none；关 thinking 时用 low
             extra["reasoning_effort"] = _xai_reasoning_effort(
@@ -618,6 +1071,16 @@ class _OpenAICompatibleClient:
         if extra:
             kwargs["extra_body"] = extra
         return kwargs
+
+    def _session_messages_for_prompt(self, prompt: str) -> list[dict[str, str]] | None:
+        sess = _active_chat_session.get()
+        if sess is None:
+            return None
+        try:
+            return sess.build_api_messages(prompt)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("chat session build_api_messages failed: %s", exc)
+            return None
 
     def _extract_content(self, response: Any) -> tuple[str, str, str]:
         """Returns (answer_content, finish_reason, api_reasoning)."""
@@ -744,19 +1207,57 @@ class _OpenAICompatibleClient:
             seen.add(key)
             self._json_mode = json_mode
             self._thinking_enabled = thinking
-            kwargs = self._build_kwargs(prompt)
+            session_msgs = self._session_messages_for_prompt(prompt)
+            kwargs = self._build_kwargs(prompt, messages=session_msgs)
             try:
                 response = self._client.chat.completions.create(**kwargs)
             except Exception as exc:
-                last_detail = str(exc)
-                log.warning(
-                    "LLM create failed (json=%s thinking=%s max_tokens=%s): %s",
-                    json_mode,
-                    thinking,
-                    kwargs.get("max_tokens"),
-                    exc,
-                )
-                continue
+                err = str(exc).lower()
+                # 上下文过长：丢弃历史、新建 session 后重试一次
+                sess = _active_chat_session.get()
+                if (
+                    sess is not None
+                    and session_msgs is not None
+                    and any(
+                        k in err
+                        for k in (
+                            "context",
+                            "maximum",
+                            "too long",
+                            "token",
+                            "131072",
+                            "overflow",
+                        )
+                    )
+                ):
+                    log.warning(
+                        "Context overflow with chat session; resetting session %s",
+                        getattr(sess, "short_id", "?"),
+                    )
+                    try:
+                        sess.reset(reason="recovered")
+                    except Exception:  # noqa: BLE001
+                        pass
+                    kwargs = self._build_kwargs(prompt, messages=None)
+                    try:
+                        response = self._client.chat.completions.create(**kwargs)
+                    except Exception as exc2:
+                        last_detail = str(exc2)
+                        log.warning(
+                            "LLM create failed after session reset: %s",
+                            exc2,
+                        )
+                        continue
+                else:
+                    last_detail = str(exc)
+                    log.warning(
+                        "LLM create failed (json=%s thinking=%s max_tokens=%s): %s",
+                        json_mode,
+                        thinking,
+                        kwargs.get("max_tokens"),
+                        exc,
+                    )
+                    continue
             content, finish, api_reasoning = self._extract_content(response)
             if api_reasoning:
                 last_reasoning = api_reasoning
@@ -2033,7 +2534,113 @@ def validate_choices_against_options(
                     f"AI {pid}: {r} not in options "
                     f"[{', '.join(opts)}]"
                 )
+    chaos_hits = list_chaos_assignments(choices)
+    if len(chaos_hits) > 1:
+        detail = "; ".join(f"AI{pid}:{r}" for pid, r in chaos_hits)
+        errors.append(
+            f"chaos mutex: {len(chaos_hits)} chaos picks ({detail}); max 1/round"
+        )
     return errors
+
+
+_CHAOS_INTERFERENCE_RELICS: frozenset[str] = frozenset(
+    {
+        "NW_AI_BARBARIAN_INVASION",
+        "NW_AI_LIGHTNING_STORM",
+        "NW_AI_RIVER_FLOOD",
+    }
+)
+
+
+def is_chaos_interference_relic(relic_type: str) -> bool:
+    return (relic_type or "") in _CHAOS_INTERFERENCE_RELICS
+
+
+def list_chaos_assignments(choices: dict[str, Any]) -> list[tuple[str, str]]:
+    """[(player_id, relic_type), ...] 本轮所有混乱干扰选定。"""
+    hits: list[tuple[str, str]] = []
+    for pid, packed in choices.items():
+        if str(pid).startswith("_"):
+            continue
+        for r in _flatten_choice_relics(packed):
+            if is_chaos_interference_relic(r):
+                hits.append((str(pid), r))
+    return hits
+
+
+def enforce_chaos_mutex_choices(
+    choices: dict[str, Any],
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    """每轮至多 1 张混乱干扰；多余的用同领袖非混乱候选替换。
+
+    返回 (新 choices, 被改动的 AI id 列表)。
+    """
+    hits = list_chaos_assignments(choices)
+    if len(hits) <= 1:
+        return choices, []
+
+    opts_map = options_by_player(payload)
+    need_map = picks_needed_by_player(payload)
+    keep_pid, keep_relic = hits[0]
+    drop_set = {(pid, r) for pid, r in hits[1:]}
+    changed: list[str] = []
+    out: dict[str, Any] = {}
+
+    for pid, opts in opts_map.items():
+        need = need_map.get(pid, 1)
+        relics = _flatten_choice_relics(choices.get(pid))
+        if not relics and not opts:
+            continue
+        new_list: list[str] = []
+        seen: set[str] = set()
+        for r in relics:
+            if (pid, r) in drop_set:
+                continue
+            if is_chaos_interference_relic(r) and not (
+                pid == keep_pid and r == keep_relic
+            ):
+                continue
+            if r in seen:
+                continue
+            seen.add(r)
+            new_list.append(r)
+        for opt in opts:
+            if len(new_list) >= need:
+                break
+            if opt in seen:
+                continue
+            if is_chaos_interference_relic(opt):
+                # 已保留一张混乱时，不再补混乱
+                if keep_pid and any(is_chaos_interference_relic(x) for x in new_list):
+                    continue
+                if pid != keep_pid:
+                    continue
+            seen.add(opt)
+            new_list.append(opt)
+        if not new_list and opts:
+            for opt in opts:
+                if not is_chaos_interference_relic(opt) or (
+                    pid == keep_pid and opt == keep_relic
+                ):
+                    new_list.append(opt)
+                    break
+        final = new_list[:need] if need > 1 else (new_list[:1] or [])
+        if need == 1:
+            out[pid] = final[0] if final else (opts[0] if opts else "")
+        else:
+            out[pid] = final
+        old_flat = _flatten_choice_relics(choices.get(pid))
+        if _flatten_choice_relics(out[pid]) != old_flat:
+            changed.append(pid)
+
+    # 保留不在 opts_map 里的键（不应发生）
+    for pid, packed in choices.items():
+        if str(pid).startswith("_"):
+            continue
+        if pid not in out:
+            out[pid] = packed
+    return out, changed
 
 
 def coerce_choices_to_options(
@@ -2069,6 +2676,45 @@ def coerce_choices_to_options(
             uniq = opts[:need]
         out[pid] = uniq[0] if need == 1 and len(uniq) == 1 else uniq[:need]
     return out
+
+
+def revert_invalid_picks_to_draft(
+    choices: dict[str, Any],
+    draft_choices: dict[str, Any],
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    """审查改坏时：该领袖若初稿合法则整份回退初稿；返回 (新 choices, 回退的领袖 id)。"""
+    if not draft_choices:
+        return dict(choices), []
+    opts_map = options_by_player(payload)
+    need_map = picks_needed_by_player(payload)
+    out = dict(choices)
+    reverted: list[str] = []
+    for pid, opts in opts_map.items():
+        opt_set = set(opts)
+        need = need_map.get(pid, 1)
+        cur = _flatten_choice_relics(out.get(pid))
+        cur_bad = (
+            not cur
+            or any(r not in opt_set for r in cur)
+            or len(cur) != len(set(cur))
+            or (len(opts) >= need and len(cur) < need)
+            or len(cur) > need
+        )
+        if not cur_bad:
+            continue
+        draft = _flatten_choice_relics(draft_choices.get(pid))
+        draft_ok = (
+            bool(draft)
+            and all(r in opt_set for r in draft)
+            and len(draft) == len(set(draft))
+            and not (len(opts) >= need and len(draft) < need)
+            and len(draft) <= need
+        )
+        if draft_ok:
+            out[pid] = draft[0] if need == 1 and len(draft) == 1 else draft
+            reverted.append(pid)
+    return out, reverted
 
 
 def format_options_constraint(payload: dict[str, Any]) -> str:
@@ -2295,9 +2941,19 @@ def _ensure_valid_pool_choices(
     request_id: str,
     model: str,
     verbose: bool,
+    draft_choices: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """拒绝幻觉类型（如 NW_AI_BALANCED）；先 LLM 重修一次，仍非法则回退候选池前 N 张。"""
+    """拒绝幻觉/越池类型。优先回退合法初稿 → 再 LLM 重修 → 再候选池前 N 张。"""
     choices_map = _decision_choices_map(decision)
+    choices_map, chaos_changed = enforce_chaos_mutex_choices(choices_map, payload)
+    if chaos_changed:
+        decision["choices"] = choices_map
+        if verbose:
+            print(
+                "Chaos mutex: max 1 interference/round; replaced for AI "
+                + ", ".join(chaos_changed),
+                flush=True,
+            )
     violations = validate_choices_against_options(choices_map, payload)
     if not violations:
         decision["choices"] = choices_map
@@ -2310,6 +2966,28 @@ def _ensure_valid_pool_choices(
             + (" ..." if len(violations) > 6 else ""),
             flush=True,
         )
+
+    if draft_choices:
+        restored, reverted = revert_invalid_picks_to_draft(
+            choices_map, draft_choices, payload
+        )
+        if reverted:
+            choices_map = restored
+            if verbose:
+                print(
+                    f"Reverted illegal review picks to draft for AI: "
+                    f"{', '.join(reverted)}",
+                    flush=True,
+                )
+            violations = validate_choices_against_options(choices_map, payload)
+            if not violations:
+                decision["choices"] = choices_map
+                decision["_reverted_to_draft"] = reverted
+                if verbose:
+                    print("Pool OK after draft revert (skip LLM repair).", flush=True)
+                return decision
+
+    if verbose:
         print("Repairing against candidate pools ...", flush=True)
 
     constraint = format_options_constraint(payload)
@@ -2346,12 +3024,19 @@ def _ensure_valid_pool_choices(
 
     if violations:
         coerced = coerce_choices_to_options(choices_map, payload)
+        coerced, chaos_changed2 = enforce_chaos_mutex_choices(coerced, payload)
         if verbose:
             print(
                 f"Coerced invalid picks to pool fallback: "
                 f"{json.dumps(coerced, ensure_ascii=False)}",
                 flush=True,
             )
+            if chaos_changed2:
+                print(
+                    "Chaos mutex after coerce; replaced for AI "
+                    + ", ".join(chaos_changed2),
+                    flush=True,
+                )
         decision = {
             "choices": coerced,
             "reasons": coerce_reasons_map(decision.get("reasons")),
@@ -2380,24 +3065,81 @@ def run_llm_decision_with_reviews(
     request_id: str,
     required_ids: list[str] | None = None,
     payload: dict[str, Any] | None = None,
+    review_client: _ChatClient | None = None,
+    review_model: str | None = None,
     verbose: bool = True,
 ) -> tuple[str, str, dict[str, Any]]:
-    """初稿 + 可选多轮自审。返回 (final_raw, combined_reasoning_for_log, decision)."""
-    rounds = llm_review_rounds()
-    req = required_ids or []
-    raw, reasoning, decision = _complete_and_parse_decision(
-        client,
-        prompt,
-        request_id=request_id,
-        model=model,
-        verbose=verbose,
-        label="draft",
-        required_ids=req or None,
+    """初稿 + 可选多轮审查。
+
+    ``review_client`` 若给定且不同于 draft，则为双模型（DeepSeek 初稿 / Grok 审查）。
+    缺人补全与候选池修复优先用初稿客户端（DeepSeek 更稳跟格式约束）。
+    """
+    from civ_mcp.llm_chat_session import (
+        chat_session_enabled,
+        load_or_create_chat_session,
     )
-    log_parts = [f"### Round 0 — draft\n\n{reasoning or '*(no thinking text)*'}"]
+
+    dual = review_client is not None and review_client is not client
+    rounds = llm_effective_review_rounds(dual=dual or llm_pipeline_mode() == "dual")
+    rev_client = review_client or client
+    rev_model = review_model or model
+    req = required_ids or []
+
+    chat_sess = None
+    chat_token = None
+    if payload is not None and chat_session_enabled():
+        try:
+            chat_sess = load_or_create_chat_session(payload, model=model)
+            chat_token = _active_chat_session.set(chat_sess)
+            if verbose:
+                # 每轮都打完整 UUID，便于对照是否同一存档会话
+                print(chat_sess.label(), flush=True)
+                if chat_sess.status != "resumed":
+                    print(
+                        f"ChatSession {chat_sess.status.upper()} "
+                        f"(file was missing/corrupt or first pick this save)",
+                        flush=True,
+                    )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("chat session load failed: %s", exc)
+            chat_sess = None
+            chat_token = None
+
+    try:
+        raw, reasoning, decision = _complete_and_parse_decision(
+            client,
+            prompt,
+            request_id=request_id,
+            model=model,
+            verbose=verbose,
+            label="draft",
+            required_ids=req or None,
+        )
+    finally:
+        # 审查/修复不用多轮历史，避免把 review prompt 叠进对局记忆
+        if chat_token is not None:
+            _active_chat_session.reset(chat_token)
+            chat_token = None
+
+    draft_tag = f"draft ({model})" if dual else "draft"
+    log_parts = [f"### Round 0 — {draft_tag}\n\n{reasoning or '*(no thinking text)*'}"]
+    draft_choices = _decision_choices_map(decision)
+    if rounds >= 1 and payload is not None:
+        draft_path = save_draft_checkpoint_log(
+            request_id=request_id,
+            model=model,
+            reasoning=reasoning,
+            raw_response=raw,
+            decision=decision,
+            payload=payload,
+            review_model=rev_model if dual or rounds else None,
+        )
+        if verbose and draft_path is not None:
+            print(f"Draft checkpoint saved: {draft_path.name}", flush=True)
     for i in range(1, rounds + 1):
         if verbose:
-            print(f"Self-review {i}/{rounds} ...", flush=True)
+            who = f"{rev_model} " if dual else ""
+            print(f"Review {i}/{rounds} ({who.strip() or 'self'}) ...", flush=True)
         review_prompt = build_self_review_prompt(
             prompt,
             previous_reasoning=reasoning,
@@ -2405,46 +3147,70 @@ def run_llm_decision_with_reviews(
             round_index=i,
             total_rounds=rounds,
         )
+        if dual:
+            review_prompt += (
+                "\n\n【双模型审查】上一轮由另一模型起草；你只负责纠错与改选。"
+                "必须从每位领袖候选列表原样复制类型 ID，禁止编造 NW_AI_*"
+                "（禁止 MOUNTAIN_PASS / DESERT_STORM / TRADE_ROUTE 等幻觉名）。\n"
+                "若上轮选择合法且合理，可维持；非法类型必须改回候选列表内的 ID。\n"
+                "禁止把「历史库存/效果说明」里的类型当成该领袖本轮候选；"
+                "文化主战略也不代表本轮一定有 NW_AI_STATS_1。\n"
+            )
         if req:
             review_prompt += (
                 f"\n\n【强制】最终 choices 必须包含全部键：{','.join(req)}（缺一不可）。"
             )
         if payload:
             review_prompt += (
-                "\n【强制】每位领袖 choices 的类型字符串必须从该领袖「候选海克斯」列表"
-                "原样复制；禁止编造不存在的 NW_AI_* 类型。\n"
+                "\n【强制】每位领袖 choices 只能从下列本轮合法 ID 中原样复制"
+                "（历史库存中的类型若未出现在此表则不可选）：\n"
+                f"{format_options_constraint(payload)}\n"
             )
         raw, reasoning, decision = _complete_and_parse_decision(
-            client,
+            rev_client,
             review_prompt,
             request_id=request_id,
-            model=model,
+            model=rev_model,
             verbose=verbose,
             label=f"review-{i}",
             required_ids=req or None,
         )
-        log_parts.append(f"### Round {i} — self-review\n\n{reasoning or '*(no thinking text)*'}")
+        rev_tag = f"review ({rev_model})" if dual else "self-review"
+        log_parts.append(
+            f"### Round {i} — {rev_tag}\n\n{reasoning or '*(no thinking text)*'}"
+        )
+    # 补全/池修复：dual 时优先 DeepSeek（跟格式更稳），不论它是初稿还是审查
+    if dual:
+        if _client_looks_deepseek(rev_client):
+            fix_client, fix_model = rev_client, rev_model
+        elif _client_looks_deepseek(client):
+            fix_client, fix_model = client, model
+        else:
+            fix_client, fix_model = rev_client, rev_model
+    else:
+        fix_client, fix_model = rev_client, rev_model
     if req:
         decision = _ensure_all_choices(
-            client,
+            fix_client,
             base_prompt=prompt,
             decision=decision,
             reasoning=reasoning,
             required_ids=req,
             request_id=request_id,
-            model=model,
+            model=fix_model,
             verbose=verbose,
         )
     if payload:
         decision = _ensure_valid_pool_choices(
-            client,
+            fix_client,
             base_prompt=prompt,
             decision=decision,
             payload=payload,
             required_ids=req,
             request_id=request_id,
-            model=model,
+            model=fix_model,
             verbose=verbose,
+            draft_choices=draft_choices,
         )
         raw = json.dumps(
             {
@@ -2456,10 +3222,50 @@ def run_llm_decision_with_reviews(
         )
     elif req:
         raw = json.dumps(decision, ensure_ascii=False, indent=2)
+
     combined = "\n\n---\n\n".join(log_parts)
     if rounds and verbose:
         print(f"Reviews done ({rounds}); using final choices.", flush=True)
     return raw, combined, decision
+
+
+def commit_chat_session_after_success(
+    payload: dict[str, Any],
+    decision: dict[str, Any],
+    *,
+    request_id: str,
+    model: str,
+    verbose: bool = True,
+) -> None:
+    """Submit/publish 成功后再写入多轮会话，避免失败重试污染历史。"""
+    from civ_mcp.llm_chat_session import chat_session_enabled, load_or_create_chat_session
+
+    if not chat_session_enabled():
+        return
+    try:
+        chat_sess = load_or_create_chat_session(payload, model=model)
+        commit_body = json.dumps(
+            {
+                "choices": decision.get("choices"),
+                "reasons": decision.get("reasons"),
+            },
+            ensure_ascii=False,
+        )
+        chat_sess.commit_decision_turn(
+            request_id=request_id,
+            turn=payload.get("turn"),
+            human_relic=payload.get("human_relic"),
+            assistant_json=commit_body,
+            model=model,
+        )
+        if verbose:
+            print(
+                f"ChatSession committed: id={chat_sess.session_id} "
+                f"turns={chat_sess.turn_count}",
+                flush=True,
+            )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("chat session commit failed: %s", exc)
 
 
 def _save_failed_llm_raw(
@@ -2496,6 +3302,8 @@ async def decide_and_submit_once(
     client: _ChatClient,
     model: str,
     *,
+    review_client: _ChatClient | None = None,
+    review_model: str | None = None,
     verbose: bool = True,
 ) -> bool:
     """Poll once; if pending, call LLM and submit. Returns True if a request was handled."""
@@ -2521,6 +3329,10 @@ async def decide_and_submit_once(
     prompt = build_decision_prompt(payload, context)
     required_ids = expected_choice_ids(payload)
 
+    model_label = model
+    if review_client is not None and review_model and review_client is not client:
+        model_label = f"{model} → {review_model}"
+
     raw, reasoning, decision = run_llm_decision_with_reviews(
         client,
         model,
@@ -2528,6 +3340,8 @@ async def decide_and_submit_once(
         request_id=request_id,
         required_ids=required_ids,
         payload=payload,
+        review_client=review_client,
+        review_model=review_model,
         verbose=verbose,
     )
 
@@ -2575,10 +3389,17 @@ async def decide_and_submit_once(
     parsed = json.loads(result)
     if not parsed.get("ok"):
         raise RuntimeError(parsed.get("message", "submit failed"))
+    commit_chat_session_after_success(
+        payload,
+        decision,
+        request_id=request_id,
+        model=model,
+        verbose=verbose,
+    )
     try:
         save_decision_analysis_log(
             request_id=request_id,
-            model=model,
+            model=model_label,
             prompt=prompt,
             raw_response=raw,
             reasoning=reasoning,
@@ -2606,6 +3427,8 @@ async def decide_and_inject_log_channel(
     model: str,
     payload: dict[str, Any],
     *,
+    review_client: _ChatClient | None = None,
+    review_model: str | None = None,
     verbose: bool = True,
 ) -> bool:
     """MP path: Lua.log request → LLM → publish wire (clipboard); Ctrl+V in game."""
@@ -2628,6 +3451,9 @@ async def decide_and_inject_log_channel(
     # Reuse the same LLM path as decide_and_submit_once (inline subset)
     prompt = build_decision_prompt(payload, context)
     required_ids = expected_choice_ids(payload)
+    model_label = model
+    if review_client is not None and review_model and review_client is not client:
+        model_label = f"{model} → {review_model}"
     raw, reasoning, decision = run_llm_decision_with_reviews(
         client,
         model,
@@ -2635,6 +3461,8 @@ async def decide_and_inject_log_channel(
         request_id=request_id,
         required_ids=required_ids,
         payload=payload,
+        review_client=review_client,
+        review_model=review_model,
         verbose=verbose,
     )
 
@@ -2679,7 +3507,7 @@ async def decide_and_inject_log_channel(
     try:
         analysis_path = save_decision_analysis_log(
             request_id=request_id,
-            model=model,
+            model=model_label,
             prompt=prompt,
             raw_response=raw,
             reasoning=reasoning,
@@ -2702,6 +3530,13 @@ async def decide_and_inject_log_channel(
             flush=True,
         )
     publish_extai_decision(wire, request_id=request_id)
+    commit_chat_session_after_success(
+        payload,
+        decision,
+        request_id=request_id,
+        model=model,
+        verbose=verbose,
+    )
     if verbose:
         print(
             f"Publish OK: {request_id!r} — Ctrl+V in game; "

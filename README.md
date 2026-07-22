@@ -102,13 +102,90 @@
 
 ## 大模型选择海克斯 · 启动配置
 
-环境安装、高级设置开关、MCP / DeepSeek 监听脚本、Cursor Agent 调试流程等，见：
+环境安装、高级设置开关、MCP、Cursor Agent 调试流程等，见：
 
 **[`Haikesi_Dev/FIRETUNER_MCP_SETUP.md`](Haikesi_Dev/FIRETUNER_MCP_SETUP.md)**
 
-推荐快速路径：配置 `.env` 后，游戏进档并开启相关选项，另开终端常驻：
+先复制 [`civ6-mcp-haikesi/.env.example`](civ6-mcp-haikesi/.env.example) → `civ6-mcp-haikesi/.env` 并填入密钥。游戏进档并开启相关选项后，另开终端常驻对应脚本。
+
+公共前置：
 
 ```powershell
 Set-Location "G:\Civ6Mods\civ6-mcp-haikesi"
+```
+
+| 模式 | `.env` 要点 | 启动脚本 |
+|------|-------------|----------|
+| **DeepSeek 单模型**（推荐日常） | `DEEPSEEK_API_KEY` + `DEEPSEEK_MODEL` | `uv run python scripts/haikesi_deepseek_watch.py` |
+| **GLM-5.2 单模型（无审查）** | `GLM_API_KEY` + `GLM_MODEL=glm-5.2`；`PIPELINE=single`；`DRAFT=glm`；`REVIEW_ROUNDS=0` | `uv run python scripts/haikesi_llm_watch.py` |
+| **Grok / 任意单模型** | `HAIKESI_LLM_*`；`HAIKESI_LLM_PIPELINE=single`；可选 `HAIKESI_LLM_DRAFT=grok\|openai\|…` | `uv run python scripts/haikesi_llm_watch.py` |
+| **双模型 dual** | `HAIKESI_LLM_PIPELINE=dual` + **`HAIKESI_LLM_DRAFT` / `HAIKESI_LLM_REVIEW`**（任意 provider 组合） | `uv run python scripts/haikesi_llm_watch.py` |
+
+### DeepSeek 单模型
+
+```powershell
+uv run python scripts/haikesi_deepseek_watch.py
+```
+
+### GLM-5.2 单模型（无审查）
+
+```env
+HAIKESI_LLM_PIPELINE=single
+HAIKESI_LLM_DRAFT=glm
+HAIKESI_LLM_REVIEW_ROUNDS=0
+GLM_API_KEY=...
+GLM_MODEL=glm-5.2
+GLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+```
+
+```powershell
 uv run python scripts/haikesi_llm_watch.py
 ```
+
+### Grok 单模型
+
+`.env` 示例片段：
+
+```env
+HAIKESI_LLM_PIPELINE=single
+HAIKESI_LLM_API_KEY=xai-...
+HAIKESI_LLM_BASE_URL=https://api.x.ai/v1
+HAIKESI_LLM_MODEL=grok-4.5
+HAIKESI_LLM_REVIEW_ROUNDS=0
+```
+
+```powershell
+uv run python scripts/haikesi_llm_watch.py
+```
+
+### 复杂管线（任意模型初稿 + 任意模型审查）
+
+用 provider id 指定角色，**只改环境变量即可对调/换模型**，无需改代码：
+
+| Provider id | 读取的环境变量 |
+|-------------|----------------|
+| `deepseek` | `DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL` |
+| `glm`（别名 `zhipu`/`bigmodel`） | `GLM_API_KEY` / `GLM_MODEL` / `GLM_BASE_URL` |
+| `grok`（别名 `xai`/`haikesi`） | `HAIKESI_LLM_API_KEY` / `MODEL` / `BASE_URL` |
+| `openai` | `OPENAI_API_KEY` / `OPENAI_MODEL` / `OPENAI_BASE_URL` |
+| `anthropic` | `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL`（无 BASE_URL=原生） |
+| `draft` / `review` | `HAIKESI_DRAFT_*` / `HAIKESI_REVIEW_*` |
+| 自定义 `foo` | `HAIKESI_PROVIDER_FOO_API_KEY` / `_BASE_URL` / `_MODEL` |
+
+```env
+HAIKESI_LLM_PIPELINE=dual
+HAIKESI_LLM_DRAFT=grok
+HAIKESI_LLM_REVIEW=deepseek
+HAIKESI_LLM_REVIEW_ROUNDS=1
+```
+
+对调示例：`HAIKESI_LLM_DRAFT=deepseek` + `HAIKESI_LLM_REVIEW=grok`。  
+第三方网关示例：配好 `HAIKESI_PROVIDER_FOO_*` 后设 `HAIKESI_LLM_DRAFT=foo`。
+
+旧变量 `HAIKESI_LLM_DUAL_ORDER=grok_draft|deepseek_draft` 仍可用（未设 DRAFT/REVIEW 时）。
+
+```powershell
+uv run python scripts/haikesi_llm_watch.py
+```
+
+启动成功会打印 `Draft: <provider> / <model>`、`Review: …`，以及 `ChatSession: ON/OFF`。每轮选卡还会打印 `ChatSession=<id>… (resumed|created|recovered)`。改 `.env` 后需**重启** watch。更细开关见 `.env.example`。

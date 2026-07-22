@@ -514,20 +514,45 @@ end
 -- ===========================================================================
 local g_LastExtAIBroadcastSeq = 0
 
+-- FireTuner 在热座/局域网/互联网均禁用；联机 PVE 房也必须走横幅+LOG 栈。
+-- 原版 UI 用 GameConfiguration.*，不要只信 Game.IsNetworkMultiplayer()（联机 PVE 常仍为 false）。
+local function IsNetworkMultiplayerGame()
+    local function probe(fn)
+        if type(fn) ~= "function" then
+            return false
+        end
+        local ok, v = pcall(fn)
+        return ok and v == true
+    end
+    if GameConfiguration ~= nil then
+        if probe(GameConfiguration.IsAnyMultiplayer) then
+            return true
+        end
+        if probe(GameConfiguration.IsNetworkMultiplayer) then
+            return true
+        end
+        if probe(GameConfiguration.IsLANMultiplayer) then
+            return true
+        end
+        if probe(GameConfiguration.IsHotseat) then
+            return true
+        end
+    end
+    if Game ~= nil and probe(Game.IsNetworkMultiplayer) then
+        return true
+    end
+    if Network ~= nil and probe(Network.IsNetworkMultiplayer) then
+        return true
+    end
+    return false
+end
+
 local function IsGameHost()
     if Network ~= nil and Network.IsGameHost ~= nil then
         return Network.IsGameHost()
     end
-    if Game ~= nil and Game.IsNetworkMultiplayer ~= nil then
-        return not Game.IsNetworkMultiplayer()
-    end
-    return true
-end
-
-local function IsNetworkMultiplayerGame()
-    return Game ~= nil
-        and Game.IsNetworkMultiplayer ~= nil
-        and Game.IsNetworkMultiplayer()
+    -- 无 Network API 时：非多人局本机即主机
+    return not IsNetworkMultiplayerGame()
 end
 
 local function ProcessStagedExtAI()
@@ -602,6 +627,13 @@ local g_ExtAIUiConsumed = false
 -- EXECUTE_SCRIPT 后 Game prop 偶发晚一拍；短重试拉横幅（与 LLM/exchange 无关）
 local g_ExtAIBannerRetryFrames = 0
 local EXT_AI_BANNER_RETRY_MAX = 90
+
+-- 前向声明：Apply/快捷键可能早于下方 `local function` 定义点引用这些名字
+local IsExtAIPending
+local FocusExtAIEditBox
+local AttachExtAIBannerToHud
+local SetExtAIBannerVisible
+local TryApplyExtAIAnySource
 
 local function ShortDiploStateFromIndex(idx)
     if idx == nil then
@@ -1047,13 +1079,14 @@ local function LooksLikeExtAIApply(text)
 end
 
 local function CanBroadcastExtAI()
-    if Game ~= nil and Game.IsNetworkMultiplayer ~= nil and not Game.IsNetworkMultiplayer() then
+    -- 单机/非多人：任意本机席位可广播；多人：仅主机
+    if not IsNetworkMultiplayerGame() then
         return true
     end
     return IsGameHost()
 end
 
-local function IsExtAIPending()
+IsExtAIPending = function()
     -- 读档/回主菜单等帧上 Game 可能暂为 nil；横幅 tick 每帧调用
     if Game == nil or Game.GetProperty == nil then
         return false
@@ -1069,7 +1102,7 @@ local function ExtAINotifType()
     return NotificationTypes.USER_DEFINED_1 or NotificationTypes.DEFAULT
 end
 
-local function FocusExtAIEditBox()
+FocusExtAIEditBox = function()
     if Controls == nil or Controls.ExtAIPayloadEdit == nil then
         return false
     end
@@ -1253,7 +1286,7 @@ local function ApplyExtAIFromEditBox(source)
     return false
 end
 
-local function TryApplyExtAIAnySource(source)
+TryApplyExtAIAnySource = function(source)
     if not IsExtAIPending() and not g_ExtAIPendingNotified then
         return false
     end
@@ -1269,7 +1302,7 @@ local function TryApplyExtAIAnySource(source)
     return false
 end
 
-local function AttachExtAIBannerToHud()
+AttachExtAIBannerToHud = function()
     if Controls == nil or Controls.ExtAIBanner == nil then
         print("[Haikesi ExtAI MP] WARN: ExtAIBanner missing, cannot attach to HUD")
         return false
@@ -1292,7 +1325,7 @@ local function AttachExtAIBannerToHud()
 end
 
 -- pending 横幅：挂到 HUD 后显示在屏幕上方中央
-local function SetExtAIBannerVisible(visible, statusLocOrText)
+SetExtAIBannerVisible = function(visible, statusLocOrText)
     if Controls == nil then
         return
     end
@@ -1517,6 +1550,48 @@ local function OnExtAIPayloadChanged()
     ApplyExtAIFromEditBox("changed")
 end
 
+local function ExtAIMpDiag(tag)
+    local mp = IsNetworkMultiplayerGame()
+    local pending = IsExtAIPending()
+    local host = false
+    pcall(function()
+        host = IsGameHost()
+    end)
+    local rid = ""
+    pcall(function()
+        if Game ~= nil then
+            rid = tostring(Game:GetProperty("PROP_NW_HAIKESI_EXT_AI_REQUEST_ID") or "")
+        end
+    end)
+    local gcAny, gcNet, gcLan, gcHot = "?", "?", "?", "?"
+    pcall(function()
+        if GameConfiguration ~= nil then
+            if GameConfiguration.IsAnyMultiplayer ~= nil then
+                gcAny = tostring(GameConfiguration.IsAnyMultiplayer())
+            end
+            if GameConfiguration.IsNetworkMultiplayer ~= nil then
+                gcNet = tostring(GameConfiguration.IsNetworkMultiplayer())
+            end
+            if GameConfiguration.IsLANMultiplayer ~= nil then
+                gcLan = tostring(GameConfiguration.IsLANMultiplayer())
+            end
+            if GameConfiguration.IsHotseat ~= nil then
+                gcHot = tostring(GameConfiguration.IsHotseat())
+            end
+        end
+    end)
+    print(string.format(
+        "[Haikesi ExtAI MP] %s mp=%s pending=%s host=%s request_id=%s GC.Any=%s GC.Net=%s GC.LAN=%s GC.Hot=%s",
+        tostring(tag),
+        mp and "1" or "0",
+        pending and "1" or "0",
+        host and "1" or "0",
+        rid,
+        gcAny, gcNet, gcLan, gcHot
+    ))
+    return mp, pending, host
+end
+
 local function OnExtAIInputHandler(pInputStruct)
     local uiMsg = pInputStruct:GetMessageType()
     if uiMsg ~= KeyEvents.KeyUp and uiMsg ~= KeyEvents.KeyDown then
@@ -1530,29 +1605,35 @@ local function OnExtAIInputHandler(pInputStruct)
     local key = pInputStruct:GetKey()
     if key == Keys.R then
         if uiMsg == KeyEvents.KeyDown then
-            if not IsNetworkMultiplayerGame() then
-                ProcessStagedExtAI()
-                return true
-            end
-            print("[Haikesi ExtAI MP] hotkey R → show banner + focus EditBox")
-            if IsExtAIPending() or g_ExtAIPendingNotified then
+            local mp, pending = ExtAIMpDiag("hotkey R")
+            -- pending 时强制显横幅（含引擎误报 MP=0 的兜底），便于 Ctrl+V
+            if pending then
+                AttachExtAIBannerToHud()
                 SetExtAIBannerVisible(true, "LOC_HAIKESI_EXT_AI_BANNER_PENDING")
+                FocusExtAIEditBox()
+                print("[Haikesi ExtAI MP] hotkey R → force show banner (pending=1)")
+            elseif not mp then
+                ProcessStagedExtAI()
+                print("[Haikesi ExtAI MP] hotkey R → SP/no-pending: ProcessStaged only (no banner)")
+            else
+                print("[Haikesi ExtAI MP] hotkey R → MP but no pending; banner not shown")
+                FocusExtAIEditBox()
             end
-            FocusExtAIEditBox()
             return true
         end
         return true
     end
     if key == Keys.V then
         if uiMsg == KeyEvents.KeyDown then
-            if not IsNetworkMultiplayerGame() then
-                ProcessStagedExtAI()
-                return true
-            end
-            print("[Haikesi ExtAI MP] hotkey V → apply EditBox / apply.txt")
-            if IsExtAIPending() then
+            local mp, pending = ExtAIMpDiag("hotkey V")
+            if pending then
+                AttachExtAIBannerToHud()
                 SetExtAIBannerVisible(true, "LOC_HAIKESI_EXT_AI_BANNER_PENDING")
             end
+            if not mp and not pending then
+                ProcessStagedExtAI()
+            end
+            print("[Haikesi ExtAI MP] hotkey V → apply EditBox / apply.txt")
             TryApplyExtAIAnySource("hotkeyV")
             return true
         end

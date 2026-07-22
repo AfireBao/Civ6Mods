@@ -7,6 +7,9 @@ Usage:
   uv run python scripts/haikesi_llm_watch.py
 
 Env: HAIKESI_WATCH_MODE=auto|tuner|log
+     HAIKESI_LLM_PIPELINE=single|dual
+     HAIKESI_LLM_DRAFT / HAIKESI_LLM_REVIEW = provider ids
+       (deepseek|grok|glm|openai|anthropic|draft|review|custom)
 """
 
 from __future__ import annotations
@@ -22,13 +25,12 @@ from civ_mcp.connection import GameConnection
 from civ_mcp.extai_log_channel import LuaLogExtAITailer, default_lua_log_path
 from civ_mcp.game_state import GameState
 from civ_mcp.haikesi_llm import (
-    create_chat_client,
     decide_and_inject_log_channel,
     decide_and_submit_once,
-    llm_review_rounds,
+    llm_effective_review_rounds,
     llm_thinking_enabled,
-    load_haikesi_llm_config,
     poll_pending_request,
+    resolve_decision_pipeline,
 )
 
 
@@ -52,23 +54,53 @@ async def _try_connect_tuner(conn: GameConnection, *, retries: int = 2) -> bool:
 
 
 async def main() -> None:
-    config = load_haikesi_llm_config()
-    client = create_chat_client(config)
+    pipeline = resolve_decision_pipeline(prefer="haikesi")
+    draft_client = pipeline.draft_client
+    review_client = pipeline.review_client if pipeline.mode == "dual" else None
+    review_model = pipeline.review_model if pipeline.mode == "dual" else None
     interval = float(os.environ.get("HAIKESI_WATCH_INTERVAL_SEC", "3"))
     mode = _resolve_mode()
+    rounds = llm_effective_review_rounds(dual=pipeline.mode == "dual")
 
     conn = GameConnection()
     gs = GameState(conn)
     channel = "tuner"
 
     print("=== Haikesi LLM Watch ===")
-    print(f"Provider: {config.provider_label}")
-    print(f"Model: {config.model}")
+    print(f"Pipeline: {pipeline.mode}")
+    if pipeline.mode == "dual":
+        print(
+            f"Draft:   {pipeline.draft_provider} / {pipeline.draft_model}",
+        )
+        print(
+            f"Review:  {pipeline.review_provider} / {pipeline.review_model}",
+        )
+        print(
+            f"Roles:   HAIKESI_LLM_DRAFT={pipeline.draft_provider} "
+            f"HAIKESI_LLM_REVIEW={pipeline.review_provider}",
+        )
+    else:
+        print(f"Model:   {pipeline.draft_provider} / {pipeline.model_label}")
     print(
         f"Thinking: {'ON' if llm_thinking_enabled() else 'OFF'} "
-        f"| ReviewRounds: {llm_review_rounds()} "
-        f"(HAIKESI_LLM_THINKING / HAIKESI_LLM_REVIEW_ROUNDS)",
+        f"| ReviewRounds: {rounds} "
+        f"(HAIKESI_LLM_THINKING / HAIKESI_LLM_REVIEW_ROUNDS"
+        f"{'; dual→min 1' if pipeline.mode == 'dual' else ''})",
     )
+    try:
+        from civ_mcp.llm_chat_session import chat_session_enabled, max_history_turns
+
+        if chat_session_enabled():
+            print(
+                f"ChatSession: ON (per save) "
+                f"history_turns={max_history_turns()} "
+                f"(HAIKESI_LLM_CHAT_SESSION; "
+                f"file=logs/decisions/<save>/llm_chat_session.json)",
+            )
+        else:
+            print("ChatSession: OFF (stateless each pick)")
+    except Exception as exc:  # noqa: BLE001
+        print(f"ChatSession: (unavailable: {exc})")
     print(f"Mode: {mode} | Poll every {interval}s — Ctrl+C to stop\n")
 
     if mode in ("auto", "tuner"):
@@ -103,7 +135,13 @@ async def main() -> None:
                     if status == "pending" and request_id and request_id != last_handled_id:
                         print(f"\n[{time.strftime('%H:%M:%S')}] New pending: {request_id}")
                         handled = await decide_and_submit_once(
-                            conn, gs, client, config.model, verbose=True
+                            conn,
+                            gs,
+                            draft_client,
+                            pipeline.draft_model,
+                            review_client=review_client,
+                            review_model=review_model,
+                            verbose=True,
                         )
                         if handled:
                             last_handled_id = request_id
@@ -124,7 +162,12 @@ async def main() -> None:
                                 f"New pending (log): {request_id} key={log_key}"
                             )
                             handled = await decide_and_inject_log_channel(
-                                client, config.model, payload, verbose=True
+                                draft_client,
+                                pipeline.draft_model,
+                                payload,
+                                review_client=review_client,
+                                review_model=review_model,
+                                verbose=True,
                             )
                             if handled:
                                 last_handled_log_key = log_key

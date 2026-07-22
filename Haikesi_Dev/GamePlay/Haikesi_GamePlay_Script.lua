@@ -1163,8 +1163,8 @@ local function Haikesi_PickRandomRelicsFromPool(pool, count, salt)
 end
 
 local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countBefore, createdTurn)
-    -- 混乱干扰互斥：本批候选池中至多一名 AI 的 options 可含混乱类；
-    -- 大模型提示词不再写互斥规则，靠候选列表自然约束。
+    -- 混乱干扰互斥：整批候选至多 1 张混乱类（跨 AI + 同一 AI 的 6 选里也只留 1 张）。
+    -- 大模型提示词不再写互斥规则，靠候选列表自然约束；提交侧仍二次校验。
     local chaosInOptionsBatch = false
     local aiOptionIDs = {}
     for _, pAI in ipairs(Haikesi_GetAliveAIPlayers()) do
@@ -1173,14 +1173,41 @@ local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countB
         local optCount = Haikesi_AIOptionsCountForPlayer(pAI)
         local salt = countBefore * 1000 + aiID * 17 + requesterPlayerID + createdTurn * 997
         local options = Haikesi_PickRandomRelicsFromPool(available, optCount, salt)
-        Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, table.concat(options, ","))
-        table.insert(aiOptionIDs, tostring(aiID))
+
+        -- 同一 AI 选项里若抽到多张混乱，只保留第一张，其余用非混乱补满
+        local filtered = {}
+        local chaosKeptHere = false
         for _, opt in ipairs(options) do
             if IsChaosInterferenceRelic(opt) then
-                chaosInOptionsBatch = true
-                break
+                if not chaosInOptionsBatch and not chaosKeptHere then
+                    table.insert(filtered, opt)
+                    chaosKeptHere = true
+                    chaosInOptionsBatch = true
+                end
+            else
+                table.insert(filtered, opt)
             end
         end
+        if #filtered < optCount then
+            local have = {}
+            for _, t in ipairs(filtered) do
+                have[t] = true
+            end
+            local refill = GetAIAvailableRelics(pAI, true) -- 强制无混乱
+            for _, t in ipairs(refill) do
+                if #filtered >= optCount then
+                    break
+                end
+                if not have[t] then
+                    table.insert(filtered, t)
+                    have[t] = true
+                end
+            end
+        end
+        options = filtered
+
+        Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, table.concat(options, ","))
+        table.insert(aiOptionIDs, tostring(aiID))
         print("[Haikesi GamePlay] External AI options Player" .. aiID
             .. " picks=" .. tostring(Haikesi_AIPickCountForPlayer(pAI))
             .. " age=" .. tostring(Haikesi_PlayerAgeLabel(aiID))
@@ -1263,10 +1290,31 @@ local function Haikesi_DumpExternalAIRequestToLog(reason)
             break
         end
     end
+    local function probeMp(fn)
+        if type(fn) ~= "function" then
+            return nil
+        end
+        local ok, v = pcall(fn)
+        if not ok then
+            return nil
+        end
+        return v == true
+    end
+    -- FireTuner 在 AnyMultiplayer（热座/局域网/互联网含 PVE 房）均禁用 → MP=1 走横幅/LOG
+    local gcAny = GameConfiguration ~= nil and probeMp(GameConfiguration.IsAnyMultiplayer)
+    local gcNet = GameConfiguration ~= nil and probeMp(GameConfiguration.IsNetworkMultiplayer)
+    local gcLan = GameConfiguration ~= nil and probeMp(GameConfiguration.IsLANMultiplayer)
+    local gcHot = GameConfiguration ~= nil and probeMp(GameConfiguration.IsHotseat)
+    local gameNet = Game ~= nil and probeMp(Game.IsNetworkMultiplayer)
+    local netNet = Network ~= nil and probeMp(Network.IsNetworkMultiplayer)
     local mp = 0
-    if Game ~= nil and Game.IsNetworkMultiplayer ~= nil and Game.IsNetworkMultiplayer() then
+    if gcAny or gcNet or gcLan or gcHot or gameNet or netNet then
         mp = 1
     end
+    print(string.format(
+        "[Haikesi GamePlay] ExtAI session flags: GC.Any=%s GC.Net=%s GC.LAN=%s GC.Hotseat=%s Game.Net=%s Network.Net=%s mpFlag=%s",
+        tostring(gcAny), tostring(gcNet), tostring(gcLan), tostring(gcHot),
+        tostring(gameNet), tostring(netNet), tostring(mp)))
 
     print("===HAIKESI_EXT_AI_REQ_BEGIN===")
     print("DUMP_REASON=" .. tostring(reason or "create"))

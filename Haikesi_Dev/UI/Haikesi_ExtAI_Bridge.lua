@@ -9,8 +9,23 @@ local function IsGameHost()
     if Network ~= nil and Network.IsGameHost ~= nil then
         return Network.IsGameHost()
     end
-    if Game ~= nil and Game.IsNetworkMultiplayer ~= nil then
-        return not Game.IsNetworkMultiplayer()
+    local function probe(fn)
+        if type(fn) ~= "function" then
+            return false
+        end
+        local ok, v = pcall(fn)
+        return ok and v == true
+    end
+    if GameConfiguration ~= nil and (
+        probe(GameConfiguration.IsAnyMultiplayer)
+        or probe(GameConfiguration.IsNetworkMultiplayer)
+        or probe(GameConfiguration.IsLANMultiplayer)
+        or probe(GameConfiguration.IsHotseat)
+    ) then
+        return false
+    end
+    if Game ~= nil and probe(Game.IsNetworkMultiplayer) then
+        return false
     end
     return true
 end
