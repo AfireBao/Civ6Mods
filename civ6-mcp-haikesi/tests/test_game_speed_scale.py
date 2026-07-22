@@ -57,6 +57,42 @@ def test_parse_game_speed_value():
     parsed = parse_game_speed_value("联机|50")
     assert parsed["cost_multiplier"] == 50
     assert parsed["name"] == "联机"
+    with_type = parse_game_speed_value("联机|50|GAMESPEED_ONLINE")
+    assert with_type["type"] == "GAMESPEED_ONLINE"
+    assert with_type["cost_multiplier"] == 50
+
+
+def test_resolve_game_speed_from_overview_type():
+    """SPEED| typed wire must beat SP default Standard×100."""
+    ov = _empty_overview()
+    ov.game_speed = "GAMESPEED_ONLINE"
+    ov.game_speed_name = "联机"
+    ov.speed_cost_multiplier = 50
+    ctx = HaikesiGameContext(overview=ov, human_player_id=0)
+    mult, name, defaulted = _resolve_game_speed(ctx, {})
+    assert defaulted is False
+    assert mult == 50
+    assert name == "联机"
+
+
+def test_resolve_game_speed_empty_overview_defaults():
+    """Unparsed overview (empty name, default mult=100) must not pretend Standard was read."""
+    ctx = HaikesiGameContext(overview=_empty_overview(), human_player_id=0)
+    mult, name, defaulted = _resolve_game_speed(ctx, {})
+    assert defaulted is True
+    assert mult == 100
+    assert name == "标准"
+
+
+def test_resolve_from_payload_with_type_only():
+    ctx = HaikesiGameContext(overview=_empty_overview(), human_player_id=0)
+    mult, name, defaulted = _resolve_game_speed(
+        ctx,
+        {"game_speed": {"name": "", "cost_multiplier": 50, "type": "GAMESPEED_ONLINE"}},
+    )
+    assert defaulted is False
+    assert mult == 50
+    assert name == "联机"
 
 
 def test_early_game_rules_quick_vs_marathon():

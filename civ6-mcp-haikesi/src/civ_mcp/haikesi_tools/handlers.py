@@ -40,6 +40,10 @@ def resolve_tool(ctx: DecisionToolContext, name: str, arguments_json: str) -> st
     try:
         if name == "leader_snapshot":
             result = _leader_snapshot(ctx, args)
+        elif name == "city_pressure":
+            result = _city_pressure(ctx, args)
+        elif name == "border_threats":
+            result = _border_threats(ctx, args)
         elif name == "met_civ_detail":
             result = _met_civ_detail(ctx, args)
         elif name == "lookup_relic":
@@ -130,6 +134,63 @@ def _leader_snapshot(ctx: DecisionToolContext, args: dict[str, Any]) -> str:
         lines.append(
             f"商路：容量{t.capacity} 已用{t.active} 国际入向{t.intl_in}"
         )
+    return "\n".join(lines)
+
+
+def _city_pressure(ctx: DecisionToolContext, args: dict[str, Any]) -> str:
+    pid = _pid(args)
+    err = _require_allowed(ctx, pid)
+    if err:
+        return err
+    assert pid is not None
+    view = _view(ctx, pid)
+    if view is None:
+        return NOTHING_SURFACES + f"（无领袖 {pid} 视图）"
+    cities = list(view.own_cities or [])
+    if not cities:
+        return (
+            f"领袖 {pid}：缓存中无城市明细"
+            f"（cities={view.cities}；联机 CTX 可能缺 CITY| 段）。"
+        )
+    lines = [f"领袖 {pid} 城市压力（channel={ctx.channel}）："]
+    for c in cities[:12]:
+        amen = ""
+        if c.amenities < c.amenities_needed:
+            amen = f" 宜居缺{c.amenities_needed - c.amenities}"
+        turns = f"{c.turns_left}回" if c.turns_left > 0 else ""
+        lines.append(
+            f"- {c.name} 人{c.pop} 在建={c.producing}{turns}"
+            f" 产{c.prod}/粮{c.food}{amen}"
+        )
+    if len(cities) > 12:
+        lines.append(f"…另有 {len(cities) - 12} 城未列")
+    return "\n".join(lines)
+
+
+def _border_threats(ctx: DecisionToolContext, args: dict[str, Any]) -> str:
+    pid = _pid(args)
+    err = _require_allowed(ctx, pid)
+    if err:
+        return err
+    assert pid is not None
+    view = _view(ctx, pid)
+    if view is None:
+        return NOTHING_SURFACES + f"（无领袖 {pid} 视图）"
+    threats = list(view.threats or [])
+    if not threats:
+        return f"领袖 {pid}：缓存中未见边境可见单位组。"
+    threats_sorted = sorted(
+        threats, key=lambda t: (t.nearest_dist, -t.count)
+    )
+    lines = [f"领袖 {pid} 边境可见威胁（channel={ctx.channel}）："]
+    for t in threats_sorted[:10]:
+        rel = "交战" if t.is_at_war else ("城邦" if t.is_minor else "可见")
+        lines.append(
+            f"- {t.owner_name}(id{t.owner_id})：{t.count}单位 "
+            f"最近{t.nearest_dist}格 {rel}"
+        )
+    if len(threats_sorted) > 10:
+        lines.append(f"…另有 {len(threats_sorted) - 10} 组未列")
     return "\n".join(lines)
 
 

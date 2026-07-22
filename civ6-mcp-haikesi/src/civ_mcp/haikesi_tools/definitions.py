@@ -13,21 +13,45 @@ class ToolDefinition:
     parameters: dict[str, Any]
 
 
+_PID = {
+    "type": "integer",
+    "description": "本轮待决策领袖的 player_id（与 ### 领袖 N 的 N 相同）",
+}
+
 TOOL_DEFINITIONS: list[ToolDefinition] = [
     ToolDefinition(
         name="leader_snapshot",
         description=(
-            "按需读取某位本轮待决策领袖的可见概况：国力、主战略、宗教摘要、城市短板、"
-            "边境威胁粗览。参数 player_id 必须是该领袖自己的 id；禁止查其他领袖。"
+            "领袖概览（国力、RST、商路、宜居粗览）。极短况已有城数/军力/交战时勿重复调用；"
+            "仅当需要商路容量或宜居细节时使用。在建/贴脸请改用 city_pressure / border_threats。"
         ),
         parameters={
             "type": "object",
-            "properties": {
-                "player_id": {
-                    "type": "integer",
-                    "description": "本轮待决策领袖的 player_id（与 ### 领袖 N 的 N 相同）",
-                }
-            },
+            "properties": {"player_id": _PID},
+            "required": ["player_id"],
+        },
+    ),
+    ToolDefinition(
+        name="city_pressure",
+        description=(
+            "读取缓存中的本国城市：人口、在建项目与剩余回合、宜居赤字。"
+            "军事 echo / 产线协同前应调用（石弩=攻城≠远程）。只读本轮 gather 缓存。"
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"player_id": _PID},
+            "required": ["player_id"],
+        },
+    ),
+    ToolDefinition(
+        name="border_threats",
+        description=(
+            "读取缓存中的边境可见单位聚合：势力、可见数、最近距离、关系。"
+            "交战或贴脸压力评估时使用。只读本轮 gather 缓存。"
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"player_id": _PID},
             "required": ["player_id"],
         },
     ),
@@ -55,8 +79,8 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
     ToolDefinition(
         name="lookup_relic",
         description=(
-            "查阅海克斯模组本地权威词条：类型 ID 的中文名与效果说明。"
-            "用于历史库存或候选以外的对照；本轮候选效果已在首包给出。"
+            "查阅海克斯本地词条（中文名+效果）。仅用于历史库存或候选以外的对照；"
+            "本轮候选全文已在首包——禁止对本轮候选 ID 再查一遍。"
         ),
         parameters={
             "type": "object",
@@ -74,12 +98,7 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
         description="列出某文明历史已持有海克斯的类型 ID 与短名（不含全文效果）。",
         parameters={
             "type": "object",
-            "properties": {
-                "player_id": {
-                    "type": "integer",
-                    "description": "文明/领袖 player_id",
-                }
-            },
+            "properties": {"player_id": _PID},
             "required": ["player_id"],
         },
     ),
@@ -88,6 +107,7 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
         description=(
             "评估某词条对该领袖是否可立即兑现、延迟或空放"
             "（0 城资源创建、军事 echo、商路条件等）。"
+            "军事 echo 建议先 city_pressure 核对在建兵种。"
         ),
         parameters={
             "type": "object",
@@ -101,16 +121,16 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
     ToolDefinition(
         name="civ6_kb",
         description=(
-            "查阅本地离线规则摘要：优先短篇策略笔记（宜居/区域/胜利/商路）；"
-            "否则回落到 Civilopedia 词典检索。单位/建筑/科技专名更推荐 civilopedia_lookup。"
-            "不联网。"
+            "本地策略短篇：amenity / district / victory / trade。"
+            "不要用来查单位/建筑专名（用 civilopedia_lookup）；"
+            "不要用来查海克斯（用 lookup_relic）。不联网。"
         ),
         parameters={
             "type": "object",
             "properties": {
                 "topic": {
                     "type": "string",
-                    "description": "主题或专名，如 amenity / district / victory / trade / 观测气球",
+                    "description": "主题关键词，如 amenity / district / victory / trade",
                 }
             },
             "required": ["topic"],
@@ -119,9 +139,9 @@ TOOL_DEFINITIONS: list[ToolDefinition] = [
     ToolDefinition(
         name="civilopedia_lookup",
         description=(
-            "查询本地 Civilopedia 词典（内置中文名+说明+部分 Gameplay 数值）与海克斯章节。"
-            "可用中文名、类型 ID（如 UNIT_OBSERVATION_BALLOON、ARCANEPUNCHRUNE）或关键词。"
-            "chapter 可选 civilopedia / haikesi。"
+            "本地 Civilopedia/海克斯词典：中文名或类型 ID（UNIT_/TECH_/BUILDING_ 等）。"
+            "用于兵种分类、科技解锁等原版专名；chapter=haikesi 可查海克斯章节。"
+            "本轮候选海克斯效果已在首包，勿重复查询。不联网。"
         ),
         parameters={
             "type": "object",

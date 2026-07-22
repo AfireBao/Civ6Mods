@@ -141,12 +141,20 @@ table.sort(ubParts, function(a, b)
 end)
 print("UNITBREAKDOWN|" .. table.concat(ubParts, ",") .. "|" .. unitMaint)
 pcall(function()
-    local gsIdx = Game.GetGameSpeedType()
-    local gsRow = GameInfo.GameSpeeds[gsIdx]
+    -- 与 ScaleTurnForGameSpeed / Haikesi_PrintGameSpeedKV 一致
+    local gsIdx = GameConfiguration.GetGameSpeedType()
+    local gsRow = gsIdx ~= nil and GameInfo.GameSpeeds[gsIdx] or nil
+    if not gsRow and Game.GetGameSpeedType then
+        gsIdx = Game.GetGameSpeedType()
+        gsRow = gsIdx ~= nil and GameInfo.GameSpeeds[gsIdx] or nil
+    end
     if gsRow then
         local gsName = Locale.Lookup(gsRow.Name)
+        if gsName == nil or gsName == "" or gsName == gsRow.Name then
+            gsName = gsRow.GameSpeedType or "Unknown"
+        end
         local gsMult = gsRow.CostMultiplier or 100
-        print("SPEED|" .. gsRow.GameSpeedType .. "|" .. gsName .. "|" .. gsMult)
+        print("SPEED|" .. tostring(gsRow.GameSpeedType) .. "|" .. tostring(gsName) .. "|" .. tostring(gsMult))
     end
 end)
 local vtypes = {"VICTORY_TECHNOLOGY", "VICTORY_CONQUEST", "VICTORY_CULTURE", "VICTORY_RELIGIOUS", "VICTORY_DIPLOMATIC"}

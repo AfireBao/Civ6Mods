@@ -174,6 +174,8 @@ def context_from_log_payload(payload: dict[str, Any]):
 
     if wire_meta.get("era_name") and not overview.era_name:
         overview.era_name = wire_meta["era_name"]
+    if wire_meta.get("game_speed") and not overview.game_speed:
+        overview.game_speed = wire_meta["game_speed"]
     if wire_meta.get("game_speed_name") and not overview.game_speed_name:
         overview.game_speed_name = wire_meta["game_speed_name"]
     if wire_meta.get("speed_cost_multiplier"):

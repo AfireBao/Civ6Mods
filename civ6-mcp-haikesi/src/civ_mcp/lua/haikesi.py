@@ -125,6 +125,20 @@ def build_submit_ai_choices_lua(
         f'print("{SENTINEL}")'
     )
 
+
+def build_cancel_ai_request_lua(request_id: str) -> str:
+    """Clear pending ExtAI request (e.g. all AI pools empty)."""
+    if not request_id:
+        raise ValueError("request_id is required")
+    rid = _escape_lua_string(request_id)
+    return (
+        'if type(Haikesi_CancelExternalAIRequest) == "function" then '
+        f'Haikesi_CancelExternalAIRequest("{rid}") '
+        'else print("ERR:not ready") end\n'
+        f'print("{SENTINEL}")'
+    )
+
+
 def _parse_kv_line(line: str) -> tuple[str, str] | None:
     if "=" not in line:
         return None
@@ -153,9 +167,16 @@ def _parse_ai_line(line: str) -> dict[str, Any] | None:
         elif extra.startswith("picks:"):
             raw = extra[len("picks:") :]
             if raw.isdigit():
-                picks = max(1, int(raw))
+                picks = max(0, int(raw))
         elif extra.startswith("age:"):
             age = extra[len("age:") :] or "NORMAL"
+    # Empty options → no ExtAI pick this round (pool exhausted)
+    if not options:
+        picks = 0
+    elif picks > len(options):
+        picks = len(options)
+    elif picks < 1:
+        picks = 1
     return {
         "player_id": int(player_id),
         "civ_label": civ_label,
@@ -173,12 +194,23 @@ def normalize_extai_choices(
 ) -> dict[str, str]:
     """Flatten LLM choices to wire strings (REL or REL1+REL2)."""
     picks_by_id: dict[str, int] = {}
+    opts_by_id: dict[str, list[str]] = {}
     if ai_players:
         for ai in ai_players:
-            picks_by_id[str(ai.get("player_id"))] = int(ai.get("picks") or 1)
+            pid = str(ai.get("player_id"))
+            opts = [str(x).strip() for x in (ai.get("options") or []) if str(x).strip()]
+            opts_by_id[pid] = opts
+            if not opts:
+                picks_by_id[pid] = 0
+            else:
+                want = max(0, int(ai.get("picks") or 1))
+                picks_by_id[pid] = min(want, len(opts)) if want else min(1, len(opts))
     out: dict[str, str] = {}
     for key, value in choices.items():
         need = picks_by_id.get(str(key), 1)
+        if need < 1:
+            continue
+        allowed = set(opts_by_id.get(str(key)) or [])
         relics: list[str]
         if isinstance(value, list):
             relics = [str(x).strip() for x in value if str(x).strip()]
@@ -188,11 +220,15 @@ def normalize_extai_choices(
                 relics = [x.strip() for x in text.split("+") if x.strip()]
             else:
                 relics = [text] if text else []
-        # de-dupe preserve order
+        # de-dupe preserve order; drop illegal / out-of-pool
         seen: set[str] = set()
         uniq: list[str] = []
         for r in relics:
             if r in seen:
+                continue
+            if not r.startswith("NW_AI_") or r.upper() == "NW_AI_NONE" or r.isdigit():
+                continue
+            if allowed and r not in allowed:
                 continue
             seen.add(r)
             uniq.append(r)
@@ -221,13 +257,31 @@ def parse_game_session_value(value: str) -> dict[str, Any]:
 
 
 def parse_game_speed_value(value: str) -> dict[str, Any]:
-    """Parse GAME_SPEED=显示名|CostMultiplier from Gameplay dump."""
+    """Parse GAME_SPEED=显示名|CostMultiplier[|GameSpeedType] from Gameplay dump."""
     parts = (value or "").split("|")
     name = parts[0].strip() if parts else ""
     mult = 100
     if len(parts) >= 2 and str(parts[1]).isdigit():
         mult = int(parts[1])
-    return {"name": name or "未知", "cost_multiplier": mult}
+    type_id = parts[2].strip() if len(parts) >= 3 else ""
+    if (not name or name in {"Unknown", "未知"}) and type_id.startswith("GAMESPEED_"):
+        name = game_speed_display_name(type_id)
+    out: dict[str, Any] = {"name": name or "未知", "cost_multiplier": mult}
+    if type_id:
+        out["type"] = type_id
+    return out
+
+
+def game_speed_display_name(type_id: str) -> str:
+    """Fallback Chinese/short labels when Locale.Lookup failed in Lua dump."""
+    mapping = {
+        "GAMESPEED_ONLINE": "联机",
+        "GAMESPEED_QUICK": "快速",
+        "GAMESPEED_STANDARD": "标准",
+        "GAMESPEED_EPIC": "史诗",
+        "GAMESPEED_MARATHON": "马拉松",
+    }
+    return mapping.get(type_id, type_id.replace("GAMESPEED_", "") or "未知")
 
 
 def parse_ai_request_lines(lines: list[str]) -> dict[str, Any]:
@@ -549,8 +603,13 @@ def scrape_ctx_wire_meta(ctx_lines: list[str]) -> dict[str, str]:
                 meta["era_name"] = parts[1]
         elif ln.startswith("SPEED|"):
             parts = ln.split("|")
+            # SPEED|GameSpeedType|DisplayName|CostMultiplier
+            if len(parts) >= 2 and parts[1]:
+                meta["game_speed"] = parts[1]
             if len(parts) >= 3 and parts[2]:
                 meta["game_speed_name"] = parts[2]
+            elif len(parts) >= 2 and parts[1].startswith("GAMESPEED_"):
+                meta["game_speed_name"] = game_speed_display_name(parts[1])
             if len(parts) >= 4 and str(parts[3]).isdigit():
                 meta["speed_cost_multiplier"] = parts[3]
     return meta

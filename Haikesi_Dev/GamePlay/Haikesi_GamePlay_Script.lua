@@ -1165,53 +1165,68 @@ end
 local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countBefore, createdTurn)
     -- 混乱干扰互斥：整批候选至多 1 张混乱类（跨 AI + 同一 AI 的 6 选里也只留 1 张）。
     -- 大模型提示词不再写互斥规则，靠候选列表自然约束；提交侧仍二次校验。
+    -- 可用池为空的 AI 本轮跳过（不进 OPTION_IDS），避免 ExtAI 空候选卡死。
     local chaosInOptionsBatch = false
     local aiOptionIDs = {}
     for _, pAI in ipairs(Haikesi_GetAliveAIPlayers()) do
         local aiID = pAI:GetID()
         local available = GetAIAvailableRelics(pAI, chaosInOptionsBatch)
-        local optCount = Haikesi_AIOptionsCountForPlayer(pAI)
-        local salt = countBefore * 1000 + aiID * 17 + requesterPlayerID + createdTurn * 997
-        local options = Haikesi_PickRandomRelicsFromPool(available, optCount, salt)
+        if available == nil or #available == 0 then
+            Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, nil)
+            print("[Haikesi GamePlay] External AI skip empty pool Player" .. aiID
+                .. " age=" .. tostring(Haikesi_PlayerAgeLabel(aiID)))
+        else
+            local wantOpts = Haikesi_AIOptionsCountForPlayer(pAI)
+            local optCount = math.min(wantOpts, #available)
+            local salt = countBefore * 1000 + aiID * 17 + requesterPlayerID + createdTurn * 997
+            local options = Haikesi_PickRandomRelicsFromPool(available, optCount, salt)
 
-        -- 同一 AI 选项里若抽到多张混乱，只保留第一张，其余用非混乱补满
-        local filtered = {}
-        local chaosKeptHere = false
-        for _, opt in ipairs(options) do
-            if IsChaosInterferenceRelic(opt) then
-                if not chaosInOptionsBatch and not chaosKeptHere then
+            -- 同一 AI 选项里若抽到多张混乱，只保留第一张，其余用非混乱补满
+            local filtered = {}
+            local chaosKeptHere = false
+            for _, opt in ipairs(options) do
+                if IsChaosInterferenceRelic(opt) then
+                    if not chaosInOptionsBatch and not chaosKeptHere then
+                        table.insert(filtered, opt)
+                        chaosKeptHere = true
+                        chaosInOptionsBatch = true
+                    end
+                else
                     table.insert(filtered, opt)
-                    chaosKeptHere = true
-                    chaosInOptionsBatch = true
                 end
-            else
-                table.insert(filtered, opt)
             end
-        end
-        if #filtered < optCount then
-            local have = {}
-            for _, t in ipairs(filtered) do
-                have[t] = true
-            end
-            local refill = GetAIAvailableRelics(pAI, true) -- 强制无混乱
-            for _, t in ipairs(refill) do
-                if #filtered >= optCount then
-                    break
-                end
-                if not have[t] then
-                    table.insert(filtered, t)
+            if #filtered < optCount then
+                local have = {}
+                for _, t in ipairs(filtered) do
                     have[t] = true
                 end
+                local refill = GetAIAvailableRelics(pAI, true) -- 强制无混乱
+                for _, t in ipairs(refill) do
+                    if #filtered >= optCount then
+                        break
+                    end
+                    if not have[t] then
+                        table.insert(filtered, t)
+                        have[t] = true
+                    end
+                end
+            end
+            options = filtered
+
+            if #options == 0 then
+                Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, nil)
+                print("[Haikesi GamePlay] External AI skip empty after filter Player" .. aiID)
+            else
+                local pickWant = Haikesi_AIPickCountForPlayer(pAI)
+                local pickEff = math.min(pickWant, #options)
+                Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, table.concat(options, ","))
+                table.insert(aiOptionIDs, tostring(aiID))
+                print("[Haikesi GamePlay] External AI options Player" .. aiID
+                    .. " picks=" .. tostring(pickEff)
+                    .. " age=" .. tostring(Haikesi_PlayerAgeLabel(aiID))
+                    .. ": " .. table.concat(options, ", "))
             end
         end
-        options = filtered
-
-        Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, table.concat(options, ","))
-        table.insert(aiOptionIDs, tostring(aiID))
-        print("[Haikesi GamePlay] External AI options Player" .. aiID
-            .. " picks=" .. tostring(Haikesi_AIPickCountForPlayer(pAI))
-            .. " age=" .. tostring(Haikesi_PlayerAgeLabel(aiID))
-            .. ": " .. table.concat(options, ", "))
     end
     Game:SetProperty(EXT_AI_OPTION_IDS_KEY, table.concat(aiOptionIDs, ","))
 end
@@ -1260,13 +1275,23 @@ local function Haikesi_PrintGameSessionKV(requesterPlayerID)
 end
 
 local function Haikesi_PrintGameSpeedKV()
+    -- 与 ScaleTurnForGameSpeed 一致：Gameplay 用 GameConfiguration，Game.GetGameSpeedType 常失败
     pcall(function()
-        local gsIdx = Game.GetGameSpeedType()
-        local gsRow = GameInfo.GameSpeeds[gsIdx]
+        local gsIdx = GameConfiguration.GetGameSpeedType()
+        local gsRow = gsIdx ~= nil and GameInfo.GameSpeeds[gsIdx] or nil
+        if not gsRow and Game.GetGameSpeedType then
+            gsIdx = Game.GetGameSpeedType()
+            gsRow = gsIdx ~= nil and GameInfo.GameSpeeds[gsIdx] or nil
+        end
         if gsRow then
             local gsName = Locale.Lookup(gsRow.Name)
+            if gsName == nil or gsName == "" or gsName == gsRow.Name then
+                gsName = gsRow.GameSpeedType or "Unknown"
+            end
             local gsMult = gsRow.CostMultiplier or 100
-            print("GAME_SPEED=" .. gsName .. "|" .. tostring(gsMult))
+            -- 显示名|CostMultiplier|GameSpeedType（第三段供解析兜底）
+            print("GAME_SPEED=" .. tostring(gsName) .. "|" .. tostring(gsMult)
+                .. "|" .. tostring(gsRow.GameSpeedType or ""))
         end
     end)
 end
@@ -1339,10 +1364,18 @@ local function Haikesi_DumpExternalAIRequestToLog(reason)
         local playerName = (pConfig and pConfig:GetPlayerName()) or ""
         local options = Haikesi_GetStoredExternalAIOptions(aiID)
         local selectedList = GetSelectedRelicTypeListForPlayer(pAI)
+        local pickWant = Haikesi_AIPickCountForPlayer(pAI)
+        local pickEff = pickWant
+        if #options > 0 and pickEff > #options then
+            pickEff = #options
+        end
+        if #options == 0 then
+            pickEff = 0
+        end
         print("AI|" .. tostring(aiID) .. "|" .. tostring(civLabel) .. "|"
             .. table.concat(options, ",") .. "|selected:" .. table.concat(selectedList, ",")
             .. "|name:" .. tostring(playerName)
-            .. "|picks:" .. tostring(Haikesi_AIPickCountForPlayer(pAI))
+            .. "|picks:" .. tostring(pickEff)
             .. "|age:" .. tostring(Haikesi_PlayerAgeLabel(aiID)))
     end
     -- 与单机 FireTuner gather 同线格式：overview + WC + 各 AI 迷雾/外交视图
@@ -1379,6 +1412,23 @@ local function Haikesi_CreateExternalAIRequest(requesterPlayerID, humanRelic, co
     -- 须在发牌前刷 UI 时代戳记：HasGoldenAge 仅 InGame，否则黄金时代也会 3 选 1
     Haikesi_WarmExtAIUICaches()
     Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countBefore, turn)
+
+    local optionIds = Game:GetProperty(EXT_AI_OPTION_IDS_KEY) or ""
+    if optionIds == "" then
+        -- 人类 SELECT_COUNT 已前进；无牌可发时仍对齐 AI 轮次，避免下轮 pre-align 再补本轮
+        local targetRound = countBefore + 1
+        local pRequester = Players[requesterPlayerID]
+        if pRequester ~= nil then
+            local aiSyncedTo = tonumber(pRequester:GetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT') or -1) or -1
+            if aiSyncedTo < targetRound then
+                pRequester:SetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT', targetRound)
+            end
+        end
+        print("[Haikesi GamePlay] External AI request aborted (all AI pools empty): "
+            .. requestID .. " syncedTo=" .. tostring(targetRound))
+        Haikesi_ClearExternalAIRequest()
+        return
+    end
 
     print("[Haikesi GamePlay] External AI request created: " .. requestID
         .. " requester=" .. tostring(requesterPlayerID)
@@ -1436,7 +1486,15 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
             return false, "invalid AI player: " .. tostring(aiIDStr)
         end
         local relicList = Haikesi_SplitChoiceRelics(packed)
+        local options = Haikesi_GetStoredExternalAIOptions(aiID)
+        if #options == 0 then
+            local excludeChaos = chaosAssignedInBatch
+            options = GetAIAvailableRelics(pAI, excludeChaos)
+        end
         local expectedPicks = Haikesi_AIPickCountForPlayer(pAI)
+        if #options > 0 and expectedPicks > #options then
+            expectedPicks = #options
+        end
         if #relicList < 1 then
             return false, "empty picks for AI " .. aiIDStr
         end
@@ -1454,12 +1512,7 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
                 return false, "not in AI pool: " .. tostring(aiRelic)
             end
         end
-        -- 候选充足时必须选满（金/英 6 选 2）
-        local options = Haikesi_GetStoredExternalAIOptions(aiID)
-        if #options == 0 then
-            local excludeChaos = chaosAssignedInBatch
-            options = GetAIAvailableRelics(pAI, excludeChaos)
-        end
+        -- 候选充足时必须选满（金/英 6 选 2；池不足时 expected 已夹紧）
         if #relicList < expectedPicks and #options >= expectedPicks then
             return false, "under-picked for AI " .. aiIDStr
                 .. " got " .. tostring(#relicList) .. " expected " .. tostring(expectedPicks)
@@ -1535,10 +1588,18 @@ function Haikesi_GetExternalAIRequest()
         local playerName = (pConfig and pConfig:GetPlayerName()) or ""
         local options = Haikesi_GetStoredExternalAIOptions(aiID)
         local selectedList = GetSelectedRelicTypeListForPlayer(pAI)
+        local pickWant = Haikesi_AIPickCountForPlayer(pAI)
+        local pickEff = pickWant
+        if #options > 0 and pickEff > #options then
+            pickEff = #options
+        end
+        if #options == 0 then
+            pickEff = 0
+        end
         print("AI|" .. tostring(aiID) .. "|" .. tostring(civLabel) .. "|"
             .. table.concat(options, ",") .. "|selected:" .. table.concat(selectedList, ",")
             .. "|name:" .. tostring(playerName)
-            .. "|picks:" .. tostring(Haikesi_AIPickCountForPlayer(pAI))
+            .. "|picks:" .. tostring(pickEff)
             .. "|age:" .. tostring(Haikesi_PlayerAgeLabel(aiID)))
     end
 end
@@ -1721,6 +1782,17 @@ function Haikesi_CancelExternalAIRequest(requestID)
     if requestID ~= nil and pendingID ~= requestID then
         print("ERR:request_id mismatch")
         return false
+    end
+    -- 空池取消：与 abort 一致推进轮次，勿留下「人类已选、AI 未对齐」
+    local requester = tonumber(Game:GetProperty(EXT_AI_REQUESTER_KEY))
+    local countBefore = tonumber(Game:GetProperty(EXT_AI_COUNT_BEFORE_KEY))
+    local pRequester = requester ~= nil and Players[requester] or nil
+    if pRequester ~= nil and countBefore ~= nil then
+        local targetRound = countBefore + 1
+        local aiSyncedTo = tonumber(pRequester:GetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT') or -1) or -1
+        if aiSyncedTo < targetRound then
+            pRequester:SetProperty('PROP_NW_HAIKESI_AI_CHOICES_FOR_COUNT', targetRound)
+        end
     end
     Haikesi_ClearExternalAIRequest()
     print("OK:cancelled")

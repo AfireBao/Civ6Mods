@@ -2150,12 +2150,22 @@ def _resolve_game_speed(
     if isinstance(gs, dict):
         mult = int(gs.get("cost_multiplier") or 0)
         name = str(gs.get("name") or "").strip()
-        if mult > 0 and name and name not in ("Unknown", "未知"):
-            return mult, name, False
+        type_id = str(gs.get("type") or "").strip()
+        if mult > 0 and (name not in ("", "Unknown", "未知") or type_id.startswith("GAMESPEED_")):
+            if name in ("", "Unknown", "未知") and type_id:
+                name = haikesi_lua.game_speed_display_name(type_id)
+            return mult, name or type_id or "未知", False
 
     ov = context.overview
     name = (ov.game_speed_name or "").strip()
+    type_id = (ov.game_speed or "").strip()
     mult = int(getattr(ov, "speed_cost_multiplier", 0) or 0)
+    # Prefer typed SPEED| wire (proves dump succeeded). Bare mult=100 with empty
+    # name is the GameOverview default and must NOT count as Standard.
+    if type_id.startswith("GAMESPEED_") and mult > 0:
+        if name in ("", "Unknown", "未知"):
+            name = haikesi_lua.game_speed_display_name(type_id)
+        return mult, name, False
     if name and name not in ("Unknown", "未知") and mult > 0:
         return mult, name, False
 
@@ -2387,38 +2397,57 @@ def _format_leader_block_slim(
     view: LeaderView | None,
     human_player_id: int,
 ) -> str:
-    """Slim leader block: short status + full candidates; details via tools."""
+    """Slim leader block: age/picks + candidates; details via tools."""
     pid = int(ai["player_id"])
     picks = int(ai.get("picks") or 1)
     age = str(ai.get("age") or "NORMAL")
+    opts = list(ai.get("options") or [])
+    if not opts or picks < 1:
+        label = (
+            (view.civ_name if view else None)
+            or ai.get("player_name")
+            or ai.get("civ_label")
+            or str(pid)
+        )
+        return (
+            f"### 领袖 {pid}：{label}\n"
+            f"本轮无候选（池空，已跳过 ExtAI 选卡）。\n"
+        )
+
     selected = haikesi_lua.dedupe_preserve_order(list(ai.get("selected") or []))
     hist = (
         f"历史库存短名：{haikesi_lua.format_relic_type_list(selected)}"
         if selected
         else "历史库存：（无）"
     )
+    cities = int(view.cities or 0) if view is not None else 0
+    mil = int(view.mil or 0) if view is not None else 0
+    war = any(m.is_at_war for m in view.met) if view is not None else False
+    rst = (
+        view.rst.active_strategy
+        if view is not None and view.rst is not None
+        else "-"
+    )
     if view is None:
         label = ai.get("player_name") or ai.get("civ_label") or str(pid)
-        cand = "\n".join(haikesi_lua.format_option_lines(ai.get("options", [])))
+        cand = "\n".join(haikesi_lua.format_option_lines(opts))
         return (
             f"### 领袖 {pid}（{label}）\n"
-            f"短况：视图缺失（可用 tool 仍可能空白）· {age} · picks={picks}\n"
+            f"极短况：视图缺失 · {age} · picks={picks}\n"
             f"{hist}\n"
             f"候选：\n{cand}"
         )
 
-    war = any(m.is_at_war for m in view.met)
-    rst = view.rst.active_strategy if view.rst else "-"
     human_met = next((m for m in view.met if m.player_id == human_player_id), None)
     human_bit = (
-        f"已接触人类:{human_met.civ_name}/{'战' if human_met.is_at_war else '和'}"
+        f"人类:{human_met.civ_name}/{'战' if human_met.is_at_war else '和'}"
         if human_met
         else "未接触人类"
     )
     cand = "\n".join(
         haikesi_lua.format_option_lines(
-            ai.get("options", []),
-            cities=int(view.cities or 0),
+            opts,
+            cities=cities,
             intl_inbound=(
                 int(view.trade.intl_in) if view.trade is not None else None
             ),
@@ -2427,8 +2456,8 @@ def _format_leader_block_slim(
     pick_rule = "六选二" if picks >= 2 else "三选一"
     return (
         f"### 领袖 {pid}：{view.civ_name}（{view.leader_name}）\n"
-        f"短况：{view.cities}城/人{view.pop} 科{view.sci}/文{view.cul}/金{view.gold} "
-        f"军{view.mil} RST={rst} 交战={'是' if war else '否'} · {age}/{pick_rule} · {human_bit}\n"
+        f"极短况：{cities}城 军{mil} RST={rst} 交战={'是' if war else '否'} "
+        f"· {age}/{pick_rule} · {human_bit}\n"
         f"{hist}\n"
         f"候选（必须从这里选）：\n{cand}"
     )
@@ -2460,7 +2489,10 @@ def build_decision_prompt_slim(
             context.human_player_id,
         )
         for ai in payload.get("ai_players", [])
+        if (ai.get("options") or []) and int(ai.get("picks") or 0) > 0
     ]
+    if not ai_blocks:
+        ai_blocks = ["（本轮无待决策领袖：全部 AI 海克斯池已空）"]
     notes_block = ""
     if context.fetch_notes:
         notes_block = (
@@ -2501,16 +2533,20 @@ def build_decision_prompt_slim(
 
     return f"""你是文明6资深玩家，代入下列领袖为本轮选择海克斯。{channel_note}
 
-你可以使用工具按需索取：leader_snapshot / met_civ_detail / lookup_relic /
-inventory_brief / check_echo_feasibility / civ6_kb / civilopedia_lookup。
+你可以使用工具按需索取：leader_snapshot / city_pressure / border_threats /
+met_civ_detail / lookup_relic / inventory_brief / check_echo_feasibility /
+civ6_kb / civilopedia_lookup。
 对局工具必须带正确的 player_id（迷雾主体=该领袖自己）；禁止跨领袖偷看。
 查完后输出最终 JSON（不要 markdown）。
 
 情报规则：
 - 每位领袖只用自己区块与自己 player_id 的工具结果。
-- 候选全文已在下方；choices 值必须是候选里的完整类型 ID。
-- 历史库存仅短名；需要效果时用 lookup_relic。
-- 内置单位/建筑/科技中文与数值、以及海克斯章节：用 civilopedia_lookup（中文名或类型 ID）。
+- 候选全文已在下方；choices 值必须是候选里的完整类型 ID。禁止 NW_AI_NONE / 数字占位。
+- 极短况已含城数/军力/RST/交战：勿再 leader_snapshot，除非要商路或宜居细节。
+- 要看在建队列/人口短板 → city_pressure；贴脸可见单位 → border_threats。
+- 历史库存仅短名；仅当需要**非本轮候选**的历史词条效果时用 lookup_relic（禁止复读下方候选全文）。
+- civilopedia_lookup：只查兵种/科技/建筑等原版专名；海克斯章节亦可，但本轮候选勿重复查。
+- civ6_kb：宜居/区域/胜利/商路等策略短篇；专名优先 civilopedia_lookup。
 
 ## 当前回合
 Turn {turn}
@@ -2531,11 +2567,11 @@ Turn {turn}
 {"\n\n".join(ai_blocks)}
 
 ## 规则
-- 普通时代选 1；六选二/picks=2 选 2 个不重复类型
+- 普通时代选 1；六选二/picks=2 选 2 个不重复类型；picks 已按候选数量夹紧
 - 只从该领袖候选中选；禁止编造 NW_AI_*
-{early_rules}- 0 城勿选资源创建；军事 echo 核对在建兵种（石弩=攻城≠远程）
+{early_rules}- 0 城勿选资源创建；军事 echo 核对在建兵种（石弩=攻城≠远程）→ 用 city_pressure
 {reason_rule}
-- choices 键=「### 领袖 N」的 N
+- choices 键=「### 领袖 N」的 N；无候选的领袖不要出现在 choices
 - 最终只输出一个合法 JSON：
 {output_fmt}
 """
@@ -2723,8 +2759,17 @@ def coerce_reasons_map(raw: Any) -> dict[str, Any]:
 
 
 def expected_choice_ids(payload: dict[str, Any]) -> list[str]:
-    ids = [str(ai.get("player_id")) for ai in (payload.get("ai_players") or [])]
-    return [i for i in ids if i and i != "None"]
+    """AIs that must choose this round (non-empty options only)."""
+    ids: list[str] = []
+    for ai in payload.get("ai_players") or []:
+        pid = str(ai.get("player_id") or "")
+        if not pid or pid == "None":
+            continue
+        opts = [str(x).strip() for x in (ai.get("options") or []) if str(x).strip()]
+        if not opts:
+            continue
+        ids.append(pid)
+    return ids
 
 
 def missing_choice_ids(choices: dict[str, Any], expected: list[str]) -> list[str]:
@@ -2741,6 +2786,16 @@ def _flatten_choice_relics(value: Any) -> list[str]:
     if "+" in text:
         return [x.strip() for x in text.split("+") if x.strip()]
     return [text]
+
+
+def is_legal_ai_relic_id(relic: str) -> bool:
+    """Reject placeholders like NW_AI_NONE / bare numbers from empty-pool hallucinations."""
+    r = (relic or "").strip()
+    if not r or r.upper() in {"NW_AI_NONE", "NONE", "NULL", "NIL"}:
+        return False
+    if r.isdigit():
+        return False
+    return r.startswith("NW_AI_")
 
 
 def options_by_player(payload: dict[str, Any]) -> dict[str, list[str]]:
@@ -2760,7 +2815,11 @@ def picks_needed_by_player(payload: dict[str, Any]) -> dict[str, int]:
         pid = str(ai.get("player_id") or "")
         if not pid or pid == "None":
             continue
-        out[pid] = max(1, int(ai.get("picks") or 1))
+        opts = [str(x).strip() for x in (ai.get("options") or []) if str(x).strip()]
+        if not opts:
+            continue
+        want = max(1, int(ai.get("picks") or 1))
+        out[pid] = min(want, len(opts))
     return out
 
 
@@ -2773,6 +2832,8 @@ def validate_choices_against_options(
     need_map = picks_needed_by_player(payload)
     errors: list[str] = []
     for pid, opts in opts_map.items():
+        if not opts:
+            continue
         opt_set = set(opts)
         relics = _flatten_choice_relics(choices.get(pid))
         need = need_map.get(pid, 1)
@@ -2786,7 +2847,9 @@ def validate_choices_against_options(
         if len(opts) >= need and len(relics) < need:
             errors.append(f"AI {pid}: under-picked {relics} (need {need})")
         for r in relics:
-            if r not in opt_set:
+            if not is_legal_ai_relic_id(r):
+                errors.append(f"AI {pid}: illegal relic id {r!r}")
+            elif r not in opt_set:
                 errors.append(
                     f"AI {pid}: {r} not in options "
                     f"[{', '.join(opts)}]"
@@ -3637,6 +3700,21 @@ async def decide_and_submit_once(
         prompt = build_decision_prompt(payload, context)
     required_ids = expected_choice_ids(payload)
 
+    if not required_ids:
+        if verbose:
+            print(
+                f"All AI pools empty for {request_id!r}; cancelling ExtAI request.",
+                flush=True,
+            )
+        cancel_lines = await conn.execute_haikesi(
+            haikesi_lua.build_cancel_ai_request_lua(request_id)
+        )
+        result = haikesi_lua.summarize_submit_result(cancel_lines)
+        # Cancel prints OK:cancelled — treat as handled
+        if verbose:
+            print(f"Cancel result: {result}", flush=True)
+        return True
+
     model_label = model
     if review_client is not None and review_model and review_client is not client:
         model_label = f"{model} → {review_model}"
@@ -3778,6 +3856,16 @@ async def decide_and_inject_log_channel(
     model_label = model
     if review_client is not None and review_model and review_client is not client:
         model_label = f"{model} → {review_model}"
+
+    if not required_ids:
+        if verbose:
+            print(
+                f"All AI pools empty for {request_id!r} (LOG); skip LLM "
+                "(host should clear pending / no ExtAI cards).",
+                flush=True,
+            )
+        return True
+
     raw, reasoning, decision = run_llm_decision_with_reviews(
         client,
         model,
