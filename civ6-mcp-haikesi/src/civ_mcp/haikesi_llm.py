@@ -215,6 +215,8 @@ def _build_decision_log_body(
     reasons: dict[str, str],
     wire: str,
     archive_path: Path | None = None,
+    tool_trace: list[dict[str, Any]] | None = None,
+    tool_channel: str | None = None,
 ) -> str:
     prompt_md = markdownify_pipe_tables(prompt)
     meta_lines = [
@@ -226,7 +228,10 @@ def _build_decision_log_body(
         f"- **thinking**: `{'ON' if llm_thinking_enabled() else 'OFF'}` (`HAIKESI_LLM_THINKING`)",
         f"- **review_rounds**: `{llm_review_rounds()}` (`HAIKESI_LLM_REVIEW_ROUNDS`)",
         f"- **thinking_chars**: {len(reasoning or '')}",
+        f"- **tools**: `{'ON' if tool_trace is not None else 'OFF'}` (`HAIKESI_LLM_TOOLS`)",
     ]
+    if tool_channel:
+        meta_lines.append(f"- **tool_channel**: `{tool_channel}`")
     if archive_path is not None:
         meta_lines.append(f"- **archive_file**: `{archive_path}`")
     raw_fence = "json" if raw_response.strip().startswith("{") else ""
@@ -251,6 +256,20 @@ def _build_decision_log_body(
             "set `0` when playing to save tokens)*"
         ),
         "",
+    ]
+    if tool_trace is not None:
+        from civ_mcp.haikesi_tools.runner import format_tool_trace_markdown
+
+        parts.extend(
+            [
+                "## Tool Calls",
+                "",
+                format_tool_trace_markdown(tool_trace),
+                "",
+            ]
+        )
+    parts.extend(
+        [
         "## Raw Response",
         "",
         f"```{raw_fence}".rstrip(),
@@ -277,7 +296,8 @@ def _build_decision_log_body(
         wire,
         "```",
         "",
-    ]
+        ]
+    )
     return "\n".join(parts)
 
 
@@ -292,6 +312,8 @@ def save_decision_analysis_log(
     reasons: dict[str, str],
     wire: str,
     payload: dict[str, Any] | None = None,
+    tool_trace: list[dict[str, Any]] | None = None,
+    tool_channel: str | None = None,
 ) -> Path | None:
     """Append per-game decision log + mirror latest to haikesi_last_decision.md."""
     if not decision_log_enabled():
@@ -313,6 +335,8 @@ def save_decision_analysis_log(
                 choices=choices,
                 reasons=reasons,
                 wire=wire,
+                tool_trace=tool_trace,
+                tool_channel=tool_channel,
             )
             archive_path = get_decision_archive().append_decision(
                 payload,
@@ -334,6 +358,8 @@ def save_decision_analysis_log(
         reasons=reasons,
         wire=wire,
         archive_path=archive_path,
+        tool_trace=tool_trace,
+        tool_channel=tool_channel,
     )
     path.write_text(text, encoding="utf-8")
     _prune_legacy_flat_decision_logs(log_dir)
@@ -447,6 +473,8 @@ class _ChatClient(Protocol):
         *,
         required_ids: list[str] | None = None,
     ) -> str: ...
+
+    # Optional: OpenAI-compatible clients may implement complete_with_tools.
 
 
 @dataclass(frozen=True)
@@ -1183,6 +1211,57 @@ class _OpenAICompatibleClient:
             self._thinking_enabled = prev_think
             self._json_mode = prev_json
 
+    def complete_with_tools(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        *,
+        allow_tool_use: bool = True,
+    ) -> Any:
+        """One chat turn that may return native tool_calls (OpenAI-compatible)."""
+        from civ_mcp.haikesi_tools.runner import ChatResult, ToolCallSpec
+
+        load_dotenv_file()
+        prev_json = self._json_mode
+        prev_think = self._thinking_enabled
+        # Tool rounds: no json_object; keep thinking if user requested
+        self._json_mode = False
+        try:
+            kwargs = self._build_kwargs("", messages=messages)
+            kwargs["tools"] = tools
+            if allow_tool_use:
+                kwargs["tool_choice"] = "auto"
+            else:
+                kwargs["tool_choice"] = "none"
+            response = self._client.chat.completions.create(**kwargs)
+            content, _finish, api_reasoning = self._extract_content(response)
+            if api_reasoning:
+                self._last_reasoning = api_reasoning
+            msg = response.choices[0].message
+            calls: list[ToolCallSpec] = []
+            raw_calls = getattr(msg, "tool_calls", None) or []
+            for i, tc in enumerate(raw_calls):
+                fn = getattr(tc, "function", None)
+                name = getattr(fn, "name", None) if fn is not None else None
+                args = getattr(fn, "arguments", None) if fn is not None else None
+                if not name:
+                    continue
+                calls.append(
+                    ToolCallSpec(
+                        id=str(getattr(tc, "id", None) or f"call_{i}"),
+                        name=str(name),
+                        arguments_json=str(args or "{}"),
+                    )
+                )
+            return ChatResult(
+                text=content or "",
+                tool_calls=calls,
+                reasoning=api_reasoning or self._last_reasoning or "",
+            )
+        finally:
+            self._json_mode = prev_json
+            self._thinking_enabled = prev_think
+
     def complete(
         self,
         prompt: str,
@@ -1304,6 +1383,25 @@ class _AnthropicClient:
 
         self._client = Anthropic(api_key=config.api_key)
         self._model = config.model
+        self._last_reasoning = ""
+
+    def complete_with_tools(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        *,
+        allow_tool_use: bool = True,
+    ) -> Any:
+        """Native Anthropic tools not wired yet — return plain completion."""
+        from civ_mcp.haikesi_tools.runner import ChatResult
+
+        del tools, allow_tool_use
+        user_text = ""
+        for m in reversed(messages):
+            if m.get("role") == "user" and isinstance(m.get("content"), str):
+                user_text = m["content"]
+                break
+        return ChatResult(text=self.complete(user_text or ""), tool_calls=[], reasoning="")
 
     def complete(
         self,
@@ -2284,6 +2382,164 @@ Turn {turn}
 """
 
 
+def _format_leader_block_slim(
+    ai: dict[str, Any],
+    view: LeaderView | None,
+    human_player_id: int,
+) -> str:
+    """Slim leader block: short status + full candidates; details via tools."""
+    pid = int(ai["player_id"])
+    picks = int(ai.get("picks") or 1)
+    age = str(ai.get("age") or "NORMAL")
+    selected = haikesi_lua.dedupe_preserve_order(list(ai.get("selected") or []))
+    hist = (
+        f"历史库存短名：{haikesi_lua.format_relic_type_list(selected)}"
+        if selected
+        else "历史库存：（无）"
+    )
+    if view is None:
+        label = ai.get("player_name") or ai.get("civ_label") or str(pid)
+        cand = "\n".join(haikesi_lua.format_option_lines(ai.get("options", [])))
+        return (
+            f"### 领袖 {pid}（{label}）\n"
+            f"短况：视图缺失（可用 tool 仍可能空白）· {age} · picks={picks}\n"
+            f"{hist}\n"
+            f"候选：\n{cand}"
+        )
+
+    war = any(m.is_at_war for m in view.met)
+    rst = view.rst.active_strategy if view.rst else "-"
+    human_met = next((m for m in view.met if m.player_id == human_player_id), None)
+    human_bit = (
+        f"已接触人类:{human_met.civ_name}/{'战' if human_met.is_at_war else '和'}"
+        if human_met
+        else "未接触人类"
+    )
+    cand = "\n".join(
+        haikesi_lua.format_option_lines(
+            ai.get("options", []),
+            cities=int(view.cities or 0),
+            intl_inbound=(
+                int(view.trade.intl_in) if view.trade is not None else None
+            ),
+        )
+    )
+    pick_rule = "六选二" if picks >= 2 else "三选一"
+    return (
+        f"### 领袖 {pid}：{view.civ_name}（{view.leader_name}）\n"
+        f"短况：{view.cities}城/人{view.pop} 科{view.sci}/文{view.cul}/金{view.gold} "
+        f"军{view.mil} RST={rst} 交战={'是' if war else '否'} · {age}/{pick_rule} · {human_bit}\n"
+        f"{hist}\n"
+        f"候选（必须从这里选）：\n{cand}"
+    )
+
+
+def _format_historical_hexes_names_only(payload: dict[str, Any]) -> str:
+    lines: list[str] = []
+    for ai in payload.get("ai_players", []) or []:
+        pid = int(ai.get("player_id", -1))
+        label = ai.get("civ_label") or ai.get("player_name") or f"领袖{pid}"
+        selected = haikesi_lua.dedupe_preserve_order(list(ai.get("selected") or []))
+        if not selected:
+            lines.append(f"- {label}：无")
+        else:
+            lines.append(
+                f"- {label}：{haikesi_lua.format_relic_type_list(selected)}"
+            )
+    return "\n".join(lines) if lines else "- （尚无历史海克斯）"
+
+
+def build_decision_prompt_slim(
+    payload: dict[str, Any], context: HaikesiGameContext
+) -> str:
+    """Thin prompt for ToolLoop: candidates + short status; details via tools."""
+    ai_blocks = [
+        _format_leader_block_slim(
+            ai,
+            context.leader_views.get(int(ai["player_id"])),
+            context.human_player_id,
+        )
+        for ai in payload.get("ai_players", [])
+    ]
+    notes_block = ""
+    if context.fetch_notes:
+        notes_block = (
+            "## 数据说明（系统）\n"
+            + "\n".join(f"- {n}" for n in context.fetch_notes)
+            + "\n\n"
+        )
+    channel_note = (
+        "局势缓存来自联机 Lua.log CTX（工具只读缓存，无法中途补查游戏）。"
+        if any(
+            "联机 LOG 通道" in n or "联机无 FireTuner" in n
+            for n in context.fetch_notes
+        )
+        else "局势缓存来自单机 FireTuner 一次 gather（工具只读缓存，不二次查询）。"
+    )
+    mode = reason_mode()
+    if mode == "off":
+        reason_rule = "- 不要输出 reasons（或 {}）；只需 choices。"
+        output_fmt = (
+            '{\n  "choices": {"2": "NW_AI_...", "3": ["NW_AI_A", "NW_AI_B"]}\n}'
+        )
+    else:
+        reason_rule = (
+            "- reasons 仅开发日志用 1 句简体中文风味（约 20 字）；禁止英文双引号。"
+        )
+        output_fmt = (
+            '{\n  "choices": {"2": "NW_AI_...", "3": ["NW_AI_A", "NW_AI_B"]},\n'
+            '  "reasons": {"2": "...", "3": "..."}\n}'
+        )
+
+    turn = int(payload.get("turn") or 0)
+    speed_mult, speed_name, _ = _resolve_game_speed(context, payload)
+    global_setting = _format_global_setting(context, turn=turn, payload=payload)
+    early_rules = _early_game_rules(
+        turn, cost_multiplier=speed_mult, speed_name=speed_name
+    )
+    human_relic = _format_human_relic_section(payload)
+
+    return f"""你是文明6资深玩家，代入下列领袖为本轮选择海克斯。{channel_note}
+
+你可以使用工具按需索取：leader_snapshot / met_civ_detail / lookup_relic /
+inventory_brief / check_echo_feasibility / civ6_kb。
+对局工具必须带正确的 player_id（迷雾主体=该领袖自己）；禁止跨领袖偷看。
+查完后输出最终 JSON（不要 markdown）。
+
+情报规则：
+- 每位领袖只用自己区块与自己 player_id 的工具结果。
+- 候选全文已在下方；choices 值必须是候选里的完整类型 ID。
+- 历史库存仅短名；需要效果时用 lookup_relic。
+
+## 当前回合
+Turn {turn}
+
+## 全局公开设定
+{global_setting}
+
+## 世界会议（公开）
+{_format_world_congress(context.world_congress)}
+
+## 人类玩家本轮海克斯（公开）
+{human_relic}
+
+## 各文明历史已选（仅短名）
+{_format_historical_hexes_names_only(payload)}
+
+{notes_block}## 待决策领袖
+{"\n\n".join(ai_blocks)}
+
+## 规则
+- 普通时代选 1；六选二/picks=2 选 2 个不重复类型
+- 只从该领袖候选中选；禁止编造 NW_AI_*
+{early_rules}- 0 城勿选资源创建；军事 echo 核对在建兵种（石弩=攻城≠远程）
+{reason_rule}
+- choices 键=「### 领袖 N」的 N
+- 最终只输出一个合法 JSON：
+{output_fmt}
+"""
+
+
 def _strip_code_fences(text: str) -> str:
     text = text.strip()
     if text.startswith("```"):
@@ -2815,14 +3071,48 @@ def _complete_and_parse_decision(
     verbose: bool,
     label: str,
     required_ids: list[str] | None = None,
+    tool_ctx: Any | None = None,
 ) -> tuple[str, str, dict[str, Any]]:
-    """One LLM call → (raw, reasoning, decision_dict). Retries once on bad JSON."""
+    """One LLM call (or ToolLoop draft) → (raw, reasoning, decision_dict)."""
+    from civ_mcp.haikesi_tools.runner import ToolLoopRunner, llm_tools_enabled
+
     if verbose:
-        print(f"Calling {model} [{label}] (prompt ~{len(prompt)} chars) ...", flush=True)
-    raw = client.complete(prompt, required_ids=required_ids)
-    reasoning = _client_last_reasoning(client)
-    if not reasoning:
-        reasoning, _ = _split_visible_thinking(raw)
+        mode = "tools" if tool_ctx is not None and llm_tools_enabled() else "plain"
+        print(
+            f"Calling {model} [{label}/{mode}] (prompt ~{len(prompt)} chars) ...",
+            flush=True,
+        )
+
+    if (
+        tool_ctx is not None
+        and llm_tools_enabled()
+        and label == "draft"
+        and hasattr(client, "complete_with_tools")
+    ):
+        try:
+            loop_result = ToolLoopRunner.run(
+                client,  # type: ignore[arg-type]
+                user_prompt=prompt,
+                tool_ctx=tool_ctx,
+            )
+            raw = loop_result.text
+            reasoning = loop_result.reasoning or _client_last_reasoning(client)
+            if not reasoning:
+                reasoning, _ = _split_visible_thinking(raw)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("ToolLoop failed (%s); falling back to plain complete", exc)
+            if verbose:
+                print(f"ToolLoop failed ({exc}); plain fallback...", flush=True)
+            raw = client.complete(prompt, required_ids=required_ids)
+            reasoning = _client_last_reasoning(client)
+            if not reasoning:
+                reasoning, _ = _split_visible_thinking(raw)
+    else:
+        raw = client.complete(prompt, required_ids=required_ids)
+        reasoning = _client_last_reasoning(client)
+        if not reasoning:
+            reasoning, _ = _split_visible_thinking(raw)
+
     try:
         decision = parse_llm_json(raw)
     except json.JSONDecodeError as exc:
@@ -3068,11 +3358,13 @@ def run_llm_decision_with_reviews(
     review_client: _ChatClient | None = None,
     review_model: str | None = None,
     verbose: bool = True,
+    tool_ctx: Any | None = None,
 ) -> tuple[str, str, dict[str, Any]]:
     """初稿 + 可选多轮审查。
 
     ``review_client`` 若给定且不同于 draft，则为双模型（DeepSeek 初稿 / Grok 审查）。
     缺人补全与候选池修复优先用初稿客户端（DeepSeek 更稳跟格式约束）。
+    ``tool_ctx`` 仅用于 draft ToolLoop（SP/MP 只读缓存）；审查轮不用 tools。
     """
     from civ_mcp.llm_chat_session import (
         chat_session_enabled,
@@ -3114,6 +3406,7 @@ def run_llm_decision_with_reviews(
             verbose=verbose,
             label="draft",
             required_ids=req or None,
+            tool_ctx=tool_ctx,
         )
     finally:
         # 审查/修复不用多轮历史，避免把 review prompt 叠进对局记忆
@@ -3326,7 +3619,21 @@ async def decide_and_submit_once(
     if verbose:
         print(format_context_summary(context), flush=True)
 
-    prompt = build_decision_prompt(payload, context)
+    from civ_mcp.haikesi_tools import DecisionToolContext, llm_tools_enabled
+
+    tool_ctx = None
+    if llm_tools_enabled():
+        tool_ctx = DecisionToolContext(
+            context=context, payload=payload, channel="tuner"
+        )
+        prompt = build_decision_prompt_slim(payload, context)
+        if verbose:
+            print(
+                f"Tools ON (tuner); slim prompt ~{len(prompt)} chars",
+                flush=True,
+            )
+    else:
+        prompt = build_decision_prompt(payload, context)
     required_ids = expected_choice_ids(payload)
 
     model_label = model
@@ -3343,6 +3650,7 @@ async def decide_and_submit_once(
         review_client=review_client,
         review_model=review_model,
         verbose=verbose,
+        tool_ctx=tool_ctx,
     )
 
     choices_map = _decision_choices_map(decision)
@@ -3407,6 +3715,8 @@ async def decide_and_submit_once(
             reasons=reasons,
             wire=wire,
             payload=payload,
+            tool_trace=(tool_ctx.tool_trace if tool_ctx is not None else None),
+            tool_channel=(tool_ctx.channel if tool_ctx is not None else None),
         )
     except OSError as exc:
         log.warning("Failed to save decision analysis log: %s", exc)
@@ -3448,8 +3758,21 @@ async def decide_and_inject_log_channel(
     if verbose:
         print(format_context_summary(context), flush=True)
 
-    # Reuse the same LLM path as decide_and_submit_once (inline subset)
-    prompt = build_decision_prompt(payload, context)
+    from civ_mcp.haikesi_tools import DecisionToolContext, llm_tools_enabled
+
+    tool_ctx = None
+    if llm_tools_enabled():
+        tool_ctx = DecisionToolContext(
+            context=context, payload=payload, channel="log"
+        )
+        prompt = build_decision_prompt_slim(payload, context)
+        if verbose:
+            print(
+                f"Tools ON (log/CTX); slim prompt ~{len(prompt)} chars",
+                flush=True,
+            )
+    else:
+        prompt = build_decision_prompt(payload, context)
     required_ids = expected_choice_ids(payload)
     model_label = model
     if review_client is not None and review_model and review_client is not client:
@@ -3464,6 +3787,7 @@ async def decide_and_inject_log_channel(
         review_client=review_client,
         review_model=review_model,
         verbose=verbose,
+        tool_ctx=tool_ctx,
     )
 
     choices_map = _decision_choices_map(decision)
@@ -3515,6 +3839,8 @@ async def decide_and_inject_log_channel(
             reasons=reasons,
             wire=wire,
             payload=payload,
+            tool_trace=(tool_ctx.tool_trace if tool_ctx is not None else None),
+            tool_channel=(tool_ctx.channel if tool_ctx is not None else None),
         )
         if verbose and analysis_path is not None:
             print(f"Decision analysis log: {analysis_path}", flush=True)
