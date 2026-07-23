@@ -710,10 +710,18 @@ local function OnConfirm()
     Close()
 
     -- MIMICRUNE 仿生模仿：选完海克斯后本地弹能力选择窗
+    -- 主选或 ExtraRelicTypes 附赠（手快全选本轮另两张 / 掷骰附赠）均需开窗
     -- 能力窗自包含池构建+math.random抽10项（UI Context，不走 GetRandNum）
     -- Gameplay 仅在能力窗确认时 HaikesiSelectAbility 挂 Trait Modifier
     local isMimic = (aug.Type == 'MIMICRUNE')
-    local localPlayerID = Game.GetLocalPlayer()
+    if not isMimic and param.ExtraRelicTypes ~= nil then
+        for _, extraType in ipairs(param.ExtraRelicTypes) do
+            if extraType == 'MIMICRUNE' then
+                isMimic = true
+                break
+            end
+        end
+    end
 
     -- 真正选中：清空本轮牌面与配额，确保下轮触发从全新状态开始
     m_CurrentAugments = {}

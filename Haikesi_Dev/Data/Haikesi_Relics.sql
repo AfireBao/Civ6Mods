@@ -230,9 +230,10 @@ UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SINGULARITYAIRUNE'
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'STARLIGHTSPLENDORRUNE';-- 星光璀璨
 
 -- 仿生模仿 MIMICRUNE：元机制 - 从10项随机能力中选1项获得（触发独立选择UI）
+-- 允许手快全选/掷骰狂人经 ExtraRelicTypes 附赠；弹窗由 UI OnConfirm 检测主选或 extras
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'MIMICRUNE';         -- 仿生模仿（元机制）
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'MIMICRUNE';     -- 仿生模仿
-UPDATE Haikesi_Relics SET SelectionOnly = 1 WHERE RelicType = 'MIMICRUNE';    -- 只能主动选择
+UPDATE Haikesi_Relics SET SelectionOnly = 0 WHERE RelicType = 'MIMICRUNE';    -- 可作附赠（须同步开能力窗）
 
 -- Turn2Dedication 移植批次：全部不可重复
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SLOWCOOKRUNE';        -- 慢炖（农场+粮仓速度）
@@ -284,7 +285,7 @@ INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'LANDLOTTERYRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'LANDLOTTERYRUNE';
 UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'LANDLOTTERYRUNE';
-UPDATE Haikesi_Relics SET Weight = 8000 WHERE RelicType = 'LANDLOTTERYRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'LANDLOTTERYRUNE';
 
 -- 高翔导航：暂借未实装「潘朵拉的盒子」PANDORASBOXRUNE 图标（占位 RelicType/LOC 不动）
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
