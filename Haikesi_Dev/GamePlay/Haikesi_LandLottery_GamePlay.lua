@@ -1,6 +1,6 @@
 -- ===========================================================================
 -- Haikesi_LandLottery_GamePlay.lua
--- LANDLOTTERYRUNE 盲盒地脉：地块级随机「地形层」产出（地貌/资源不动）
+-- LANDLOTTERYRUNE 狂野符文：地块级随机「地形层」产出（地貌/资源不动）
 -- 新纳入版图的地块：一律等到回合结束/下回合初再随机（避免获得时+过回合各一次叠层）
 -- ===========================================================================
 
@@ -8,7 +8,7 @@ local LANDLOTTERYRUNE = 'LANDLOTTERYRUNE'
 local LL_PLAYER_PROP = 'PROP_NW_HAIKESI_LANDLOTTERY'
 local LL_ACTIVE = 'NW_HAIKESI_LL_ACTIVE'
 local LL_FOR = 'NW_HAIKESI_LL_FOR'
-local LL_BUDGET_FLOOR = 2
+local LL_BUDGET_FLOOR = 3
 local LL_BITS = { 4, 2, 1 }
 local LL_YIELD_KEYS = { 'YIELD_FOOD', 'YIELD_PRODUCTION', 'YIELD_GOLD', 'YIELD_FAITH' }
 

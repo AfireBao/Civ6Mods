@@ -718,13 +718,13 @@
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_LANDLOTTERYRUNE_NAME" Language="zh_Hans_CN">
-            <Text>盲盒地脉</Text>
+            <Text>狂野符文</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_LANDLOTTERYRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>你文明城市内每个可工作地块的地形产出被独立重新随机（粮/锤/金/信仰），地貌与资源产出不变。山脉等不可通行格除外。原地形合计不足 2 点的提到 2 点，超过则保持总点数。新纳入版图的地块在回合结束时开盲盒。</Text>
+            <Text>你文明城市内每个可工作地块的地形产出被独立重新随机（粮/锤/金/信仰），地貌与资源产出不变。山脉等不可通行格除外。原地形合计不足 3 点的提到 3 点，超过则保持总点数。新纳入版图的地块在回合结束时重随。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_LANDLOTTERYRUNE_FLAVOR" Language="zh_Hans_CN">
-            <Text>同一片草原，左边是粮仓，右边是金矿——地脉说了算。</Text>
+            <Text>同一片草原，左边是粮仓，右边是金矿——符文说了算。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_HIGHFLIGHTNAVRUNE_NAME" Language="zh_Hans_CN">

@@ -2580,7 +2580,7 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     end
 
     -- ==============================
-    -- LANDLOTTERYRUNE 盲盒地脉（见 Haikesi_LandLottery_GamePlay.lua）
+    -- LANDLOTTERYRUNE 狂野符文（见 Haikesi_LandLottery_GamePlay.lua）
     -- ==============================
     if relicType == 'LANDLOTTERYRUNE' then
         local applyLL = nil
