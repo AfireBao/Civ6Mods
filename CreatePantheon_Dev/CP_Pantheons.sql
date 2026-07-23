@@ -71,25 +71,40 @@ select	'RS_OBJECT_WITHIN_'||numbers||'_TILES',				'REQ_OBJECT_WITHIN_'||numbers|
 from counter where numbers >= 1 and numbers <= 10;
 
 
---地块有某区域  RS/REQ
+--地块有某区域 RS/REQ（v20：仅专业区 GPP 表 + 圣地；勿扫全表 Districts）
 insert or ignore into Requirements (RequirementId, RequirementType)
 select 'REQ_PLOT_HAS_'||DistrictType, 'REQUIREMENT_DISTRICT_TYPE_MATCHES'
-from Districts;
+from (
+	select DistrictType from District_GreatPersonPoints
+	union
+	select 'DISTRICT_HOLY_SITE'
+);
 
 insert or ignore into RequirementArguments (RequirementId, Name, Value)
 select 'REQ_PLOT_HAS_'||DistrictType, 'DistrictType', DistrictType
-from Districts;
-
+from (
+	select DistrictType from District_GreatPersonPoints
+	union
+	select 'DISTRICT_HOLY_SITE'
+);
 
 insert or ignore into RequirementSets
     (RequirementSetId,                                  RequirementSetType)
 select	'RS_PLOT_HAS_'||DistrictType,				'REQUIREMENTSET_TEST_ALL'
-from Districts;
+from (
+	select DistrictType from District_GreatPersonPoints
+	union
+	select 'DISTRICT_HOLY_SITE'
+);
 
 insert or ignore into RequirementSetRequirements
     (RequirementSetId,                                  RequirementId)
 select	'RS_PLOT_HAS_'||DistrictType,				'REQ_PLOT_HAS_'||DistrictType
-from Districts;
+from (
+	select DistrictType from District_GreatPersonPoints
+	union
+	select 'DISTRICT_HOLY_SITE'
+);
 
 --城市有几个专业区域  REQ/RS
 insert or ignore into Requirements (RequirementId, RequirementType)
@@ -500,30 +515,8 @@ insert or ignore into DynamicModifiers (ModifierType, CollectionType, EffectType
 
 
 
---神圣之光rs（保留：其它逻辑/探针可能引用；DS 效果改用分离的 district-only + threshold-only）
-    insert or ignore into RequirementSets(RequirementSetId, RequirementSetType) select
-	'RS_'||GodhoodType||'_THRESHOLD_2_'||DistrictType,		'REQUIREMENTSET_TEST_ALL'
-	from GodHood,  District_GreatPersonPoints where ghClass in ('IMPROVEMENT',	'FEATURE',	'TERRAIN', 'APPEAL');
-
-    insert or ignore into RequirementSetRequirements(RequirementSetId, RequirementId) select
-	'RS_'||GodhoodType||'_THRESHOLD_2_'||DistrictType,		'REQ_'||GodhoodType||'_THRESHOLD_2'
-	from GodHood,  District_GreatPersonPoints where ghClass in ('IMPROVEMENT',	'FEATURE',	'TERRAIN', 'APPEAL');
-
-    insert or ignore into RequirementSetRequirements(RequirementSetId, RequirementId) select
-	'RS_'||GodhoodType||'_THRESHOLD_2_'||DistrictType,		'REQ_PLOT_HAS_'||DistrictType
-	from GodHood,  District_GreatPersonPoints where ghClass in ('IMPROVEMENT',	'FEATURE',	'TERRAIN', 'APPEAL');
-
-    insert or ignore into RequirementSets(RequirementSetId, RequirementSetType) select
-	'RS_'||GodhoodType||'_THRESHOLD_4_'||DistrictType,		'REQUIREMENTSET_TEST_ALL'
-	from GodHood,  District_GreatPersonPoints where ghClass in ('IMPROVEMENT',	'FEATURE',	'TERRAIN', 'APPEAL');
-
-    insert or ignore into RequirementSetRequirements(RequirementSetId, RequirementId) select
-	'RS_'||GodhoodType||'_THRESHOLD_4_'||DistrictType,		'REQ_'||GodhoodType||'_THRESHOLD_4'
-	from GodHood,  District_GreatPersonPoints where ghClass in ('IMPROVEMENT',	'FEATURE',	'TERRAIN', 'APPEAL');
-
-    insert or ignore into RequirementSetRequirements(RequirementSetId, RequirementId) select
-	'RS_'||GodhoodType||'_THRESHOLD_4_'||DistrictType,		'REQ_PLOT_HAS_'||DistrictType
-	from GodHood,  District_GreatPersonPoints where ghClass in ('IMPROVEMENT',	'FEATURE',	'TERRAIN', 'APPEAL');
+--神圣之光 per-district RS 已废弃（v16 起改城市级 marker；v20 删除以减 Requirement 膨胀）
+-- （原 RS_<godhood>_THRESHOLD_2/4_<DistrictType> 无 Modifier 引用）
 
 -- =============================================================================
 -- Divine Spark (v16) — Lavra-style city GPP, gated by hidden marker buildings.
@@ -1266,126 +1259,27 @@ insert or ignore into PantheonTexts	 (Language,      GodhoodType,      PowerType
 */
 
 
---奇迹之神 神力为6的区域获得1级建筑 'RS_'||GodhoodType||'_THRESHOLD_7'
+-- =============================================================================
+-- 奇迹之神 SQL 永久赠建筑（v20 删除）
+-- 旧逻辑对每个 Godhood x 每个非特色 District x 每个一级建筑生成 Modifier/RS，
+-- 即使 Lua 已接管奇迹也不 Attach，仍会把 Requirement/Modifier 库撑爆 → 选工人卡顿。
+-- 现由 CP_Miracles.lua 事件路径按阈值赠送；勿恢复下方笛卡尔积。
+-- =============================================================================
 
--- Custom ModifierType
-
-insert or ignore into Types (Type, Kind) VALUES 
-('QGG_CP_MODIFIER_PLAYER_CITIES_GRANT_BUILDING_IN_CITY', 'KIND_MODIFIER');
-
-insert or ignore into DynamicModifiers (ModifierType, CollectionType, EffectType) VALUES 
-('QGG_CP_MODIFIER_PLAYER_CITIES_GRANT_BUILDING_IN_CITY', 'COLLECTION_PLAYER_DISTRICTS', 'EFFECT_GRANT_BUILDING_IN_CITY');
-
-insert or ignore into RequirementSets(RequirementSetId, RequirementSetType)
-select
-    'RS_' || A.GodhoodType || '_THRESHOLD_6_' || D.DistrictType, 
-    'REQUIREMENTSET_TEST_ALL'
-from 
-    Godhood A,
-    Districts D
-where 
-    A.ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-    and D.TraitType is NULL;
-
-
-insert or ignore into RequirementSetRequirements(RequirementSetId, RequirementId)
-select
-    'RS_' || A.GodhoodType || '_THRESHOLD_6_' || D.DistrictType,
-    'REQ_' || A.GodhoodType || '_THRESHOLD_6'
-from 
-    Godhood A,
-    Districts D
-where 
-    A.ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-    and D.TraitType is NULL;
-
-
-insert or ignore into RequirementSetRequirements(RequirementSetId, RequirementId)
-select
-    'RS_' || A.GodhoodType || '_THRESHOLD_6_' || D.DistrictType,
-    'REQ_PLOT_HAS_' || D.DistrictType
-from 
-    Godhood A,
-    Districts D
-where 
-    A.ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-    and D.TraitType is NULL;
-
-
-
-insert or ignore into PantheonModifiers(GodhoodType, PowerType, ModifierId) 
-select
-    A.GodhoodType, 'GOD_OF_MIRACLES', A.GodhoodType || '_GOD_OF_MIRACLES_' || B.BuildingType || '_' || D.DistrictType
-from 
-    Godhood A
-join 
-    Buildings B on B.InternalOnly != 1
-    and B.MustPurchase != 1
-    and B.PrereqDistrict is not NULL
-join 
-    Districts D on B.PrereqDistrict = D.DistrictType
-    and D.TraitType is NULL
-where 
-    A.ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-    and B.BuildingType not in (
-        select Building 
-        from BuildingPrereqs
-        where B.BuildingType = Building
-    );
-
-
-
-
-
-
-insert or ignore into Modifiers(ModifierId, ModifierType, SubjectRequirementSetId, RunOnce, Permanent) 
-select
-    A.GodhoodType || '_GOD_OF_MIRACLES_' || B.BuildingType || '_' || D.DistrictType,
-    'QGG_CP_MODIFIER_PLAYER_CITIES_GRANT_BUILDING_IN_CITY',
-    'RS_' || A.GodhoodType || '_THRESHOLD_6_' || D.DistrictType,
-    0, 
-    1
-from 
-    Godhood A
-join 
-    Buildings B on B.InternalOnly != 1
-    and B.MustPurchase != 1
-    and B.PrereqDistrict is not NULL
-join 
-    Districts D on B.PrereqDistrict = D.DistrictType
-    and D.TraitType is NULL
-where 
-    A.ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-    and B.BuildingType not in (
-        select Building 
-        from BuildingPrereqs
-        where B.BuildingType = Building
-    );
-
-
-
-
-insert or ignore into ModifierArguments(ModifierId, Name, Value)
-select
-    A.GodhoodType || '_GOD_OF_MIRACLES_' || B.BuildingType || '_' || D.DistrictType,
-    'BuildingType',  
-    BuildingType          
-from 
-    Godhood A
-join 
-    Buildings B on B.InternalOnly != 1
-    and B.MustPurchase != 1
-    and B.PrereqDistrict is not NULL
-join 
-    Districts D on B.PrereqDistrict = D.DistrictType
-    and D.TraitType is NULL
-where 
-    A.ghClass in ('IMPROVEMENT', 'FEATURE', 'TERRAIN', 'APPEAL')
-    and B.BuildingType not in (
-        select Building 
-        from BuildingPrereqs
-        where B.BuildingType = Building
-    );
+-- =============================================================================
+-- v20+ cleanup: remove legacy Miracle SQL cartesian Modifiers/RS if any remain
+-- (from older Dev/Workshop DB builds). Safe no-ops when already absent.
+-- =============================================================================
+delete from PantheonModifiers where PowerType = 'GOD_OF_MIRACLES'
+	and ModifierId like '%_GOD_OF_MIRACLES_%';
+delete from ModifierArguments where ModifierId like '%_GOD_OF_MIRACLES_%';
+delete from Modifiers where ModifierId like '%_GOD_OF_MIRACLES_%';
+delete from RequirementSetRequirements where RequirementSetId like '%_THRESHOLD_6_%';
+delete from RequirementSets where RequirementSetId like '%_THRESHOLD_6_%';
+delete from RequirementSetRequirements where RequirementSetId like '%_THRESHOLD_2_DISTRICT_%'
+	or RequirementSetId like '%_THRESHOLD_4_DISTRICT_%';
+delete from RequirementSets where RequirementSetId like '%_THRESHOLD_2_DISTRICT_%'
+	or RequirementSetId like '%_THRESHOLD_4_DISTRICT_%';
 
 -- =============================================================================
 -- Apply path: Player:AttachModifierByID (original Create Pantheon).

@@ -8,7 +8,7 @@
 | 目录 | 内容 |
 |------|------|
 | [`Haikesi_Dev/`](Haikesi_Dev/) | 海克斯大乱斗 Dev 模组（不与工坊原版同时启用）。将本目录整体复制到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\Haikesi_Dev\` |
-| [`CreatePantheon_Dev/`](CreatePantheon_Dev/) | 创造万神殿 Dev（工坊 [Create Your Pantheon](https://steamcommunity.com/sharedfiles/filedetails/?id=2990102039) 本地分支，**v19，效果待测待查**）。复制或链接到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\CreatePantheon_Dev\`。**勿与工坊原版同时启用**；署名与变更见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md) |
+| [`CreatePantheon_Dev/`](CreatePantheon_Dev/) | 创造万神殿 Dev（工坊 [Create Your Pantheon](https://steamcommunity.com/sharedfiles/filedetails/?id=2990102039) 本地分支，**v20**）。复制或链接到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\CreatePantheon_Dev\`。**勿与工坊原版同时启用**；署名与变更见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md) |
 | [`civ6-mcp-haikesi/`](civ6-mcp-haikesi/) | 基于 [civ6-mcp](https://github.com/lmwilki/civ6-mcp) 的本地副本，含海克斯 AI 决策扩展（不向 upstream 推送） |
 | [`ExtAI_领袖性格对照.md`](ExtAI_领袖性格对照.md) | ExtAI 风格比例、领袖基线对照表、选卡 Skill 一览（可由 `civ6-mcp-haikesi/scripts/gen_extai_style_reference_md.py` 再生） |
 
@@ -70,6 +70,7 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-23 | **创造万神殿选工人卡顿 + 南蛮**：CP Dev **v20** 精简改良/区域 Requirement、删除已废弃奇迹 SQL 笛卡尔积（Lua 已接管赠建筑）。海克斯 UnitPanel 仅在检测到 CP（Dev/工坊）时启用 Builder Lag Fix：保留可造列表与合法性灰显，跳过逐项产量预览重扫；无 CP 仍走原版面板。南蛮攻城通知队列附带氏族 `nameLoc`；无寨兜底兵种沿 `UnitUpgrades` 随世界科技进阶。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |
 | 2026-07-23 | **翔（高翔导航）**：迟滞光环 **3→4 格**（Modifier + 选中高亮 + 文案）。 |
 | 2026-07-23 | **玩家海克斯「城邦工艺」**（`CITYSTATECRAFTSRUNE`）：工人可建造全部城邦特色改良（巨石像/修道院/阿尔卡萨/摩艾/卡霍基亚丘/纳斯卡线条/巴特伊/大寺院/贸易穹顶）；按已加载内容跳过缺失 DLC，无需宗主。 |
 | 2026-07-23 | **COSPLAY（`MIMICRUNE`）附赠修复**：取消 `SelectionOnly`；手快全选本轮另两张 / 掷骰附赠含 COSPLAY 时可正常发卡，并由 `OnConfirm` 打开能力选择窗（手快全选卡本身仍 `SelectionOnly`）。**另修**：蛮族入侵无挂起时 Firaxis `tonumber(nil)` 崩溃。 |

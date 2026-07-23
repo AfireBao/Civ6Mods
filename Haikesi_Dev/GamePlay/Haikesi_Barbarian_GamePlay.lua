@@ -337,6 +337,39 @@ local function CaptureTribeNameLoc(iTribe)
     return nil
 end
 
+-- GetTribeNameType 失败时：按缓存/推断的 TribeType 从 BarbarianTribeNames 挑一条展示名
+local function CaptureTribeNameLocByTribeType(tribeType)
+    if tribeType == nil or tribeType == "" or GameInfo.BarbarianTribeNames == nil then
+        return nil
+    end
+    for r in GameInfo.BarbarianTribeNames() do
+        if r.TribeType == tribeType and r.TribeDisplayName ~= nil then
+            return r.TribeDisplayName
+        end
+    end
+    return nil
+end
+
+local function EnsureNameLocForCamp(plotIndex, iTribe, tribeType)
+    if plotIndex == nil then
+        return nil
+    end
+    local existing = g_BarbarianTribeNameLocByPlot[plotIndex]
+    if existing ~= nil and existing ~= "" then
+        return existing
+    end
+    local nameLoc = CaptureTribeNameLoc(iTribe)
+    if nameLoc == nil then
+        local tType = tribeType or g_BarbarianTribeTypeByPlot[plotIndex]
+        nameLoc = CaptureTribeNameLocByTribeType(tType)
+    end
+    if nameLoc ~= nil then
+        g_BarbarianTribeNameLocByPlot[plotIndex] = nameLoc
+        PersistBarbarianTribeMap()
+    end
+    return nameLoc
+end
+
 local function PersistBarbarianTribeMap()
     local parts = {}
     for plotIndex, iTribe in pairs(g_BarbarianTribeIndexByPlot) do
@@ -405,6 +438,10 @@ local function CacheBarbarianTribeIndex(plotIndex, iTribe, tribeType, doPersist)
         g_BarbarianTribeIndexByPlot[plotIndex] = iTribe
         if g_BarbarianTribeNameLocByPlot[plotIndex] == nil then
             local nameLoc = CaptureTribeNameLoc(iTribe)
+            if nameLoc == nil then
+                nameLoc = CaptureTribeNameLocByTribeType(
+                    tribeType or g_BarbarianTribeTypeByPlot[plotIndex])
+            end
             if nameLoc ~= nil then
                 g_BarbarianTribeNameLocByPlot[plotIndex] = nameLoc
             end
@@ -468,6 +505,73 @@ local function IsAnyMajorHasTech(techType)
         end
     end
     return false
+end
+
+local function IsAnyMajorHasCivic(civicType)
+    local civicRow = GameInfo.Civics[civicType]
+    if civicRow == nil then return false end
+    for _, pMajor in ipairs(PlayerManager.GetAliveMajors()) do
+        if pMajor ~= nil then
+            local pCulture = pMajor:GetCulture()
+            if pCulture ~= nil and pCulture.HasCivic ~= nil
+                and pCulture:HasCivic(civicRow.Index) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- 单位对「世界科技/市政」是否已解锁（无氏族 Create 用；对齐 CreateTribeUnits 进阶）
+local function IsUnitWorldUnlocked(unitType)
+    local unitRow = GameInfo.Units[unitType]
+    if unitRow == nil then
+        return false
+    end
+    if unitRow.PrereqTech ~= nil and not IsAnyMajorHasTech(unitRow.PrereqTech) then
+        return false
+    end
+    if unitRow.PrereqCivic ~= nil and not IsAnyMajorHasCivic(unitRow.PrereqCivic) then
+        return false
+    end
+    return true
+end
+
+local function GetUnitUpgradeTarget(unitType)
+    if unitType == nil or GameInfo.UnitUpgrades == nil then
+        return nil
+    end
+    local row = GameInfo.UnitUpgrades[unitType]
+    if row ~= nil and row.UpgradeUnit ~= nil then
+        return row.UpgradeUnit
+    end
+    for r in GameInfo.UnitUpgrades() do
+        if r.Unit == unitType and r.UpgradeUnit ~= nil then
+            return r.UpgradeUnit
+        end
+    end
+    return nil
+end
+
+-- 沿 UnitUpgrades 从勇士爬到当前世界已解锁的最高陆战近战（轻量，不扫全表 Units）
+local function ResolveEraLandMeleeUnitType()
+    local unitType = BARBARIAN_FALLBACK_UNIT
+    local guard = 0
+    while guard < 16 do
+        guard = guard + 1
+        local nextType = GetUnitUpgradeTarget(unitType)
+        if nextType == nil then
+            break
+        end
+        local nextRow = GameInfo.Units[nextType]
+        if nextRow == nil
+            or nextRow.Domain ~= "DOMAIN_LAND"
+            or not IsUnitWorldUnlocked(nextType) then
+            break
+        end
+        unitType = nextType
+    end
+    return unitType
 end
 
 local function PushSpawnJob(jobs, primaryTag, earlyTag, earlyUnitType, count)
@@ -850,6 +954,10 @@ local function SpawnBarbarianUnitsAtCamp(pCamp, count)
                 pCamp:GetX(), pCamp:GetY(), tostring(iTribe), tostring(tagUsed),
                 job.count, spawned))
         end
+        -- 建营当下 GetTribeNameType 常失败；补兵后再捕一次专名写入映射
+        if totalSpawned > 0 and iTribe ~= nil and iTribe >= 0 then
+            EnsureNameLocForCamp(pCamp:GetIndex(), iTribe, nil)
+        end
         return totalSpawned
     end
 
@@ -876,7 +984,8 @@ local function SpawnBarbarianUnitsAtCamp(pCamp, count)
     return totalSpawned
 end
 
--- 复用原版煽动通知图标：仅人类被打时入队，由 UI 桥接取专名后发送
+-- 复用原版煽动通知图标：仅人类被打时入队。
+-- 队列附带 nameLoc（Gameplay 缓存/再捕获），避免 UI GetTribeNameType 失败时只剩「蛮族氏族」
 local function NotifyBarbarianInvasionAssault(
     triggerPlayerID, iTribe, targetPlayerID, targetCityID, pCamp)
     local pTarget = Players[targetPlayerID]
@@ -889,13 +998,18 @@ local function NotifyBarbarianInvasionAssault(
 
     local campX = -1
     local campY = -1
+    local nameLoc = ""
     if pCamp ~= nil then
         campX = pCamp:GetX() or -1
         campY = pCamp:GetY() or -1
+        nameLoc = EnsureNameLocForCamp(pCamp:GetIndex(), iTribe, nil) or ""
+    else
+        nameLoc = CaptureTribeNameLoc(iTribe) or ""
     end
+    -- 第 7 段为 LOC key；旧队列无此段时 UI 仍按 6 段解析
     local entry = string.format(
-        "%d;%d;%d;%d;%d;%d",
-        triggerPlayerID, iTribe, targetPlayerID, targetCityID, campX, campY)
+        "%d;%d;%d;%d;%d;%d;%s",
+        triggerPlayerID, iTribe, targetPlayerID, targetCityID, campX, campY, nameLoc)
     local queue = Game:GetProperty(BARB_ASSAULT_NOTIFY_PROP) or ""
     if queue == "" then
         queue = entry
@@ -904,9 +1018,9 @@ local function NotifyBarbarianInvasionAssault(
     end
     Game:SetProperty(BARB_ASSAULT_NOTIFY_PROP, queue)
     print(string.format(
-        "[Haikesi GamePlay] BARBARIAN_INVASION notifyQueued tribe=%s -> human=%s city=%s camp(%d,%d)",
-        tostring(iTribe), tostring(targetPlayerID), tostring(targetCityID),
-        campX, campY))
+        "[Haikesi GamePlay] BARBARIAN_INVASION notifyQueued tribe=%s nameLoc=%s -> human=%s city=%s camp(%d,%d)",
+        tostring(iTribe), tostring(nameLoc), tostring(targetPlayerID),
+        tostring(targetCityID), campX, campY))
 end
 
 -- 令氏族对指定城市发动攻城（Gameplay 可用；不扣城邦点、不花金币）
@@ -987,7 +1101,8 @@ end
 
 local function SpawnBarbarianUnitsAtCityDistance(centerX, centerY, distance, count)
     local pBarb = GetBarbarianPlayer()
-    local unitRow = GameInfo.Units[BARBARIAN_FALLBACK_UNIT]
+    local unitType = ResolveEraLandMeleeUnitType()
+    local unitRow = GameInfo.Units[unitType] or GameInfo.Units[BARBARIAN_FALLBACK_UNIT]
     if pBarb == nil or unitRow == nil or count <= 0 then
         return 0
     end
@@ -1020,6 +1135,11 @@ local function SpawnBarbarianUnitsAtCityDistance(centerX, centerY, distance, cou
         if pUnit ~= nil then
             spawned = spawned + 1
         end
+    end
+    if spawned > 0 then
+        print(string.format(
+            "[Haikesi GamePlay] BARBARIAN_INVASION clanlessEra unit=%s spawned=%d/%d at ring=%d",
+            tostring(unitRow.UnitType or unitType), spawned, count, distance))
     end
     return spawned
 end

@@ -8,6 +8,66 @@
 -- ===========================================================================
 include("UnitPanel_Expansion1");
 
+-- ===========================================================================
+-- Builder lag fix only when Create Your Pantheon (Dev or Workshop) is active.
+-- Without CP, keep vanilla GetUnitActionsTable (full yield preview).
+-- ===========================================================================
+local CREATE_PANTHEON_MOD_IDS = {
+	"c3a8f1e4-7b2d-4a91-9e5c-6d0f8b4a2c17", -- CreatePantheon_Dev
+	"b85e61c0-26b7-4098-81ba-8566b8537dcb", -- Workshop Create Your Pantheon
+};
+
+local function IsCreatePantheonActive()
+	if Modding ~= nil then
+		if type(Modding.IsModActive) == "function" then
+			for _, modId in ipairs(CREATE_PANTHEON_MOD_IDS) do
+				local ok, active = pcall(function()
+					return Modding.IsModActive(modId);
+				end);
+				if ok and active then
+					return true;
+				end
+			end
+		end
+		if type(Modding.GetActiveMods) == "function" then
+			local ok, mods = pcall(function()
+				return Modding.GetActiveMods();
+			end);
+			if ok and mods ~= nil then
+				for _, mod in ipairs(mods) do
+					local id = mod.Id or mod.id or mod.Handle;
+					if id ~= nil then
+						for _, want in ipairs(CREATE_PANTHEON_MOD_IDS) do
+							if tostring(id) == want then
+								return true;
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	-- DB fallback (CP inserts these; works even if Modding API unavailable)
+	if GameInfo ~= nil then
+		if GameInfo.BeliefClasses ~= nil
+			and GameInfo.BeliefClasses["BELIEF_CLASS_CP_COMBO"] ~= nil then
+			return true;
+		end
+		if GameInfo.Types ~= nil
+			and GameInfo.Types["BELIEF_CLASS_CP_COMBO"] ~= nil then
+			return true;
+		end
+	end
+	return false;
+end
+
+if IsCreatePantheonActive() then
+	include("Haikesi_GetUnitActionsTable_BuilderLag");
+	print("[Haikesi UI] Create Pantheon detected -- builder lag UnitPanel patch on");
+else
+	print("[Haikesi UI] Create Pantheon not detected -- vanilla UnitPanel build actions");
+end
+
 
 -- ===========================================================================
 --	Add to base tables

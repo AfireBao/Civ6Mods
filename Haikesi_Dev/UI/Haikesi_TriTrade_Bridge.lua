@@ -410,7 +410,48 @@ local function ResolveTribeNameRow(nameType)
     return nil
 end
 
-local function ResolveClanProperName(iTribe, campX, campY)
+local function LookupNameLocFromTribeMap(campX, campY)
+    if Game == nil or Game.GetProperty == nil or Map == nil then
+        return nil
+    end
+    if campX == nil or campY == nil or campX < 0 or campY < 0 then
+        return nil
+    end
+    local pPlot = Map.GetPlot(campX, campY)
+    if pPlot == nil then
+        return nil
+    end
+    local plotIndex = pPlot:GetIndex()
+    local raw = Game:GetProperty("PROP_NW_HAIKESI_BARB_TRIBE_MAP") or ""
+    for entry in string.gmatch(raw, "[^|]+") do
+        local plotStr, _, _, nameLoc = string.match(
+            entry, "^(%d+):(%-?%d+):([^:]*):(.*)$")
+        if tonumber(plotStr) == plotIndex and nameLoc ~= nil and nameLoc ~= "" then
+            return nameLoc
+        end
+    end
+    return nil
+end
+
+-- preferredNameLoc：Gameplay 入队时附带的 TribeDisplayName LOC key
+local function ResolveClanProperName(iTribe, campX, campY, preferredNameLoc)
+    if preferredNameLoc ~= nil and preferredNameLoc ~= "" then
+        local looked = Locale.Lookup(preferredNameLoc)
+        if looked ~= nil and looked ~= "" and looked ~= preferredNameLoc then
+            return looked
+        end
+        -- 某些环境下 Lookup 原样返回 key 也仍可用作展示
+        if string.sub(preferredNameLoc, 1, 4) ~= "LOC_" then
+            return preferredNameLoc
+        end
+    end
+    local mapLoc = LookupNameLocFromTribeMap(campX, campY)
+    if mapLoc ~= nil and mapLoc ~= "" then
+        local looked = Locale.Lookup(mapLoc)
+        if looked ~= nil and looked ~= "" and looked ~= mapLoc then
+            return looked
+        end
+    end
     local pBarbManager = Game.GetBarbarianManager()
     if pBarbManager == nil or pBarbManager.GetTribeNameType == nil then
         return Locale.Lookup("LOC_HAIKESI_BARB_INVASION_CLAN_FALLBACK")
@@ -442,7 +483,8 @@ local function ResolveClanProperName(iTribe, campX, campY)
     return Locale.Lookup("LOC_HAIKESI_BARB_INVASION_CLAN_FALLBACK")
 end
 
-local function SendAssaultNotification(triggerPlayerID, iTribe, targetPlayerID, targetCityID, campX, campY)
+local function SendAssaultNotification(
+    triggerPlayerID, iTribe, targetPlayerID, targetCityID, campX, campY, nameLoc)
     if NotificationManager == nil or NotificationManager.SendNotification == nil then
         return
     end
@@ -454,7 +496,7 @@ local function SendAssaultNotification(triggerPlayerID, iTribe, targetPlayerID, 
     if triggerPlayerID ~= nil and PlayerConfigurations[triggerPlayerID] ~= nil then
         leaderName = Locale.Lookup(PlayerConfigurations[triggerPlayerID]:GetLeaderName())
     end
-    local clanName = ResolveClanProperName(iTribe, campX, campY)
+    local clanName = ResolveClanProperName(iTribe, campX, campY, nameLoc)
     local cityName = "?"
     local pPlayer = Players[targetPlayerID]
     if pPlayer ~= nil and targetCityID ~= nil then
@@ -493,13 +535,22 @@ local function ProcessAssaultNotifyQueue()
         end
         local localPlayer = Game.GetLocalPlayer()
         for i = (g_AssaultNotifyCursor or 0) + 1, #entries do
-            local triggerStr, tribeStr, targetStr, cityStr, xStr, yStr = string.match(
-                entries[i], "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+)$")
+            -- 新格式含第 7 段 nameLoc；兼容旧 6 段
+            local triggerStr, tribeStr, targetStr, cityStr, xStr, yStr, nameLoc =
+                string.match(
+                    entries[i],
+                    "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(.*)$")
+            if triggerStr == nil then
+                triggerStr, tribeStr, targetStr, cityStr, xStr, yStr = string.match(
+                    entries[i],
+                    "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+)$")
+                nameLoc = ""
+            end
             local targetPlayerID = tonumber(targetStr)
             if targetPlayerID ~= nil and localPlayer == targetPlayerID then
                 SendAssaultNotification(
                     tonumber(triggerStr), tonumber(tribeStr), targetPlayerID,
-                    tonumber(cityStr), tonumber(xStr), tonumber(yStr))
+                    tonumber(cityStr), tonumber(xStr), tonumber(yStr), nameLoc)
             end
         end
         g_AssaultNotifyCursor = #entries

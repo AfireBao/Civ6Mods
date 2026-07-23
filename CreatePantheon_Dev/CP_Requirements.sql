@@ -78,45 +78,50 @@ values
 	   	
 	   	('REQ_PLOT_HAS_MAKE_WINE_IMPROVEMENT',		'Tag', 		'CLASS_MAKE_WINE_IMPROVEMENT');
 
---单元格有某改良 REQ/RS
+-- =============================================================================
+-- 单元格有某改良 REQ/RS（v20：不再对全表 Improvements 生成）
+-- 选工人时引擎会重扫 Requirement；全表会把城邦/模组改良也算进去导致卡顿。
+-- 万神殿实际只用 TAG_MATCHES（神格 CLASS_*）+ 下列改良；_WITH_RESOURCE 无引用已删。
+-- =============================================================================
+create table if not exists CP_UsedImprovements (
+	ImprovementType TEXT NOT NULL PRIMARY KEY
+);
+
+insert or ignore into CP_UsedImprovements (ImprovementType) values
+	('IMPROVEMENT_FARM'),
+	('IMPROVEMENT_PLANTATION'),
+	('IMPROVEMENT_PASTURE'),
+	('IMPROVEMENT_CAMP'),
+	('IMPROVEMENT_FISHING_BOATS'),
+	('IMPROVEMENT_LUMBER_MILL'),
+	('IMPROVEMENT_QUARRY'),
+	('IMPROVEMENT_MINE'),
+	('IMPROVEMENT_FORT'),
+	('IMPROVEMENT_ROMAN_FORT'),
+	('IMPROVEMENT_GREAT_WALL'),
+	('IMPROVEMENT_MAORI_PA');
+
 insert or ignore into RequirementSets
     (RequirementSetId,                                  RequirementSetType)
-select	'RS_PLOT_HAS_'||ImprovementType,				'REQUIREMENTSET_TEST_ALL'
-from Improvements;
-                                   
+select	'RS_PLOT_HAS_'||I.ImprovementType,				'REQUIREMENTSET_TEST_ALL'
+from CP_UsedImprovements U
+join Improvements I on I.ImprovementType = U.ImprovementType;
 
 insert or ignore into RequirementSetRequirements
     (RequirementSetId,                                  RequirementId)
-select	'RS_PLOT_HAS_'||ImprovementType,				'REQ_PLOT_HAS_'||ImprovementType
-from Improvements;
-
+select	'RS_PLOT_HAS_'||I.ImprovementType,				'REQ_PLOT_HAS_'||I.ImprovementType
+from CP_UsedImprovements U
+join Improvements I on I.ImprovementType = U.ImprovementType;
 
 insert or replace into Requirements (RequirementId, RequirementType)
-select 'REQ_PLOT_HAS_'||ImprovementType, 'REQUIREMENT_PLOT_IMPROVEMENT_TYPE_MATCHES'
-from Improvements;
+select 'REQ_PLOT_HAS_'||I.ImprovementType, 'REQUIREMENT_PLOT_IMPROVEMENT_TYPE_MATCHES'
+from CP_UsedImprovements U
+join Improvements I on I.ImprovementType = U.ImprovementType;
 
 insert or replace into RequirementArguments (RequirementId, Name, Value)
-select 'REQ_PLOT_HAS_'||ImprovementType, 'ImprovementType', ImprovementType
-from Improvements;
-
---单元格有某改良且带资源 RS
-insert or ignore into RequirementSets
-    (RequirementSetId,                                  RequirementSetType)
-select	'RS_PLOT_HAS_'||ImprovementType||'_WITH_RESOURCE',				'REQUIREMENTSET_TEST_ALL'
-from Improvements;
-                                   
-insert or ignore into RequirementSetRequirements
-    (RequirementSetId,                                  RequirementId)
-select	'RS_PLOT_HAS_'||ImprovementType||'_WITH_RESOURCE',				'REQ_PLOT_HAS_'||ImprovementType
-from Improvements;
-
-insert or ignore into RequirementSetRequirements
-    (RequirementSetId,                                  RequirementId)
-select	'RS_PLOT_HAS_'||ImprovementType||'_WITH_RESOURCE',				'REQ_PLOT_HAS_RESOURCE'
-from Improvements;
-
-
-
+select 'REQ_PLOT_HAS_'||I.ImprovementType, 'ImprovementType', I.ImprovementType
+from CP_UsedImprovements U
+join Improvements I on I.ImprovementType = U.ImprovementType;
 
 --玩家有某科技/市政 REQ/RS
 insert or replace into Requirements (RequirementId, RequirementType)

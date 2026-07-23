@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Mod id="c3a8f1e4-7b2d-4a91-9e5c-6d0f8b4a2c17" version="19">
+<Mod id="c3a8f1e4-7b2d-4a91-9e5c-6d0f8b4a2c17" version="20">
   <Properties>
     <Name>LOC_CREATE_PANTHEON_NAME</Name>
     <Description>LOC_CREATE_PANTHEON_DESCRIPTION</Description>
@@ -106,7 +106,7 @@
 
     <Text id="LOC_CREATE_PANTHEON_DESCRIPTION">
       <en_US>Dev fork of Create Your Pantheon. Combos only; AI terrain weights; effects via Gameplay AttachModifier (BeliefModifiers path was a no-op for devotion thresholds). Miracles event+cache. Do NOT enable with the Workshop original.</en_US>
-      <zh_Hans_CN>工坊「创造万神殿」本地 Dev：仅组合；AI 地形加权；效果由 Gameplay AttachModifier 挂载（BeliefModifiers 对神力阈值无效）。奇迹事件+缓存。请勿与工坊原版同时启用。</zh_Hans_CN>
+      <zh_Hans_CN>工坊「创造万神殿」本地 Dev：仅组合；AI 地形加权；Gameplay AttachModifier；奇迹事件+缓存；v20 精简 Requirement 缓解选工人卡顿。请勿与工坊原版同时启用。</zh_Hans_CN>
     </Text>
 
     <Text id="LOC_CREATE_PANTHEON_TEASER">

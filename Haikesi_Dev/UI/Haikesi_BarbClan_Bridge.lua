@@ -1,9 +1,11 @@
 -- ===========================================================================
 -- Haikesi_BarbClan_Bridge.lua
--- Gameplay 将南蛮入侵攻城通知入队；本桥接在 UI 侧用 GetTribeNameType 取氏族专名后发送。
+-- 注意：本 Context 未列入 AddUserInterfaces；攻城通知实际由 Haikesi_TriTrade_Bridge 处理。
+-- 保留文件以免旧存档/外部引用断链；逻辑与 TriTrade 桥保持一致（含 nameLoc 入队）。
 -- ===========================================================================
 
 local BARB_ASSAULT_NOTIFY_PROP = 'PROP_NW_HAIKESI_BARB_ASSAULT_NOTIFY'
+local BARB_TRIBE_MAP_PROP = 'PROP_NW_HAIKESI_BARB_TRIBE_MAP'
 local g_AssaultNotifyCursor = 0
 
 local function SplitQueue(raw)
@@ -35,8 +37,46 @@ local function ResolveTribeNameRow(nameType)
     return nil
 end
 
--- UI 可用：优先营地坐标反查部落索引，再取专名 LOC
-local function ResolveClanProperName(iTribe, campX, campY)
+local function LookupNameLocFromTribeMap(campX, campY)
+    if Game == nil or Game.GetProperty == nil or Map == nil then
+        return nil
+    end
+    if campX == nil or campY == nil or campX < 0 or campY < 0 then
+        return nil
+    end
+    local pPlot = Map.GetPlot(campX, campY)
+    if pPlot == nil then
+        return nil
+    end
+    local plotIndex = pPlot:GetIndex()
+    local raw = Game:GetProperty(BARB_TRIBE_MAP_PROP) or ""
+    for entry in string.gmatch(raw, "[^|]+") do
+        local plotStr, _, _, nameLoc = string.match(
+            entry, "^(%d+):(%-?%d+):([^:]*):(.*)$")
+        if tonumber(plotStr) == plotIndex and nameLoc ~= nil and nameLoc ~= "" then
+            return nameLoc
+        end
+    end
+    return nil
+end
+
+local function ResolveClanProperName(iTribe, campX, campY, preferredNameLoc)
+    if preferredNameLoc ~= nil and preferredNameLoc ~= "" then
+        local looked = Locale.Lookup(preferredNameLoc)
+        if looked ~= nil and looked ~= "" and looked ~= preferredNameLoc then
+            return looked
+        end
+        if string.sub(preferredNameLoc, 1, 4) ~= "LOC_" then
+            return preferredNameLoc
+        end
+    end
+    local mapLoc = LookupNameLocFromTribeMap(campX, campY)
+    if mapLoc ~= nil and mapLoc ~= "" then
+        local looked = Locale.Lookup(mapLoc)
+        if looked ~= nil and looked ~= "" and looked ~= mapLoc then
+            return looked
+        end
+    end
     local pBarbManager = Game.GetBarbarianManager()
     if pBarbManager == nil or pBarbManager.GetTribeNameType == nil then
         return Locale.Lookup("LOC_HAIKESI_BARB_INVASION_CLAN_FALLBACK")
@@ -93,7 +133,8 @@ local function GetCityDisplayName(playerID, cityID)
     return Locale.Lookup(pCity:GetName())
 end
 
-local function SendAssaultNotification(triggerPlayerID, iTribe, targetPlayerID, targetCityID, campX, campY)
+local function SendAssaultNotification(
+    triggerPlayerID, iTribe, targetPlayerID, targetCityID, campX, campY, nameLoc)
     if NotificationManager == nil or NotificationManager.SendNotification == nil then
         return
     end
@@ -103,7 +144,7 @@ local function SendAssaultNotification(triggerPlayerID, iTribe, targetPlayerID, 
     end
 
     local leaderName = GetPlayerLeaderDisplayName(triggerPlayerID)
-    local clanName = ResolveClanProperName(iTribe, campX, campY)
+    local clanName = ResolveClanProperName(iTribe, campX, campY, nameLoc)
     local cityName = GetCityDisplayName(targetPlayerID, targetCityID)
     local title = Locale.Lookup("LOC_HAIKESI_BARB_INVASION_ASSAULT_TITLE")
     local body
@@ -133,8 +174,16 @@ local function ProcessAssaultNotifyQueue()
 
     local localPlayer = Game.GetLocalPlayer()
     for i = g_AssaultNotifyCursor + 1, #entries do
-        local triggerStr, tribeStr, targetStr, cityStr, xStr, yStr = string.match(
-            entries[i], "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+)$")
+        local triggerStr, tribeStr, targetStr, cityStr, xStr, yStr, nameLoc =
+            string.match(
+                entries[i],
+                "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(.*)$")
+        if triggerStr == nil then
+            triggerStr, tribeStr, targetStr, cityStr, xStr, yStr = string.match(
+                entries[i],
+                "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+)$")
+            nameLoc = ""
+        end
         local triggerPlayerID = tonumber(triggerStr)
         local iTribe = tonumber(tribeStr)
         local targetPlayerID = tonumber(targetStr)
@@ -143,7 +192,8 @@ local function ProcessAssaultNotifyQueue()
         local campY = tonumber(yStr)
         if targetPlayerID ~= nil and localPlayer == targetPlayerID then
             SendAssaultNotification(
-                triggerPlayerID, iTribe, targetPlayerID, targetCityID, campX, campY)
+                triggerPlayerID, iTribe, targetPlayerID, targetCityID,
+                campX, campY, nameLoc)
         end
     end
     g_AssaultNotifyCursor = #entries
@@ -158,7 +208,7 @@ end
 local function Initialize()
     Events.LoadScreenClose.Add(OnLoadScreenClose)
     Events.GameCoreEventPublishComplete.Add(ProcessAssaultNotifyQueue)
-    print("[Haikesi BarbClan UI] assault notify bridge ready")
+    print("[Haikesi BarbClan UI] assault notify bridge ready (legacy; prefer TriTrade)")
 end
 
 Initialize()

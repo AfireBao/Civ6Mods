@@ -174,6 +174,7 @@
       </Properties>
       <File>UI/Replacements/SelectedUnit_Expansion2.lua</File>
       <File>UI/Replacements/UnitPanel_Expansion2.lua</File>
+      <File>UI/Replacements/Haikesi_GetUnitActionsTable_BuilderLag.lua</File>
     </ImportFiles>
   </InGameActions>
   <Files>
@@ -236,5 +237,6 @@
     <File>UI/Haikesi_TriTrade_Bridge.xml</File>
     <File>UI/Replacements/SelectedUnit_Expansion2.lua</File>
     <File>UI/Replacements/UnitPanel_Expansion2.lua</File>
+    <File>UI/Replacements/Haikesi_GetUnitActionsTable_BuilderLag.lua</File>
   </Files>
 </Mod>
