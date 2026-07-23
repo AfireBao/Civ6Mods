@@ -1182,7 +1182,12 @@ function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
 end
 
 local function Haikesi_TryFlushPendingBarbarianInvasion(reason)
-    local pending = tonumber(Game:GetProperty(BARB_INVASION_PENDING_PROP))
+    -- Firaxis tonumber(nil) 会抛 "value expected"；无挂起时 GetProperty 为 nil
+    local raw = Game:GetProperty(BARB_INVASION_PENDING_PROP)
+    if raw == nil then
+        return
+    end
+    local pending = tonumber(raw)
     if pending == nil then
         return
     end

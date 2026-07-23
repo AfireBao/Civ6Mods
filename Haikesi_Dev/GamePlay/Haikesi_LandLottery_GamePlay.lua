@@ -33,7 +33,9 @@ local function LL_Rand(maxCount, reason)
     if Game.GetRandNum ~= nil then
         return Game.GetRandNum(maxCount, reason) or 0
     end
-    return math.floor(math.random() * maxCount)
+    -- 禁止 math.random：各端结果会分叉导致联机不同步
+    LL_Log("WARN sync RNG missing; return 0 (%s)", tostring(reason))
+    return 0
 end
 
 local function LL_PropTruthy(value)
@@ -214,9 +216,16 @@ local function LL_QueuePlayerScan(iPlayer)
 end
 
 -- 回合边界：只处理队列中的新格；已 ACTIVE 且归属正确的不重 roll
+-- 待处理格必须按 plotIndex 排序后再 roll：pairs 无序会让各端同步 RNG 消费顺序分叉 → 联机不同步
 local function LL_FlushPending(reasonTag)
     local queued = 0
+    local scanPlayers = {}
     for iPlayer, _ in pairs(g_PendingPlayerScan) do
+        table.insert(scanPlayers, iPlayer)
+        g_PendingPlayerScan[iPlayer] = nil
+    end
+    table.sort(scanPlayers)
+    for _, iPlayer in ipairs(scanPlayers) do
         local pPlayer = Players[iPlayer]
         if pPlayer ~= nil and LL_PlayerHasRelic(pPlayer) then
             LL_ForEachOwnedPlot(iPlayer, function(pPlot)
@@ -227,19 +236,25 @@ local function LL_FlushPending(reasonTag)
                 end
             end)
         end
-        g_PendingPlayerScan[iPlayer] = nil
     end
 
+    local pendingIndices = {}
+    for plotIndex, _ in pairs(g_PendingPlots) do
+        table.insert(pendingIndices, plotIndex)
+    end
+    table.sort(pendingIndices)
+
     local n = 0
-    for plotIndex, iPlayer in pairs(g_PendingPlots) do
+    for _, plotIndex in ipairs(pendingIndices) do
+        local iPlayer = g_PendingPlots[plotIndex]
+        g_PendingPlots[plotIndex] = nil
         queued = queued + 1
         local pPlot = Map.GetPlotByIndex(plotIndex)
-        if pPlot ~= nil and pPlot:GetOwner() == iPlayer then
+        if pPlot ~= nil and iPlayer ~= nil and pPlot:GetOwner() == iPlayer then
             if LL_RandomizePlot(pPlot, iPlayer, true) then
                 n = n + 1
             end
         end
-        g_PendingPlots[plotIndex] = nil
     end
 
     if queued > 0 or n > 0 then
