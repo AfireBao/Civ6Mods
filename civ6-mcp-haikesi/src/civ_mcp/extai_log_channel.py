@@ -205,14 +205,31 @@ def context_from_log_payload(payload: dict[str, Any]):
 
     if rst_available is False:
         notes.append("Real Strategy: 未加载（软依赖跳过）")
+        lean_n = haikesi_lua.apply_victory_lean(leader_views)
+        if lean_n:
+            notes.append(
+                f"VictoryLean: 已为 {lean_n}/{len(leader_views)} 位领袖估计胜线路"
+            )
     elif rst_available is True:
         with_rst = sum(1 for v in leader_views.values() if v.rst is not None)
         if with_rst == 0:
             notes.append("Real Strategy: 已加载但尚无 ActiveStrategy 数据")
+            lean_n = haikesi_lua.apply_victory_lean(leader_views)
+            if lean_n:
+                notes.append(
+                    f"VictoryLean: RST 无数据，已估计 {lean_n} 位领袖胜线路"
+                )
         elif with_rst < len(leader_views):
             notes.append(
                 f"Real Strategy: {with_rst}/{len(leader_views)} 位领袖有战略意图"
             )
+            lean_n = haikesi_lua.apply_victory_lean(leader_views)
+            if lean_n:
+                notes.append(f"VictoryLean: 补全其余 {lean_n} 位领袖")
+    elif rst_available is None and leader_views:
+        lean_n = haikesi_lua.apply_victory_lean(leader_views)
+        if lean_n:
+            notes.append(f"VictoryLean: 无 RST 探针，已估计 {lean_n} 位")
 
     notes.append("联机 LOG 通道：局势来自 Gameplay Lua.log CTX（与单机 FireTuner 线格式对齐）")
     return HaikesiGameContext(

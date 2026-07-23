@@ -16,6 +16,19 @@
 
 兼容：`_universal.md` 仍存在；运行时收益策略以 `_payoff.md` 为准。
 
+## VictoryLean 与历史原型
+
+关 **Real Strategy**（或 RST 尚无 `ActiveStrategy`）时，ExtAI 用 gather 字段做轻量 **VictoryLean**（`RstStrategyView.source=lean`），形状与真 RST 兼容，供 `signal_hints` / 提示词主战略使用。**不**移植 RST 的 PseudoYield / 行为树；玩 RHAI/BAIT 时应用本方案；开 RST 时仍优先真 `RST|`。
+
+领袖历史原型表：[`leader_baselines.json`](leader_baselines.json)（`LEADER_*` → `style_id` + 短注）。
+
+| 场景 | 行为 |
+|------|------|
+| classify 分数 ≥ 5 | 用推断风格；slim 仍附 `原型:…`（若有基准） |
+| classify 分数 &lt; 5 且有基准 | **硬兜底** `reasons=["历史原型"]`，再走 cosplay/payoff 掷骰 |
+| Session `styles` 锁定 | 锁定优先；续持只需分数 ≥ 3 |
+| 未知领袖 | 无基准，行为与过去一致 |
+
 ## 环境变量
 
 需同时 `HAIKESI_LLM_TOOLS=1`（薄板 ToolLoop）。
@@ -38,7 +51,7 @@
 
 ## 风格一览（13）
 
-推断：Civ6 可观测信号打分竞优（≥3 入选；同分看优先级）。仅影响 LLM 选 `NW_AI_*`。
+推断：Civ6 可观测信号打分竞优（≥5 入选；同分看优先级）。仅影响 LLM 选 `NW_AI_*`。
 
 ### Warlord
 
@@ -69,7 +82,7 @@
 | id | 名 | 要旨 |
 |----|----|------|
 | `fanatic_isolationist` | 狂热隐士 | 高信仰；宗教或征服 |
-| `solitary_isolationist` | 孤僻隐士 | 少商路、防务、低信仰 |
+| `solitary_isolationist` | 孤僻隐士 | 内商、防务、低信仰 |
 
 ### Sage / Spy
 
@@ -92,3 +105,4 @@
 
 - 词典：[`../civilopedia/README.md`](../civilopedia/README.md)
 - 策略短文：`../civ6/*.md`（`civ6_kb` 回退）
+- 仓库根对照页（比例 / 领袖表 / Skill）：[`ExtAI_领袖性格对照.md`](../../../ExtAI_领袖性格对照.md)

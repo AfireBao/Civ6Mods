@@ -1562,14 +1562,32 @@ async def gather_haikesi_game_context(
 
         if rst_available is False:
             notes.append("Real Strategy: 未加载（软依赖跳过）")
+            lean_n = haikesi_lua.apply_victory_lean(leader_views)
+            if lean_n:
+                notes.append(
+                    f"VictoryLean: 已为 {lean_n}/{len(leader_views)} 位领袖估计胜线路"
+                )
         elif rst_available is True:
             with_rst = sum(1 for v in leader_views.values() if v.rst is not None)
             if with_rst == 0:
                 notes.append("Real Strategy: 已加载但尚无 ActiveStrategy 数据")
+                lean_n = haikesi_lua.apply_victory_lean(leader_views)
+                if lean_n:
+                    notes.append(
+                        f"VictoryLean: RST 无数据，已估计 {lean_n} 位领袖胜线路"
+                    )
             elif with_rst < len(leader_views):
                 notes.append(
                     f"Real Strategy: {with_rst}/{len(leader_views)} 位领袖有战略意图"
                 )
+                lean_n = haikesi_lua.apply_victory_lean(leader_views)
+                if lean_n:
+                    notes.append(f"VictoryLean: 补全其余 {lean_n} 位领袖")
+        elif rst_available is None and leader_views:
+            # Older dump without RST_MOD line
+            lean_n = haikesi_lua.apply_victory_lean(leader_views)
+            if lean_n:
+                notes.append(f"VictoryLean: 无 RST 探针，已估计 {lean_n} 位")
 
         # 仇水预见：InGame 常无 RiverManager；缺 FLOOD_API 时用 GamePlay 回退写入同一缓存
         need_flood_fb = any(
@@ -1982,7 +2000,7 @@ def _format_pantheon_public_section(
 
 
 def _rst_block(view: LeaderView) -> str:
-    """Format Real Strategy soft snapshot for one leader (or hide if absent)."""
+    """Format Real Strategy / VictoryLean soft snapshot for one leader."""
     rst = view.rst
     if rst is None:
         return ""
@@ -1999,9 +2017,15 @@ def _rst_block(view: LeaderView) -> str:
     if rst.active_catching is True:
         flags.append("军力追赶态势开启")
     flag_txt = f"；{'、'.join(flags)}" if flags else ""
+    src = (rst.source or "rst").lower()
+    title = (
+        "【VictoryLean 胜线路估计】（RST 未加载；仅作选卡倾向参考，非强制）"
+        if src == "lean"
+        else "【Real Strategy 战略意图】（仅作选卡倾向参考，非强制）"
+    )
     return "\n".join(
         [
-            "【Real Strategy 战略意图】（仅作选卡倾向参考，非强制）",
+            title,
             f"主战略: {label}（{rst.active_strategy}） · 优先级: {pri_txt}{flag_txt}",
         ]
     )

@@ -882,12 +882,39 @@ BELIEF_CLASS_LABELS: dict[str, str] = {
 
 @dataclass
 class RstStrategyView:
-    """Soft-read snapshot from Real Strategy (ExposedMembers.RST.Data)."""
+    """Soft-read snapshot from Real Strategy (or ExtAI VictoryLean proxy)."""
 
     active_strategy: str = "NONE"
     priorities: dict[str, float] = field(default_factory=dict)
     active_defense: bool | None = None
     active_catching: bool | None = None
+    # "rst" = Real Strategy; "lean" = ExtAI proxy when RST absent
+    source: str = "rst"
+
+
+def parse_rst_line(line: str) -> tuple[int, RstStrategyView] | None:
+    """Parse one RST|vid|active|c|s|cu|r|d|def|catch line."""
+    if not line.startswith("RST|"):
+        return None
+    p = line.split("|")
+    if len(p) < 8:
+        return None
+    priorities = {
+        "CONQUEST": float(p[3] or 0),
+        "SCIENCE": float(p[4] or 0),
+        "CULTURE": float(p[5] or 0),
+        "RELIGION": float(p[6] or 0),
+        "DIPLO": float(p[7] or 0),
+    }
+    def_flag = int(float(p[8])) if len(p) > 8 else -1
+    catch_flag = int(float(p[9])) if len(p) > 9 else -1
+    return int(p[1]), RstStrategyView(
+        active_strategy=p[2] or "NONE",
+        priorities=priorities,
+        active_defense=None if def_flag < 0 else bool(def_flag),
+        active_catching=None if catch_flag < 0 else bool(catch_flag),
+        source="rst",
+    )
 
 
 def build_rst_strategies_query(viewer_ids: list[int]) -> str:
@@ -932,30 +959,6 @@ print("{SENTINEL}")
 """
 
 
-def parse_rst_line(line: str) -> tuple[int, RstStrategyView] | None:
-    """Parse one RST|vid|active|c|s|cu|r|d|def|catch line."""
-    if not line.startswith("RST|"):
-        return None
-    p = line.split("|")
-    if len(p) < 8:
-        return None
-    priorities = {
-        "CONQUEST": float(p[3] or 0),
-        "SCIENCE": float(p[4] or 0),
-        "CULTURE": float(p[5] or 0),
-        "RELIGION": float(p[6] or 0),
-        "DIPLO": float(p[7] or 0),
-    }
-    def_flag = int(float(p[8])) if len(p) > 8 else -1
-    catch_flag = int(float(p[9])) if len(p) > 9 else -1
-    return int(p[1]), RstStrategyView(
-        active_strategy=p[2] or "NONE",
-        priorities=priorities,
-        active_defense=None if def_flag < 0 else bool(def_flag),
-        active_catching=None if catch_flag < 0 else bool(catch_flag),
-    )
-
-
 def parse_rst_strategies(lines: list[str]) -> tuple[dict[int, RstStrategyView], bool | None]:
     """Parse build_rst_strategies_query output."""
     out: dict[int, RstStrategyView] = {}
@@ -974,6 +977,167 @@ def parse_rst_strategies(lines: list[str]) -> tuple[dict[int, RstStrategyView], 
             vid, view = parsed
             out[vid] = view
     return out, rst_available
+
+
+_LEAN_STRATS = ("CONQUEST", "SCIENCE", "CULTURE", "RELIGION", "DIPLO")
+
+
+def _lean_median(values: list[float]) -> float:
+    nums = sorted(v for v in values if v is not None)
+    if not nums:
+        return 0.0
+    mid = len(nums) // 2
+    if len(nums) % 2:
+        return float(nums[mid])
+    return (float(nums[mid - 1]) + float(nums[mid])) / 2.0
+
+
+def estimate_victory_lean_view(
+    view: "LeaderView",
+    *,
+    med_mil: float,
+    med_techs: float,
+    med_sci: float,
+    med_cul: float,
+    med_faith: float,
+) -> RstStrategyView:
+    """Lightweight victory-route scores from gather fields (not Real Strategy)."""
+    pri = {k: 12.0 for k in _LEAN_STRATS}
+    war = any(getattr(m, "is_at_war", False) for m in (view.met or []))
+    if war:
+        pri["CONQUEST"] += 28.0
+    mil = float(view.mil or 0)
+    if med_mil > 0:
+        pri["CONQUEST"] += max(-25.0, min(35.0, (mil / med_mil - 1.0) * 40.0))
+    if int(view.cities or 0) >= 5:
+        pri["CONQUEST"] += 6.0
+    techs = float(view.techs or 0)
+    if med_techs > 0:
+        pri["SCIENCE"] += max(-20.0, min(35.0, (techs / med_techs - 1.0) * 45.0))
+    sci = float(view.sci or 0)
+    if med_sci > 0:
+        pri["SCIENCE"] += max(-15.0, min(25.0, (sci / med_sci - 1.0) * 30.0))
+    cul = float(view.cul or 0)
+    if med_cul > 0:
+        pri["CULTURE"] += max(-15.0, min(25.0, (cul / med_cul - 1.0) * 30.0))
+    faith = float(view.faith or 0)
+    if med_faith > 0:
+        pri["RELIGION"] += max(-15.0, min(30.0, (faith / med_faith - 1.0) * 35.0))
+    rel = getattr(view, "religion", None)
+    if rel is not None and getattr(rel, "religion_type", None):
+        pri["RELIGION"] += 18.0
+    me_peer = next(
+        (
+            p
+            for p in (view.victory_peers or [])
+            if int(getattr(p, "player_id", -1)) == int(view.player_id)
+        ),
+        None,
+    )
+    if me_peer is not None:
+        if int(getattr(me_peer, "tourism", 0) or 0) >= 50:
+            pri["CULTURE"] += 12.0
+        if int(getattr(me_peer, "spaceports", 0) or 0) >= 1:
+            pri["SCIENCE"] += 20.0
+        if int(getattr(me_peer, "science_vp", 0) or 0) >= 1:
+            pri["SCIENCE"] += 10.0
+        if int(getattr(me_peer, "diplo_vp", 0) or 0) >= 1:
+            pri["DIPLO"] += 15.0
+        if int(getattr(me_peer, "rel_cities", 0) or 0) >= 3:
+            pri["RELIGION"] += 12.0
+    favor = int(view.favor or 0)
+    if favor >= 40:
+        pri["DIPLO"] += 18.0
+    elif favor >= 15:
+        pri["DIPLO"] += 8.0
+    friends = 0
+    for m in view.met or []:
+        if getattr(m, "is_minor", False):
+            continue
+        state = str(getattr(m, "diplomatic_state", "") or "")
+        if "FRIEND" in state.upper() or "ALLIED" in state.upper() or "同盟" in state:
+            friends += 1
+        elif int(getattr(m, "relationship_score", 0) or 0) >= 30 and not getattr(
+            m, "is_at_war", False
+        ):
+            friends += 1
+    if friends >= 2:
+        pri["DIPLO"] += 10.0
+    trade = getattr(view, "trade", None)
+    if trade is not None:
+        intl = int(getattr(trade, "intl_in", 0) or 0) + int(
+            getattr(trade, "intl_out", 0) or 0
+        )
+        if intl >= 2:
+            pri["DIPLO"] += 6.0
+            pri["CULTURE"] += 4.0
+    # Weak keyword bias from agendas/traits (Chinese / English)
+    corpus = " ".join(
+        f"{n} {d}"
+        for n, d in (view.leader_traits or [])
+        + (view.civ_traits or [])
+        + (view.agendas or [])
+    )
+    if any(k in corpus for k in ("征服", "军事", "战争", "征伐", "Conquest", "War")):
+        pri["CONQUEST"] += 6.0
+    if any(k in corpus for k in ("科技", "科学", "Science", "Campus")):
+        pri["SCIENCE"] += 6.0
+    if any(k in corpus for k in ("文化", "旅游", "Culture", "Tourism")):
+        pri["CULTURE"] += 6.0
+    if any(k in corpus for k in ("信仰", "宗教", "Faith", "Religion")):
+        pri["RELIGION"] += 6.0
+    if any(k in corpus for k in ("外交", "城邦", "Diplo", "Envoy")):
+        pri["DIPLO"] += 6.0
+
+    for k in pri:
+        pri[k] = round(max(0.0, min(100.0, pri[k])), 1)
+    ranked = sorted(_LEAN_STRATS, key=lambda k: -pri[k])
+    best = ranked[0]
+    active = best if pri[best] >= 28.0 else "NONE"
+    catching = False
+    if med_mil > 0 and mil < med_mil * 0.75 and war:
+        catching = True
+    return RstStrategyView(
+        active_strategy=active,
+        priorities=pri,
+        active_defense=war and mil < med_mil if med_mil > 0 else None,
+        active_catching=catching if war else None,
+        source="lean",
+    )
+
+
+def apply_victory_lean(
+    views: dict[int, "LeaderView"],
+    *,
+    only_missing: bool = True,
+) -> int:
+    """Fill ``view.rst`` with VictoryLean when RST snapshot is absent. Returns count."""
+    if not views:
+        return 0
+    mils = [float(v.mil or 0) for v in views.values()]
+    techs = [float(v.techs or 0) for v in views.values()]
+    scis = [float(v.sci or 0) for v in views.values()]
+    culs = [float(v.cul or 0) for v in views.values()]
+    faiths = [float(v.faith or 0) for v in views.values()]
+    med_mil = _lean_median(mils)
+    med_techs = _lean_median(techs)
+    med_sci = _lean_median(scis)
+    med_cul = _lean_median(culs)
+    med_faith = _lean_median(faiths)
+    n = 0
+    for view in views.values():
+        if only_missing and view.rst is not None:
+            continue
+        view.rst = estimate_victory_lean_view(
+            view,
+            med_mil=med_mil,
+            med_techs=med_techs,
+            med_sci=med_sci,
+            med_cul=med_cul,
+            med_faith=med_faith,
+        )
+        n += 1
+    return n
 
 
 @dataclass
@@ -1107,6 +1271,7 @@ class LeaderView:
     player_id: int
     civ_name: str = ""
     leader_name: str = ""
+    leader_type: str = ""
     score: int = 0
     cities: int = 0
     pop: int = 0
@@ -1147,25 +1312,26 @@ def _rst_strategy_hint(rst: RstStrategyView | None, relic_type: str) -> str | No
     if rst is None or not rst.active_strategy or rst.active_strategy == "NONE":
         return None
     strat = rst.active_strategy
+    tag = "Real Strategy" if (rst.source or "rst") == "rst" else "VictoryLean"
     if strat == "CONQUEST" and (
         "BARBARIAN" in relic_type or relic_type.startswith("NW_AI_ECHO_")
     ):
-        return "Real Strategy 主战略=征服，军事/混乱类候选偏高"
+        return f"{tag} 主战略=征服，军事/混乱类候选偏高"
     if strat == "SCIENCE" and (
         relic_type.startswith("NW_AI_STATS_2")
         or relic_type.startswith("NW_AI_ECHO_BUILDER")
         or relic_type in get_resource_spawn_map()
     ):
-        return "Real Strategy 主战略=科技，发展/改良类候选偏高"
+        return f"{tag} 主战略=科技，发展/改良类候选偏高"
     if strat == "CULTURE" and relic_type.startswith("NW_AI_STATS_1"):
-        return "Real Strategy 主战略=文化，文化产出类候选偏高"
+        return f"{tag} 主战略=文化，文化产出类候选偏高"
     if strat == "RELIGION" and (
         relic_type.startswith("NW_AI_STATS_4")
         or relic_type == "NW_AI_CELESTIAL_EMPIRE"
     ):
-        return "Real Strategy 主战略=宗教，信仰/商路类候选偏高"
+        return f"{tag} 主战略=宗教，信仰/商路类候选偏高"
     if strat == "DIPLO" and relic_type in _MUTUAL_TRADE_RELICS:
-        return "Real Strategy 主战略=外交，贸易互利类候选偏高"
+        return f"{tag} 主战略=外交，贸易互利类候选偏高"
     return None
 
 
@@ -1818,7 +1984,8 @@ for _, vid in ipairs(viewers) do
       .. "|" .. score .. "|" .. cities .. "|" .. pop
       .. "|" .. string.format("%.1f", sci) .. "|" .. string.format("%.1f", cul) .. "|" .. string.format("%.1f", gold)
       .. "|" .. mil .. "|" .. techs .. "|" .. civics .. "|" .. string.format("%.1f", faith)
-      .. "|" .. research .. "|" .. civic .. "|" .. favor)
+      .. "|" .. research .. "|" .. civic .. "|" .. favor
+      .. "|" .. tostring(leaderType or ""))
     printTraits(vid, leaderType, civType)
     printAgendas(vid, leaderType)
     printRst(vid)
@@ -2189,6 +2356,7 @@ def parse_leader_views(lines: list[str]) -> tuple[dict[int, LeaderView], bool | 
                 current_research=p[14] or "无",
                 current_civic=p[15] or "无",
                 favor=int(float(p[16] or 0)) if len(p) > 16 else 0,
+                leader_type=(p[17] or "").strip() if len(p) > 17 else "",
             )
         elif line.startswith("TRADE|"):
             p = line.split("|")

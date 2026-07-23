@@ -79,11 +79,14 @@ class StyleAssignment:
     mode: StyleMode = "none"
     dice_u: float | None = None
     cosplay_p: float = 0.5
+    # Soft historical archetype hint (always shown when known)
+    archetype_note: str = ""
 
     @property
     def slim_line(self) -> str:
+        arch = f"·原型:{self.archetype_note}" if self.archetype_note else ""
         if not self.style_id:
-            return "风格:无（仅通用Skill）"
+            return f"风格:无（仅通用Skill）{arch}" if arch else "风格:无（仅通用Skill）"
         lock = "锁定" if self.locked else "推断"
         why = "+".join(self.reasons[:3]) if self.reasons else ""
         suffix = f"·{why}" if why else ""
@@ -93,7 +96,7 @@ class StyleAssignment:
             dice = f"·掷骰收益优先/u={self.dice_u:.3f}"
         else:
             dice = ""
-        return f"风格:{self.display_name}({lock}{suffix}{dice})"
+        return f"风格:{self.display_name}({lock}{suffix}{dice}){arch}"
 
     def audit_token(self) -> str:
         """Compact token for decision Meta / logs."""
@@ -117,6 +120,70 @@ def load_index() -> dict[str, Any]:
         log.warning("styles index read failed: %s", exc)
         return {"styles": [], "universal": "_universal.md"}
     return data if isinstance(data, dict) else {"styles": [], "universal": "_universal.md"}
+
+
+_baselines_cache: dict[str, Any] | None = None
+
+
+def load_leader_baselines(*, force_reload: bool = False) -> dict[str, dict[str, Any]]:
+    """Map LEADER_* (and aliases) → {style_id, victory_lean?, archetype_note?}."""
+    global _baselines_cache
+    if _baselines_cache is not None and not force_reload:
+        return _baselines_cache
+    path = styles_dir() / "leader_baselines.json"
+    if not path.is_file():
+        _baselines_cache = {}
+        return _baselines_cache
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        log.warning("leader baselines read failed: %s", exc)
+        _baselines_cache = {}
+        return _baselines_cache
+    leaders = data.get("leaders") if isinstance(data, dict) else None
+    out: dict[str, dict[str, Any]] = {}
+    if isinstance(leaders, dict):
+        for key, row in leaders.items():
+            if not isinstance(key, str) or not isinstance(row, dict):
+                continue
+            sid = str(row.get("style_id") or "").strip()
+            if not sid:
+                continue
+            out[key.strip().upper()] = {
+                "style_id": sid,
+                "victory_lean": str(row.get("victory_lean") or "").strip() or None,
+                "archetype_note": str(row.get("archetype_note") or "").strip(),
+            }
+    _baselines_cache = out
+    return out
+
+
+def lookup_leader_baseline(view: Any | None) -> dict[str, Any] | None:
+    """Resolve historical archetype for a LeaderView (leader_type, then civ/name aliases)."""
+    if view is None:
+        return None
+    table = load_leader_baselines()
+    if not table:
+        return None
+    keys: list[str] = []
+    lt = str(getattr(view, "leader_type", "") or "").strip()
+    if lt:
+        keys.append(lt.upper())
+        # Strip persona suffixes already exact; also try without trailing ALT tags
+        if lt.upper().endswith("_ALT"):
+            keys.append(lt.upper()[: -len("_ALT")])
+    for attr in ("civ_name", "leader_name"):
+        raw = str(getattr(view, attr, "") or "").strip()
+        if raw:
+            keys.append(raw.upper())
+            # ASCII civ tokens sometimes appear as CIVILIZATION_X
+            if raw.upper().startswith("CIVILIZATION_"):
+                keys.append(raw.upper().replace("CIVILIZATION_", "", 1))
+    for key in keys:
+        hit = table.get(key)
+        if hit is not None:
+            return hit
+    return None
 
 
 def load_markdown(filename: str) -> str:
@@ -227,6 +294,36 @@ def _trade_sparse(view: Any | None) -> bool:
     return int(t.active or 0) <= 1 and int(t.intl_in or 0) + int(t.intl_out or 0) == 0
 
 
+def _trade_intl_count(view: Any | None) -> int:
+    if view is None or getattr(view, "trade", None) is None:
+        return 0
+    t = view.trade
+    return int(t.intl_in or 0) + int(t.intl_out or 0)
+
+
+def _trade_domestic_count(view: Any | None) -> int:
+    if view is None or getattr(view, "trade", None) is None:
+        return 0
+    return int(getattr(view.trade, "domestic", 0) or 0)
+
+
+def _trade_domestic_lean(view: Any | None) -> bool:
+    """Domestic routes present with little/no international traffic (hermit bias)."""
+    dom = _trade_domestic_count(view)
+    intl = _trade_intl_count(view)
+    if dom <= 0:
+        return False
+    return intl == 0 or dom >= intl + 1
+
+
+def _trade_intl_heavy(view: Any | None) -> bool:
+    """International routes dominate — not hermit-like."""
+    intl = _trade_intl_count(view)
+    if intl <= 0:
+        return False
+    return intl > _trade_domestic_count(view)
+
+
 def _inv_has(tokens: list[str], *needles: str) -> bool:
     for t in tokens:
         for n in needles:
@@ -306,7 +403,7 @@ def classify_demonic_warlord(
     view: Any | None,
     selected: list[Any],
 ) -> tuple[int, list[str], bool]:
-    """Return (score, reason tags, excluded). Threshold for assign: score >= 3."""
+    """Return (score, reason tags, excluded). Assign uses `_STYLE_SCORE_THRESHOLD`."""
     reasons: list[str] = []
     tokens = _inventory_tokens(selected)
     score = 0
@@ -746,9 +843,12 @@ def classify_fanatic_isolationist(
         score += 1
         reasons.append("库存信仰%")
 
-    if _trade_sparse(view):
+    if _trade_domestic_lean(view):
         score += 1
-        reasons.append("商路少")
+        reasons.append("内商")
+    elif _trade_intl_heavy(view):
+        score -= 1
+        reasons.append("外商偏多")
 
     if rst == "CONQUEST" and _has_combat_echo_inventory(tokens):
         score += 1
@@ -769,16 +869,16 @@ def classify_solitary_isolationist(
     faith = float(getattr(view, "faith", 0) or 0) if view is not None else 0.0
     favor = int(getattr(view, "favor", 0) or 0) if view is not None else 0
 
-    if _trade_busy(view):
-        return 0, ["排除:商路忙"], True
+    if _trade_intl_heavy(view):
+        return 0, ["排除:外商为主"], True
     if faith >= 20:
         return 0, ["排除:高信仰→狂热"], True
     if favor >= 20 or rst == "DIPLO":
         return 0, ["排除:外交向"], True
 
-    if _trade_sparse(view):
+    if _trade_domestic_lean(view):
         score += 2
-        reasons.append("商路少")
+        reasons.append("内商")
     near = _enemy_near_count(view)
     if near >= 1:
         score += 2
@@ -896,6 +996,11 @@ def classify_deceptive_spy(
     return score, reasons, False
 
 
+# Minimum raw score for a style to win assignment (else historical baseline / none).
+_STYLE_SCORE_THRESHOLD = 5
+# Session lock may keep a style with a slightly softer bar.
+_STYLE_LOCK_SCORE_THRESHOLD = 3
+
 # Tie-break order when scores equal (lower index wins)
 _STYLE_PRIORITY: list[str] = [
     "demonic_warlord",
@@ -937,28 +1042,49 @@ def classify_style_for_leader(
     selected: list[Any],
     locked_id: str | None = None,
 ) -> StyleAssignment:
-    """Score all known styles; pick best with score >= 3 (Session lock honored)."""
+    """Score all known styles; pick best with score >= threshold (Session lock honored).
+
+    When no style reaches the assign threshold, fall back to ``leader_baselines.json``
+    historical archetype if available. Soft ``archetype_note`` is attached whenever known.
+    """
+    baseline = lookup_leader_baseline(view)
+    arch_note = str((baseline or {}).get("archetype_note") or "").strip()
+
     scored: list[tuple[int, str, list[str]]] = []
     by_id: dict[str, tuple[int, list[str], bool]] = {}
     for style_id, fn in _STYLE_CLASSIFIERS:
         score, reasons, excluded = fn(view=view, selected=selected)
         by_id[style_id] = (score, reasons, excluded)
-        if not excluded and score >= 3:
+        if not excluded and score >= _STYLE_SCORE_THRESHOLD:
             scored.append((score, style_id, reasons))
 
     if locked_id and locked_id in by_id:
         sc, reasons, excluded = by_id[locked_id]
-        if not excluded and sc >= 2:
+        if not excluded and sc >= _STYLE_LOCK_SCORE_THRESHOLD:
             return StyleAssignment(
                 player_id=player_id,
                 style_id=locked_id,
                 display_name=style_display_name(locked_id),
-                score=max(sc, 3),
+                score=max(sc, _STYLE_SCORE_THRESHOLD),
                 locked=True,
                 reasons=reasons or ["Session锁定"],
+                archetype_note=arch_note,
             )
 
     if not scored:
+        # Hard fallback: historical prototype when Civ6 signals are too weak
+        if baseline is not None:
+            sid = str(baseline.get("style_id") or "").strip()
+            if sid in by_id or sid in {s for s, _ in _STYLE_CLASSIFIERS}:
+                return StyleAssignment(
+                    player_id=player_id,
+                    style_id=sid,
+                    display_name=style_display_name(sid),
+                    score=_STYLE_SCORE_THRESHOLD,
+                    locked=False,
+                    reasons=["历史原型"],
+                    archetype_note=arch_note,
+                )
         # Best effort reasons from top raw score for debug
         best_raw = max(by_id.items(), key=lambda kv: kv[1][0], default=None)
         reasons = best_raw[1][1] if best_raw else []
@@ -970,6 +1096,7 @@ def classify_style_for_leader(
             locked=False,
             reasons=reasons,
             mode="none",
+            archetype_note=arch_note,
         )
 
     def _key(item: tuple[int, str, list[str]]) -> tuple[int, int]:
@@ -989,6 +1116,7 @@ def classify_style_for_leader(
         score=score,
         locked=False,
         reasons=reasons,
+        archetype_note=arch_note,
     )
 
 
@@ -1125,7 +1253,9 @@ def styles_for_session_lock(
     """Persistable map player_id → style_id (only confident hits)."""
     out: dict[str, str] = {}
     for pid, asn in assignments.items():
-        if asn.style_id and (asn.locked or asn.score >= 3):
+        if asn.style_id and (
+            asn.locked or asn.score >= _STYLE_LOCK_SCORE_THRESHOLD
+        ):
             out[str(pid)] = asn.style_id
     return out
 

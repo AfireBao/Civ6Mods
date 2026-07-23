@@ -1,100 +1,100 @@
-{
-  "version": 3,
-  "note": "ExtAI leader styles are inferred labels for card picks only; they do not change in-game AI behavior. legality=always; payoff=payoff-mode only; styles=cosplay only.",
-  "legality": "_legality.md",
-  "payoff": "_payoff.md",
-  "universal": "_universal.md",
-  "styles": [
-    {
-      "id": "demonic_warlord",
-      "name": "恶魔督军",
-      "file": "demonic_warlord.md",
-      "tags": ["chaos", "combat_echo", "gold_military", "tech_for_units", "anti_peaceful_trade"],
-      "signal_hints": ["RST=CONQUEST", "at_war", "high_grievance", "chaos_inventory"]
-    },
-    {
-      "id": "militant_warlord",
-      "name": "好战督军",
-      "file": "militant_warlord.md",
-      "tags": ["combat_echo", "gold_military", "tech_for_units", "anti_chaos"],
-      "signal_hints": ["RST=CONQUEST", "at_war", "combat_echo", "no_chaos", "mil_advantage"]
-    },
-    {
-      "id": "imperial_warlord",
-      "name": "帝国督军",
-      "file": "imperial_warlord.md",
-      "tags": ["prod_pct", "builder_echo", "combat_echo", "expansion", "anti_chaos"],
-      "signal_hints": ["RST=CONQUEST", "many_cities", "prod_or_builder"]
-    },
-    {
-      "id": "economic_warlord",
-      "name": "经济督军",
-      "file": "economic_warlord.md",
-      "tags": ["gold_pct", "combat_echo", "gold_military", "anti_chaos"],
-      "signal_hints": ["high_gold", "CONQUEST_or_war"]
-    },
-    {
-      "id": "strategist_warlord",
-      "name": "谋略督军",
-      "file": "strategist_warlord.md",
-      "tags": ["science_pct", "combat_echo", "tech_for_units", "anti_chaos"],
-      "signal_hints": ["at_war", "SCIENCE_or_high_sci", "combat_or_tech_inv"]
-    },
-    {
-      "id": "artisan_merchant",
-      "name": "工匠商人",
-      "file": "artisan_merchant.md",
-      "tags": ["prod_pct", "gold_pct", "trade_mutual", "builder_echo", "sci_or_culture"],
-      "signal_hints": ["RST=SCIENCE|CULTURE", "trade_routes", "prod_or_gold_inventory"]
-    },
-    {
-      "id": "competitive_merchant",
-      "name": "竞争商人",
-      "file": "competitive_merchant.md",
-      "tags": ["gold_pct", "trade_mutual", "prod_pct", "anti_war"],
-      "signal_hints": ["trade_busy", "high_gold", "gold_over_wonder"]
-    },
-    {
-      "id": "authoritarian_diplomat",
-      "name": "威权外交官",
-      "file": "authoritarian_diplomat.md",
-      "tags": ["culture_pct", "trade_mutual", "diplo_favor", "envoy_assist", "anti_chaos"],
-      "signal_hints": ["RST=DIPLO|CULTURE", "high_favor", "peaceful_relations"]
-    },
-    {
-      "id": "chivalrous_diplomat",
-      "name": "侠义外交官",
-      "file": "chivalrous_diplomat.md",
-      "tags": ["culture_pct", "trade_mutual", "anti_chaos", "anti_war", "peace_first"],
-      "signal_hints": ["RST=DIPLO|CULTURE", "friendly_net", "favor_not_high"]
-    },
-    {
-      "id": "fanatic_isolationist",
-      "name": "狂热隐士",
-      "file": "fanatic_isolationist.md",
-      "tags": ["faith_pct", "religion_or_conquest", "anti_trade", "isolation"],
-      "signal_hints": ["RST=RELIGION|CONQUEST", "high_faith", "low_trade"]
-    },
-    {
-      "id": "solitary_isolationist",
-      "name": "孤僻隐士",
-      "file": "solitary_isolationist.md",
-      "tags": ["defense_echo", "prod_pct", "anti_trade", "isolation", "low_faith"],
-      "signal_hints": ["low_trade", "border_pressure", "faith_not_high"]
-    },
-    {
-      "id": "erudite_sage",
-      "name": "博学贤者",
-      "file": "erudite_sage.md",
-      "tags": ["science_pct", "anti_war", "combat_echo_only_under_dow", "builder_echo"],
-      "signal_hints": ["RST=SCIENCE", "high_sci", "peace_or_defensive"]
-    },
-    {
-      "id": "deceptive_spy",
-      "name": "欺诈间谍",
-      "file": "deceptive_spy.md",
-      "tags": ["culture_pct", "envoy_assist", "diplo_favor", "anti_chaos", "indirect_power"],
-      "signal_hints": ["DIPLO|CULTURE", "favor_or_culture", "indirect_not_open_war"]
-    }
-  ]
-}
+{
+  "version": 3,
+  "note": "ExtAI leader styles are inferred labels for card picks only; they do not change in-game AI behavior. legality=always; payoff=payoff-mode only; styles=cosplay only.",
+  "legality": "_legality.md",
+  "payoff": "_payoff.md",
+  "universal": "_universal.md",
+  "styles": [
+    {
+      "id": "demonic_warlord",
+      "name": "恶魔督军",
+      "file": "demonic_warlord.md",
+      "tags": ["chaos", "combat_echo", "gold_military", "tech_for_units", "anti_peaceful_trade"],
+      "signal_hints": ["RST=CONQUEST", "at_war", "high_grievance", "chaos_inventory"]
+    },
+    {
+      "id": "militant_warlord",
+      "name": "好战督军",
+      "file": "militant_warlord.md",
+      "tags": ["combat_echo", "gold_military", "tech_for_units", "anti_chaos"],
+      "signal_hints": ["RST=CONQUEST", "at_war", "combat_echo", "no_chaos", "mil_advantage"]
+    },
+    {
+      "id": "imperial_warlord",
+      "name": "帝国督军",
+      "file": "imperial_warlord.md",
+      "tags": ["prod_pct", "builder_echo", "combat_echo", "expansion", "anti_chaos"],
+      "signal_hints": ["RST=CONQUEST", "many_cities", "prod_or_builder"]
+    },
+    {
+      "id": "economic_warlord",
+      "name": "经济督军",
+      "file": "economic_warlord.md",
+      "tags": ["gold_pct", "combat_echo", "gold_military", "anti_chaos"],
+      "signal_hints": ["high_gold", "CONQUEST_or_war"]
+    },
+    {
+      "id": "strategist_warlord",
+      "name": "谋略督军",
+      "file": "strategist_warlord.md",
+      "tags": ["science_pct", "combat_echo", "tech_for_units", "anti_chaos"],
+      "signal_hints": ["at_war", "SCIENCE_or_high_sci", "combat_or_tech_inv"]
+    },
+    {
+      "id": "artisan_merchant",
+      "name": "工匠商人",
+      "file": "artisan_merchant.md",
+      "tags": ["prod_pct", "gold_pct", "trade_mutual", "builder_echo", "sci_or_culture"],
+      "signal_hints": ["RST=SCIENCE|CULTURE", "trade_routes", "prod_or_gold_inventory"]
+    },
+    {
+      "id": "competitive_merchant",
+      "name": "竞争商人",
+      "file": "competitive_merchant.md",
+      "tags": ["gold_pct", "trade_mutual", "prod_pct", "anti_war"],
+      "signal_hints": ["trade_busy", "high_gold", "gold_over_wonder"]
+    },
+    {
+      "id": "authoritarian_diplomat",
+      "name": "威权外交官",
+      "file": "authoritarian_diplomat.md",
+      "tags": ["culture_pct", "trade_mutual", "diplo_favor", "envoy_assist", "anti_chaos"],
+      "signal_hints": ["RST=DIPLO|CULTURE", "high_favor", "peaceful_relations"]
+    },
+    {
+      "id": "chivalrous_diplomat",
+      "name": "侠义外交官",
+      "file": "chivalrous_diplomat.md",
+      "tags": ["culture_pct", "trade_mutual", "anti_chaos", "anti_war", "peace_first"],
+      "signal_hints": ["RST=DIPLO|CULTURE", "friendly_net", "favor_not_high"]
+    },
+    {
+      "id": "fanatic_isolationist",
+      "name": "狂热隐士",
+      "file": "fanatic_isolationist.md",
+      "tags": ["faith_pct", "religion_or_conquest", "anti_trade", "isolation"],
+      "signal_hints": ["RST=RELIGION|CONQUEST", "high_faith", "domestic_trade"]
+    },
+    {
+      "id": "solitary_isolationist",
+      "name": "孤僻隐士",
+      "file": "solitary_isolationist.md",
+      "tags": ["defense_echo", "prod_pct", "anti_trade", "isolation", "low_faith"],
+      "signal_hints": ["domestic_trade", "border_pressure", "faith_not_high"]
+    },
+    {
+      "id": "erudite_sage",
+      "name": "博学贤者",
+      "file": "erudite_sage.md",
+      "tags": ["science_pct", "anti_war", "combat_echo_only_under_dow", "builder_echo"],
+      "signal_hints": ["RST=SCIENCE", "high_sci", "peace_or_defensive"]
+    },
+    {
+      "id": "deceptive_spy",
+      "name": "欺诈间谍",
+      "file": "deceptive_spy.md",
+      "tags": ["culture_pct", "envoy_assist", "diplo_favor", "anti_chaos", "indirect_power"],
+      "signal_hints": ["DIPLO|CULTURE", "favor_or_culture", "indirect_not_open_war"]
+    }
+  ]
+}

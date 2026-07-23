@@ -852,7 +852,8 @@ for _, vid in ipairs(viewers) do
       .. "|" .. score .. "|" .. cities .. "|" .. pop
       .. "|" .. string.format("%.1f", sci) .. "|" .. string.format("%.1f", cul) .. "|" .. string.format("%.1f", gold)
       .. "|" .. mil .. "|" .. techs .. "|" .. civics .. "|" .. string.format("%.1f", faith)
-      .. "|" .. research .. "|" .. civic .. "|" .. favor)
+      .. "|" .. research .. "|" .. civic .. "|" .. favor
+      .. "|" .. tostring(leaderType or ""))
     printTraits(vid, leaderType, civType)
     printAgendas(vid, leaderType)
     printRst(vid)

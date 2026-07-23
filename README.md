@@ -10,6 +10,7 @@
 | [`Haikesi_Dev/`](Haikesi_Dev/) | 海克斯大乱斗 Dev 模组（不与工坊原版同时启用）。将本目录整体复制到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\Haikesi_Dev\` |
 | [`CreatePantheon_Dev/`](CreatePantheon_Dev/) | 创造万神殿 Dev（工坊 [Create Your Pantheon](https://steamcommunity.com/sharedfiles/filedetails/?id=2990102039) 本地分支，**v19，效果待测待查**）。复制或链接到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\CreatePantheon_Dev\`。**勿与工坊原版同时启用**；署名与变更见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md) |
 | [`civ6-mcp-haikesi/`](civ6-mcp-haikesi/) | 基于 [civ6-mcp](https://github.com/lmwilki/civ6-mcp) 的本地副本，含海克斯 AI 决策扩展（不向 upstream 推送） |
+| [`ExtAI_领袖性格对照.md`](ExtAI_领袖性格对照.md) | ExtAI 风格比例、领袖基线对照表、选卡 Skill 一览（可由 `civ6-mcp-haikesi/scripts/gen_extai_style_reference_md.py` 再生） |
 
 ---
 
@@ -69,6 +70,7 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-23 | **ExtAI VictoryLean + 领袖风格基线**：关 RST（或尚无 ActiveStrategy）时用 gather/`VictoryLean` 估计胜线路（`RstStrategyView.source=lean`，不覆盖真 RST）；LOG 通道与 FireTuner 对齐。风格入围门槛 **≥5**（Session 锁定续持 ≥3）；隐士改看**内商偏重**（不再用「商路少」误判）；`leader_baselines.json` v4 补全 `LAURIER`/`SUNDIATA_KEITA` 等并匀摊各风格约 4–8 人（如秦·一统→恶魔督军）。对照页 [`ExtAI_领袖性格对照.md`](ExtAI_领袖性格对照.md)。**玩家海克斯微调**：太仓有粟 +1 住房（POLICY_HOUSING）；刀光剑舞 Ability 补 `CLASS_ALL_COMBAT_UNITS`；秘术冲拳/尤里卡/误中副车/仿生/憨豆等数值与文案同步。详见 [`civ6-mcp-haikesi/knowledge/styles/README.md`](civ6-mcp-haikesi/knowledge/styles/README.md)。 |
 | 2026-07-22 | **ExtAI 选卡体验加固**：AI 卡候选描述改用词典 Key（`AI_LLM_DESCRIPTIONS`：`YIELD_*`/`UNIT_*`/`CLASS_*`/`RESOURCE_*`/`BUILDING_*`/`CIVIC_*`），短名仍中文；新增外交/基建/宗教 AI 卡（间谍署、使者立足、奇观工坊、城墙工程、传教浪）；领袖风格 Skill（cosplay/payoff 掷骰）；洪水侦察 `flood_targets`；ToolLoop 空池/黄金双选 JSON 修复与理由模式开关。**混乱互斥**：ExtAI 允许多 AI 同轮混乱，确定性/超时回退仍互斥（`Apply` 第 5 参 `fromExtAI`，修超时误跳过互斥）。详见 [`Haikesi_Dev/DEV_NOTES.md`](Haikesi_Dev/DEV_NOTES.md)、[`civ6-mcp-haikesi/README.md`](civ6-mcp-haikesi/README.md#haikesi-fork本仓库扩展)。 |
 | 2026-07-21 | **ExtAI 黄金/英雄双选与 LLM 加固**：金/英雄时代 AI 六选二（`Haikesi_ExtAI_AgePick.lua`，wire `A+B`）；时代戳记与入向商路经 UI→GamePlay 桥接，避免和平互利类空放误判；南蛮无城延迟触发、混乱卡互斥与 Stage 广播重试同步。MCP：`haikesi_llm_watch` 支持 xAI/Grok（thinking / 可选自审）；损坏 JSON salvage；提交前校验候选池，幻觉类型（如 `NW_AI_BALANCED`）重修或回退合法选项。 |
 | 2026-07-21 | **创造万神殿 Dev v19**：AI 第二词条（Power）将丰产 / 工匠 / 神农 / 文曲提为最高档（权重 2.6），高于神圣之光（2.2）；原版 AI 不会为万神殿优化区域落点，优先推格产出类词条。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |

@@ -87,7 +87,7 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('COMPENSATIONRUNE', 'MODIFIER_NW_COMPENSATION_GRANT_GOLD');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('COMPENSATIONRUNE', 'MODIFIER_NW_COMPENSATION_GOLD_PENALTY');
 
--- 秘术冲拳 (ARCANEPUNCHRUNE): 每相邻一个单位武僧 +2 战斗力;购买武僧费用 -25%
+-- 秘术冲拳 (ARCANEPUNCHRUNE): 每相邻一个单位武僧 +3 战斗力;购买武僧费用 -25%
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId)
 VALUES ('ARCANEPUNCHRUNE', 'MODIFIER_NW_ARCANE_PUNCH_GRANT');
 INSERT OR IGNORE INTO Types (Type, Kind)
@@ -107,7 +107,9 @@ INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactiv
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
     VALUES ('MODIFIER_NW_ARCANE_PUNCH_COMBAT', 'MODIFIER_PLAYER_UNIT_ADJUST_COMBAT_FOR_NUMBER_NEIGHBORS');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
-    VALUES ('MODIFIER_NW_ARCANE_PUNCH_COMBAT', 'Amount', '2');
+    VALUES ('MODIFIER_NW_ARCANE_PUNCH_COMBAT', 'Amount', '3');
+UPDATE ModifierArguments SET Value = '3'
+    WHERE ModifierId = 'MODIFIER_NW_ARCANE_PUNCH_COMBAT' AND Name = 'Amount';
 INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text)
     VALUES ('MODIFIER_NW_ARCANE_PUNCH_COMBAT', 'Preview', 'LOC_HAIKESI_ARCANE_PUNCH_COMBAT_PREVIEW');
 
@@ -156,13 +158,21 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('BACKTOBASIC
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('BACKTOBASICSRUNE', 'MODIFIER_NW_BACKTOBASICS_GOLD');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('BACKTOBASICSRUNE', 'MODIFIER_NW_BACKTOBASICS_PRODUCTION');
 
--- 面包三明治 (BREADSANDWICHRUNE): 所有城市 +1 宜居度
+-- 太仓有粟 (BREADSANDWICHRUNE): 所有城市 +1 宜居度、+1 住房
+-- 住房用 ADJUST_POLICY_HOUSING（与市政/政策同口径）；挂载后常需下回合才在面板刷新。
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
     VALUES ('MODIFIER_NW_BREADSANDWICH_AMENITY', 'MODIFIER_PLAYER_CITIES_ADJUST_TRAIT_AMENITY');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
     VALUES ('MODIFIER_NW_BREADSANDWICH_AMENITY', 'Amount', '1');
+DELETE FROM ModifierArguments WHERE ModifierId = 'MODIFIER_NW_BREADSANDWICH_HOUSING';
+DELETE FROM Modifiers WHERE ModifierId = 'MODIFIER_NW_BREADSANDWICH_HOUSING';
+INSERT INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_BREADSANDWICH_HOUSING', 'MODIFIER_PLAYER_CITIES_ADJUST_POLICY_HOUSING');
+INSERT INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_BREADSANDWICH_HOUSING', 'Amount', '1');
 
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('BREADSANDWICHRUNE', 'MODIFIER_NW_BREADSANDWICH_AMENITY');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('BREADSANDWICHRUNE', 'MODIFIER_NW_BREADSANDWICH_HOUSING');
 
 -- 小丑学院 (CLOWNCOLLEGERUNE): 学院 +2 科技、图书馆 +1 科技
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
@@ -228,6 +238,9 @@ INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text)
     VALUES ('MODIFIER_NW_BLADEWALTZ_ENEMY_COMBAT_STRENGTH', 'Preview', '+{1_Amount} 敌方境内战斗力增益');
 
 INSERT OR IGNORE INTO Types (Type, Kind) VALUES ('ABILITY_NW_BLADEWALTZ_ENEMY_COMBAT', 'KIND_ABILITY');
+-- GRANT_ABILITY 必须给 Ability 打单位类 Tag，否则不会挂到勇士等战斗单位上
+INSERT OR IGNORE INTO TypeTags (Type, Tag)
+    VALUES ('ABILITY_NW_BLADEWALTZ_ENEMY_COMBAT', 'CLASS_ALL_COMBAT_UNITS');
 INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactive)
     VALUES ('ABILITY_NW_BLADEWALTZ_ENEMY_COMBAT', 'LOC_ABILITY_NW_BLADEWALTZ_ENEMY_COMBAT_NAME', 'LOC_ABILITY_NW_BLADEWALTZ_ENEMY_COMBAT_DESCRIPTION', 1);
 INSERT OR IGNORE INTO UnitAbilityModifiers (UnitAbilityType, ModifierId)
@@ -503,7 +516,7 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
     VALUES ('MODIFIER_NW_GENESIS_GRANT_GRANARY', 'ModifierId', 'MODIFIER_NW_GENESIS_GRANT_GRANARY_CITY');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('GENESISRUNE', 'MODIFIER_NW_GENESIS_GRANT_GRANARY');
 
--- 尤里卡 (EUREKARUNE): 尤里卡额外 +10% 科技(非黄金时代时)
+-- 尤里卡 (EUREKARUNE): 尤里卡额外 +20% 科技(非黄金时代时)
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType, Inverse)
     VALUES ('NW_REQUIRES_NOT_GOLDEN_AGE', 'REQUIREMENT_PLAYER_HAS_GOLDEN_AGE', 1);
 INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
@@ -514,14 +527,18 @@ INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementI
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
     VALUES ('MODIFIER_NW_EUREKA_TECH_BOOST', 'MODIFIER_PLAYER_ADJUST_TECHNOLOGY_BOOST', 'NW_NOT_GOLDEN_AGE_REQUIREMENTS');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
-    VALUES ('MODIFIER_NW_EUREKA_TECH_BOOST', 'Amount', '10');
+    VALUES ('MODIFIER_NW_EUREKA_TECH_BOOST', 'Amount', '20');
+UPDATE ModifierArguments SET Value = '20'
+    WHERE ModifierId = 'MODIFIER_NW_EUREKA_TECH_BOOST' AND Name = 'Amount';
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('EUREKARUNE', 'MODIFIER_NW_EUREKA_TECH_BOOST');
 
--- 歪打正着 (HAPPYACCIDENTRUNE): 启发额外 +10% 文化(非黄金时代时)
+-- 误中副车 (HAPPYACCIDENTRUNE): 鼓舞额外 +20% 市政(非黄金时代时)
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
     VALUES ('MODIFIER_NW_HAPPYACCIDENT_CIVIC_BOOST', 'MODIFIER_PLAYER_ADJUST_CIVIC_BOOST', 'NW_NOT_GOLDEN_AGE_REQUIREMENTS');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
-    VALUES ('MODIFIER_NW_HAPPYACCIDENT_CIVIC_BOOST', 'Amount', '10');
+    VALUES ('MODIFIER_NW_HAPPYACCIDENT_CIVIC_BOOST', 'Amount', '20');
+UPDATE ModifierArguments SET Value = '20'
+    WHERE ModifierId = 'MODIFIER_NW_HAPPYACCIDENT_CIVIC_BOOST' AND Name = 'Amount';
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('HAPPYACCIDENTRUNE', 'MODIFIER_NW_HAPPYACCIDENT_CIVIC_BOOST');
 
 -- 鬻贾 (SELLOFFRUNE): +4 贸易路线容量;商人购买+80%、训练-10% 生产力
@@ -606,14 +623,21 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('SINGULARITYAIRUNE', 'MODIFIER_NW_SINGULARITY_GRANT_ENGINEER');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('SINGULARITYAIRUNE', 'MODIFIER_NW_SINGULARITY_GP');
 
--- 大地苏醒 (EARTHAWAKENSRUNE): 矿山 +1 产能
+-- 大地苏醒 (EARTHAWAKENSRUNE): 矿山 / 采石场 +1 产能
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
     VALUES ('MODIFIER_NW_EARTHAWAKEN_MINE_PRODUCTION', 'MODIFIER_PLAYER_ADJUST_PLOT_YIELD', 'PLOT_HAS_MINE_REQUIREMENTS');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
     VALUES ('MODIFIER_NW_EARTHAWAKEN_MINE_PRODUCTION', 'Amount', '1');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
     VALUES ('MODIFIER_NW_EARTHAWAKEN_MINE_PRODUCTION', 'YieldType', 'YIELD_PRODUCTION');
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
+    VALUES ('MODIFIER_NW_EARTHAWAKEN_QUARRY_PRODUCTION', 'MODIFIER_PLAYER_ADJUST_PLOT_YIELD', 'PLOT_HAS_QUARRY_REQUIREMENTS');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_EARTHAWAKEN_QUARRY_PRODUCTION', 'Amount', '1');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_EARTHAWAKEN_QUARRY_PRODUCTION', 'YieldType', 'YIELD_PRODUCTION');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('EARTHAWAKENSRUNE', 'MODIFIER_NW_EARTHAWAKEN_MINE_PRODUCTION');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('EARTHAWAKENSRUNE', 'MODIFIER_NW_EARTHAWAKEN_QUARRY_PRODUCTION');
 
 -- 返朴 (PRIMITIVEMADNESSRUNE): 建有纪念碑的市中心 +1 全部产出
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
@@ -789,8 +813,12 @@ INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSet
     ('MODIFIER_NW_COSPLAY_ATTACK_PENALTY', 'MODIFIER_UNIT_ADJUST_COMBAT_STRENGTH', 'NW_GLASSCANNON_ATTACK_REQUIREMENTS'),
     ('MODIFIER_NW_COSPLAY_DEFEND_PENALTY', 'MODIFIER_UNIT_ADJUST_COMBAT_STRENGTH', 'NW_GLASSCANNON_DEFEND_REQUIREMENTS');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
-    ('MODIFIER_NW_COSPLAY_ATTACK_PENALTY', 'Amount', '-5'),
-    ('MODIFIER_NW_COSPLAY_DEFEND_PENALTY', 'Amount', '-10');
+    ('MODIFIER_NW_COSPLAY_ATTACK_PENALTY', 'Amount', '-3'),
+    ('MODIFIER_NW_COSPLAY_DEFEND_PENALTY', 'Amount', '-5');
+UPDATE ModifierArguments SET Value = '-3'
+    WHERE ModifierId = 'MODIFIER_NW_COSPLAY_ATTACK_PENALTY' AND Name = 'Amount';
+UPDATE ModifierArguments SET Value = '-5'
+    WHERE ModifierId = 'MODIFIER_NW_COSPLAY_DEFEND_PENALTY' AND Name = 'Amount';
 INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text) VALUES
     ('MODIFIER_NW_COSPLAY_ATTACK_PENALTY', 'Preview', '{1_Amount} 仿生战士攻击战斗力减益'),
     ('MODIFIER_NW_COSPLAY_DEFEND_PENALTY', 'Preview', '{1_Amount} 仿生战士防御战斗力减益');
@@ -1849,7 +1877,7 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
 
 -- ===========================================================================
 -- 憨豆特工 (BEANAGENTRUNE): 首都赠送 1 名「憨豆」（带晋升的间谍）
--- 进攻任务成功等级 -4；憨豆 Ability 在己方反间谍城 +3 宜居（仅 UNIT_NW_BEAN）
+-- 进攻任务成功等级 -4；憨豆 Ability 在己方反间谍城 +6 宜居（仅 UNIT_NW_BEAN）
 -- 卡面图标暂借未实装 TAPDANCERUNE，不改写占位
 -- ===========================================================================
 INSERT OR IGNORE INTO Types (Type, Kind) VALUES
@@ -1966,7 +1994,7 @@ INSERT OR IGNORE INTO UnitAbilityModifiers (UnitAbilityType, ModifierId) VALUES
     ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_CHANCE_BREACH_DAM'),
     ('ABILITY_NW_BEAN', 'MODIFIER_NW_BEAN_AMENITY');
 
--- 憨豆本人在己方领土、且最近己方城市有反间谍时 +3 宜居
+-- 憨豆本人在己方领土、且最近己方城市有反间谍时 +6 宜居
 -- （宜居挂在 ABILITY_NW_BEAN 上，仅 UNIT_NW_BEAN 有此 Ability；普通间谍不触发）
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES
     ('NW_REQUIRES_BEAN_IN_OWNER_TERRITORY', 'REQUIREMENT_UNIT_IN_OWNER_TERRITORY'),
@@ -1986,7 +2014,7 @@ INSERT INTO Modifiers (ModifierId, ModifierType, OwnerRequirementSetId, SubjectR
             'NW_BEAN_IN_OWNER_TERRITORY',
             'NW_CITY_HAS_COUNTERSPY');
 INSERT INTO ModifierArguments (ModifierId, Name, Value)
-    VALUES ('MODIFIER_NW_BEAN_AMENITY', 'Amount', '3');
+    VALUES ('MODIFIER_NW_BEAN_AMENITY', 'Amount', '6');
 
 -- 首都赠送 1 名憨豆
 INSERT OR IGNORE INTO Modifiers

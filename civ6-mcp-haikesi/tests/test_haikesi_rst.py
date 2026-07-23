@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from civ_mcp.haikesi_llm import HaikesiGameContext, _rst_block, build_decision_prompt
 from civ_mcp.lua import haikesi as haikesi_lua
-from civ_mcp.haikesi_llm import _rst_block, build_decision_prompt
-from civ_mcp.lua.haikesi import LeaderView, RstStrategyView
+from civ_mcp.lua.haikesi import LeaderView, MetCivView, RstStrategyView
 from civ_mcp.lua.models import GameOverview
-from civ_mcp.haikesi_llm import HaikesiGameContext
 
 
 def test_parse_rst_strategies_absent():
@@ -113,3 +112,98 @@ def test_build_rst_query_soft():
     assert "ExposedMembers.RST" in lua
     assert "RST_MOD|" in lua
     assert "1" in lua and "4" in lua
+
+
+def test_victory_lean_scores_military_leader():
+    strong = LeaderView(
+        player_id=2,
+        mil=200,
+        techs=8,
+        sci=8,
+        cul=8,
+        faith=5,
+        cities=6,
+        met=[
+            MetCivView(
+                player_id=1,
+                civ_name="A",
+                leader_name="L",
+                score=10,
+                cities=1,
+                pop=4,
+                sci=1.0,
+                cul=1.0,
+                gold=1.0,
+                mil=40,
+                techs=1,
+                civics=1,
+                faith=0.0,
+                diplomatic_state="WAR",
+                relationship_score=-50,
+                is_at_war=True,
+                grievances=20,
+            )
+        ],
+    )
+    lean = haikesi_lua.estimate_victory_lean_view(
+        strong,
+        med_mil=120.0,
+        med_techs=9.0,
+        med_sci=9.0,
+        med_cul=9.0,
+        med_faith=5.0,
+    )
+    assert lean.source == "lean"
+    assert lean.active_strategy == "CONQUEST"
+    assert lean.priorities["CONQUEST"] >= lean.priorities["SCIENCE"]
+
+
+def test_apply_victory_lean_skips_existing_rst():
+    views = {
+        1: LeaderView(
+            player_id=1,
+            mil=100,
+            techs=20,
+            sci=30,
+            rst=RstStrategyView(active_strategy="SCIENCE", source="rst"),
+        ),
+        2: LeaderView(player_id=2, mil=100, techs=5, sci=5),
+    }
+    n = haikesi_lua.apply_victory_lean(views)
+    assert n == 1
+    assert views[1].rst is not None and views[1].rst.source == "rst"
+    assert views[2].rst is not None and views[2].rst.source == "lean"
+
+
+def test_rst_block_labels_victory_lean():
+    view = LeaderView(
+        player_id=1,
+        civ_name="越南",
+        leader_name="赵夫人",
+        rst=RstStrategyView(
+            active_strategy="CONQUEST",
+            priorities={
+                "CONQUEST": 70,
+                "SCIENCE": 20,
+                "CULTURE": 20,
+                "RELIGION": 10,
+                "DIPLO": 10,
+            },
+            source="lean",
+        ),
+    )
+    block = _rst_block(view)
+    assert "VictoryLean" in block
+    assert "Real Strategy 战略意图" not in block
+
+
+def test_parse_viewer_leader_type():
+    lines = [
+        "RST_MOD|0",
+        "VIEWER|2|瑞典|克里斯蒂娜|50|2|5|10.0|40.0|8.0|50|3|2|0.0|写作|技艺|12|LEADER_KRISTINA",
+        "---END---",
+    ]
+    views, avail = haikesi_lua.parse_leader_views(lines)
+    assert avail is False
+    assert views[2].leader_type == "LEADER_KRISTINA"
+    assert views[2].favor == 12

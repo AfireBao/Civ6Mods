@@ -5,14 +5,14 @@
             <Text>秘术冲拳</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>每相邻一个单位，武僧就+2 [ICON_Strength] 战斗力。购买武僧的费用-25%。</Text>
+            <Text>每相邻一个单位，武僧就+3 [ICON_Strength] 战斗力。购买武僧的费用-25%。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>咒经千卷收于一拳，未及念诵，敌已倾。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_ARCANE_PUNCH_COMBAT_PREVIEW" Language="zh_Hans_CN">
-            <Text>秘术冲拳：每相邻一个单位+2 [ICON_Strength] 战斗力</Text>
+            <Text>秘术冲拳：每相邻一个单位+3 [ICON_Strength] 战斗力</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_BACKTOBASICSRUNE_NAME" Language="zh_Hans_CN">
@@ -53,7 +53,7 @@
             <Text>太仓有粟</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BREADSANDWICHRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市+1 [ICON_AMENITIES] 宜居度。</Text>
+            <Text>所有城市+1 [ICON_AMENITIES] 宜居度、+1 [ICON_Housing] 住房。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BREADSANDWICHRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>仓廪既实，民乃知止；耳畔喧嚣，主上无言。</Text>
@@ -221,7 +221,7 @@
             <Text>大地苏醒</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EARTHAWAKENSRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>矿山+1 [ICON_Production] 生产力。</Text>
+            <Text>矿山、采石场+1 [ICON_Production] 生产力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EARTHAWAKENSRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>岩脉久寐，今日翻身，万矿应之。</Text>
@@ -241,7 +241,7 @@
             <Text>尤里卡</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EUREKARUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>未处于黄金时代时，尤里卡额外提供10%的 [ICON_Science] 科技进度。</Text>
+            <Text>未处于黄金时代时，尤里卡额外提供20%的 [ICON_Science] 科技进度。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EUREKARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>神思不自天垂，乃自残瓦碎铁中起。</Text>
@@ -463,7 +463,7 @@
             <Text>误中副车</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_HAPPYACCIDENTRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>不处于黄金时代时，鼓舞额外提供10%的市政进度。</Text>
+            <Text>不处于黄金时代时，鼓舞额外提供20%的市政进度。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_HAPPYACCIDENTRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>失之东隅，反成大业。</Text>
@@ -741,7 +741,7 @@
             <Text>憨豆特工</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BEANAGENTRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>立即获得一名特工「憨豆」（自带一次晋升）。[NEWLINE]憨豆执行进攻任务时成功等级 -4。[NEWLINE]憨豆在己方城市执行反间谍任务时，该城市 +3 [ICON_Amenities] 宜居度。</Text>
+            <Text>立即获得一名特工「憨豆」（自带一次晋升）。[NEWLINE]憨豆执行进攻任务时成功等级 -4。[NEWLINE]憨豆在己方城市执行反间谍任务时，该城市 +6 [ICON_Amenities] 宜居度。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BEANAGENTRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>通行证、微型相机、一颗沉默的卷心菜——任务说明书上写着「请勿弄坏」。</Text>
@@ -768,7 +768,7 @@
             <Text>特殊间谍单位。执行进攻任务时成功等级 -4；在己方城市执行反间谍时可提供大量宜居。</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_BEAN_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>进攻任务成功等级 -4。在己方城市执行反间谍任务时，该城市 +3 [ICON_Amenities] 宜居度。</Text>
+            <Text>进攻任务成功等级 -4。在己方城市执行反间谍任务时，该城市 +6 [ICON_Amenities] 宜居度。</Text>
         </Replace>
 
         <Replace Tag="LOC_UNIT_NW_JUAN_NAME" Language="zh_Hans_CN">
@@ -1629,7 +1629,7 @@
             <Text>cosplay 历代最强近战士兵的赝品。穿戴正确，灵魂稀薄——进攻乏力，防守更脆。</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_COSPLAY_MIMIC_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>[ICON_Strength] 战斗力等于该玩家曾训练过的最强近战单位。进攻时-5 [ICON_Strength] 战斗力，防御时-10 [ICON_Strength] 战斗力。</Text>
+            <Text>[ICON_Strength] 战斗力等于该玩家曾训练过的最强近战单位。进攻时-3 [ICON_Strength] 战斗力，防御时-5 [ICON_Strength] 战斗力。</Text>
         </Replace>
         <Replace Tag="LOC_PROMOTION_NW_COSPLAY_MIMIC_C1_NAME" Language="zh_Hans_CN">
             <Text>形似</Text>
@@ -1649,7 +1649,7 @@
             <Text>利刃华尔兹</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_BLADEWALTZ_ENEMY_COMBAT_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>位于敌方境内时+2 [ICON_Strength] 战斗力。</Text>
+            <Text>位于敌方境内时+3 [ICON_Strength] 战斗力。</Text>
         </Replace>
 
     </LocalizedText>

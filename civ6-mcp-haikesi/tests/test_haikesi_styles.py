@@ -96,9 +96,11 @@ def test_legality_and_payoff_split():
     from civ_mcp.haikesi_styles import load_legality_skill, load_payoff_skill
 
     assert "NW_AI_NONE" in load_legality_skill() or "候选" in load_legality_skill()
+    assert "历史原型" in load_legality_skill()
     pay = load_payoff_skill()
     assert "宜居" in pay and "维护" in pay
     assert "cosplay" in pay.lower() or "收益优先" in pay
+    assert "历史原型" in pay
 
 
 def test_demonic_warlord_hits_on_conquest_war():
@@ -108,7 +110,7 @@ def test_demonic_warlord_hits_on_conquest_war():
         selected=["NW_AI_BARBARIAN_INVASION", "NW_AI_ECHO_MELEE"],
     )
     assert not excluded
-    assert score >= 3
+    assert score >= 5
     asn = classify_style_for_leader(
         player_id=1,
         view=view,
@@ -198,13 +200,13 @@ def test_new_styles_classify():
     )
     assert asn.style_id == "authoritarian_diplomat"
 
-    # 狂热隐士：RELIGION + 高信仰 + 商路少
+    # 狂热隐士：RELIGION + 高信仰 + 内商
     fanatic = LeaderView(
         player_id=4,
         civ_name="刚果",
         faith=35.0,
         met=[_met(war=False)],
-        trade=TradeView(capacity=1, active=0),
+        trade=TradeView(capacity=2, active=2, domestic=2),
         rst=RstStrategyView(active_strategy="RELIGION"),
     )
     asn = classify_style_for_leader(
@@ -276,12 +278,12 @@ def test_eight_new_styles_classify():
         == "strategist_warlord"
     )
 
-    # 孤僻隐士：商路少 + 边境压力 + 低信仰
+    # 孤僻隐士：内商 + 边境压力 + 低信仰
     solitary = LeaderView(
         player_id=13,
         faith=5.0,
         met=[_met(war=False)],
-        trade=TradeView(capacity=1, active=0),
+        trade=TradeView(capacity=2, active=2, domestic=2),
         threats=[
             VisibleThreatAgg(
                 owner_id=5, owner_name="刚果", count=4, nearest_dist=2, is_at_war=False
@@ -473,3 +475,89 @@ def test_assign_and_inject_respects_dice_mode():
         max_rounds=1,
     )
     assert "BARBARIAN" in result.text
+
+
+def test_leader_baseline_hard_fallback_and_soft_hint(monkeypatch):
+    from civ_mcp import haikesi_styles as styles
+    from civ_mcp.haikesi_styles import load_leader_baselines, lookup_leader_baseline
+
+    table = load_leader_baselines(force_reload=True)
+    assert "LEADER_KRISTINA" in table
+    assert table["LEADER_KRISTINA"]["style_id"] == "authoritarian_diplomat"
+
+    # Force all signal classifiers below threshold so hard fallback fires
+    monkeypatch.setattr(
+        styles,
+        "_STYLE_CLASSIFIERS",
+        [(sid, lambda **_kw: (0, [], False)) for sid, _ in styles._STYLE_CLASSIFIERS],
+    )
+
+    view = LeaderView(
+        player_id=7,
+        civ_name="瑞典",
+        leader_name="克里斯蒂娜",
+        leader_type="LEADER_KRISTINA",
+        rst=RstStrategyView(active_strategy="NONE", source="lean"),
+    )
+    assert lookup_leader_baseline(view) is not None
+    asn = classify_style_for_leader(player_id=7, view=view, selected=[])
+    assert asn.style_id == "authoritarian_diplomat"
+    assert asn.reasons == ["历史原型"]
+    assert "原型:" in asn.slim_line
+    assert "巨作" in asn.archetype_note or "favor" in asn.archetype_note or "文迪" in asn.archetype_note
+
+
+def test_leader_baseline_unknown_stays_none(monkeypatch):
+    from civ_mcp import haikesi_styles as styles
+
+    monkeypatch.setattr(
+        styles,
+        "_STYLE_CLASSIFIERS",
+        [(sid, lambda **_kw: (0, [], False)) for sid, _ in styles._STYLE_CLASSIFIERS],
+    )
+    view = LeaderView(
+        player_id=9,
+        civ_name="未知文明",
+        leader_name="无名氏",
+        leader_type="LEADER_TOTALLY_FAKE_XYZ",
+        rst=RstStrategyView(active_strategy="NONE"),
+    )
+    asn = classify_style_for_leader(player_id=9, view=view, selected=[])
+    assert asn.style_id is None
+    assert asn.mode == "none"
+
+
+def test_inferred_style_still_shows_archetype_soft_hint():
+    view = LeaderView(
+        player_id=5,
+        civ_name="朝鲜",
+        leader_name="善德",
+        leader_type="LEADER_SEONDEOK",
+        sci=40.0,
+        met=[
+            MetCivView(
+                player_id=1,
+                civ_name="X",
+                leader_name="Y",
+                score=10,
+                cities=1,
+                pop=4,
+                sci=1.0,
+                cul=1.0,
+                gold=1.0,
+                mil=10,
+                techs=1,
+                civics=1,
+                faith=0.0,
+                diplomatic_state="FRIEND",
+                relationship_score=20,
+                is_at_war=False,
+                grievances=0,
+            )
+        ],
+        rst=RstStrategyView(active_strategy="SCIENCE"),
+    )
+    asn = classify_style_for_leader(player_id=5, view=view, selected=["NW_AI_STATS_2"])
+    assert asn.style_id == "erudite_sage"
+    assert "历史原型" not in asn.reasons
+    assert "原型:" in asn.slim_line

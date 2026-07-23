@@ -1,0 +1,426 @@
+{
+  "version": 4,
+  "note": "Historical archetype → ExtAI style_id fallback when classify score<_STYLE_SCORE_THRESHOLD (5); soft hint always. Keys are game LEADER_* from Base+DLC (Anthology), plus known persona/alias Types. Does not change in-game AI. v4: rebalanced so each style has roughly 4–8 leaders (drain militant/artisan into demonic/economic/authoritarian/etc.).",
+  "leaders": {
+    "LEADER_ABRAHAM_LINCOLN": {
+      "style_id": "strategist_warlord",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "林肯：工业军工与解放"
+    },
+    "LEADER_ALEXANDER": {
+      "style_id": "militant_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "亚历山大：连胜不疲征服"
+    },
+    "LEADER_AMANITORE": {
+      "style_id": "imperial_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "阿曼尼托尔：金字塔产力扩张"
+    },
+    "LEADER_AMBIORIX": {
+      "style_id": "demonic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "安比奥里克斯：近战群殴与混乱施压"
+    },
+    "LEADER_BARBAROSSA": {
+      "style_id": "demonic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "巴巴罗萨：铁冠征城邦、开战施压"
+    },
+    "LEADER_BASIL": {
+      "style_id": "fanatic_isolationist",
+      "victory_lean": "RELIGION",
+      "archetype_note": "巴西尔二世：宗教战斗碾压"
+    },
+    "LEADER_CATHERINE_DE_MEDICI": {
+      "style_id": "deceptive_spy",
+      "victory_lean": "CULTURE",
+      "archetype_note": "黑王后：情报与文化施压"
+    },
+    "LEADER_CATHERINE_DE_MEDICI_ALT": {
+      "style_id": "artisan_merchant",
+      "victory_lean": "CULTURE",
+      "archetype_note": "荣光卡特琳：宫廷奢华与文旅"
+    },
+    "LEADER_CHANDRAGUPTA": {
+      "style_id": "strategist_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "旃陀罗笈多：择机领土扩张"
+    },
+    "LEADER_CHARLEMAGNE": {
+      "style_id": "militant_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "查理曼（维京剧本专用 Type，非标准选人）"
+    },
+    "LEADER_CLEOPATRA": {
+      "style_id": "competitive_merchant",
+      "victory_lean": "CULTURE",
+      "archetype_note": "埃及艳后：同盟商路与地中海文旅"
+    },
+    "LEADER_CLEOPATRA_ALT": {
+      "style_id": "artisan_merchant",
+      "victory_lean": "CULTURE",
+      "archetype_note": "托勒密克利奥帕特拉：泛滥地与文产"
+    },
+    "LEADER_CYRUS": {
+      "style_id": "strategist_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "居鲁士：突袭机动征服"
+    },
+    "LEADER_DIDO": {
+      "style_id": "competitive_merchant",
+      "victory_lean": "DIPLO",
+      "archetype_note": "狄多：迁都海权与商路"
+    },
+    "LEADER_ELEANOR_ENGLAND": {
+      "style_id": "deceptive_spy",
+      "victory_lean": "CULTURE",
+      "archetype_note": "阿基坦埃莉诺：大作忠诚渗透"
+    },
+    "LEADER_ELEANOR_FRANCE": {
+      "style_id": "deceptive_spy",
+      "victory_lean": "CULTURE",
+      "archetype_note": "阿基坦埃莉诺（法）：剧院忠诚渗透"
+    },
+    "LEADER_ELIZABETH": {
+      "style_id": "economic_warlord",
+      "victory_lean": "CULTURE",
+      "archetype_note": "伊丽莎白：海商私掠养战"
+    },
+    "LEADER_EMPRESS_WU": {
+      "style_id": "deceptive_spy",
+      "victory_lean": "CULTURE",
+      "archetype_note": "武则天别名"
+    },
+    "LEADER_GANDHI": {
+      "style_id": "chivalrous_diplomat",
+      "victory_lean": "RELIGION",
+      "archetype_note": "甘地：和平信仰与外交（亦防核突袭刻板）"
+    },
+    "LEADER_GENGHIS_KHAN": {
+      "style_id": "demonic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "成吉思汗：骑兵横扫"
+    },
+    "LEADER_GILGAMESH": {
+      "style_id": "chivalrous_diplomat",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "吉尔伽美什：盟友恩奇都、友谊优先（战则为友而战）"
+    },
+    "LEADER_GITARJA": {
+      "style_id": "fanatic_isolationist",
+      "victory_lean": "RELIGION",
+      "archetype_note": "季塔尔贾：信仰海军与群岛"
+    },
+    "LEADER_GORGO": {
+      "style_id": "militant_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "戈尔戈：杀戮换文化、尚武斯巴达"
+    },
+    "LEADER_HAMMURABI": {
+      "style_id": "erudite_sage",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "汉谟拉比：欧卡洪流科技"
+    },
+    "LEADER_HARALD_ALT": {
+      "style_id": "imperial_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "哈拉尔德·瓦兰吉：护教与远征"
+    },
+    "LEADER_HARDRADA": {
+      "style_id": "militant_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "哈拉尔德·哈德拉达（北境王）：维京劫掠与海岸征服"
+    },
+    "LEADER_HOJO": {
+      "style_id": "solitary_isolationist",
+      "victory_lean": "CULTURE",
+      "archetype_note": "北条：神风冲区、防务内向武士道"
+    },
+    "LEADER_JADWIGA": {
+      "style_id": "fanatic_isolationist",
+      "victory_lean": "RELIGION",
+      "archetype_note": "雅德维加：信仰与文化庇护"
+    },
+    "LEADER_JAYAVARMAN": {
+      "style_id": "fanatic_isolationist",
+      "victory_lean": "RELIGION",
+      "archetype_note": "阇耶跋摩：水田圣城"
+    },
+    "LEADER_JOAO_III": {
+      "style_id": "competitive_merchant",
+      "victory_lean": "DIPLO",
+      "archetype_note": "若昂三世：探索商路帝国"
+    },
+    "LEADER_JOHN_CURTIN": {
+      "style_id": "strategist_warlord",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "柯廷：危机产力与防守反击"
+    },
+    "LEADER_JULIUS_CAESAR": {
+      "style_id": "economic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "凯撒：劫掠黄金养战"
+    },
+    "LEADER_KRISTINA": {
+      "style_id": "authoritarian_diplomat",
+      "victory_lean": "CULTURE",
+      "archetype_note": "克里斯蒂娜：巨作主题与文迪/favor"
+    },
+    "LEADER_KUBLAI_KHAN_CHINA": {
+      "style_id": "competitive_merchant",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "忽必烈（中）：商科双收"
+    },
+    "LEADER_KUBLAI_KHAN_MONGOLIA": {
+      "style_id": "economic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "忽必烈（蒙）：商路养战"
+    },
+    "LEADER_KUPE": {
+      "style_id": "solitary_isolationist",
+      "victory_lean": "CULTURE",
+      "archetype_note": "库佩：远洋开局与自然魅力"
+    },
+    "LEADER_LADY_SIX_SKY": {
+      "style_id": "solitary_isolationist",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "六天夫人：城邦压制与紧凑发展"
+    },
+    "LEADER_LADY_TRIEU": {
+      "style_id": "militant_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "赵夫人别名（游戏 Type）"
+    },
+    "LEADER_LAURIER": {
+      "style_id": "authoritarian_diplomat",
+      "victory_lean": "DIPLO",
+      "archetype_note": "劳里埃：极地外交与宜居"
+    },
+    "LEADER_LAUTARO": {
+      "style_id": "militant_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "劳塔罗：抗击帝国游击"
+    },
+    "LEADER_LUDWIG": {
+      "style_id": "artisan_merchant",
+      "victory_lean": "CULTURE",
+      "archetype_note": "路德维希：奇观文旅"
+    },
+    "LEADER_MANSA_MUSA": {
+      "style_id": "competitive_merchant",
+      "victory_lean": "DIPLO",
+      "archetype_note": "曼萨·穆萨：黄金商路帝国"
+    },
+    "LEADER_MATTHIAS_CORVINUS": {
+      "style_id": "imperial_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "匈雅提·马加什：征召城邦扩军帝国"
+    },
+    "LEADER_MENELIK": {
+      "style_id": "solitary_isolationist",
+      "victory_lean": "RELIGION",
+      "archetype_note": "孟尼利克：山地防务与内向科文"
+    },
+    "LEADER_MONTEZUMA": {
+      "style_id": "demonic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "蒙特祖马：奢侈战争与扩张"
+    },
+    "LEADER_MVEMBA": {
+      "style_id": "chivalrous_diplomat",
+      "victory_lean": "CULTURE",
+      "archetype_note": "姆文巴：受教和平与雨林文旅"
+    },
+    "LEADER_NADER_SHAH": {
+      "style_id": "strategist_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "纳迪尔沙阿：奢侈战斗与机动征服"
+    },
+    "LEADER_NZINGA_MBANDE": {
+      "style_id": "imperial_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "恩津加：多城扩张"
+    },
+    "LEADER_PACHACUTI": {
+      "style_id": "solitary_isolationist",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "帕查库特克：山地紧凑内政"
+    },
+    "LEADER_PEDRO": {
+      "style_id": "artisan_merchant",
+      "victory_lean": "CULTURE",
+      "archetype_note": "佩德罗二世：伟人与雨林奇观向"
+    },
+    "LEADER_PERICLES": {
+      "style_id": "chivalrous_diplomat",
+      "victory_lean": "CULTURE",
+      "archetype_note": "伯里克利：城邦使者与文化同盟"
+    },
+    "LEADER_PETER_GREAT": {
+      "style_id": "erudite_sage",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "彼得大帝：贸易区科文与西化"
+    },
+    "LEADER_PHILIP_II": {
+      "style_id": "fanatic_isolationist",
+      "victory_lean": "RELIGION",
+      "archetype_note": "腓力二世：异教审判与舰队"
+    },
+    "LEADER_POUNDMAKER": {
+      "style_id": "authoritarian_diplomat",
+      "victory_lean": "DIPLO",
+      "archetype_note": "庞德梅克：同盟共享与外交网"
+    },
+    "LEADER_QIN": {
+      "style_id": "artisan_merchant",
+      "victory_lean": "CULTURE",
+      "archetype_note": "秦始皇（天命）：冲刺奇观与文化"
+    },
+    "LEADER_QIN_ALT": {
+      "style_id": "demonic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "秦始皇·一统：南蛮转化与连战征服"
+    },
+    "LEADER_QIN_SHI_HUANG_UNIFIER": {
+      "style_id": "demonic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "秦·一统别名"
+    },
+    "LEADER_RAMSES": {
+      "style_id": "imperial_warlord",
+      "victory_lean": "CULTURE",
+      "archetype_note": "拉美西斯：建筑奇观文化"
+    },
+    "LEADER_ROBERT_THE_BRUCE": {
+      "style_id": "strategist_warlord",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "罗伯特·布鲁斯：自由战争与科产"
+    },
+    "LEADER_SALADIN": {
+      "style_id": "fanatic_isolationist",
+      "victory_lean": "RELIGION",
+      "archetype_note": "萨拉丁：信仰与科学并举"
+    },
+    "LEADER_SALADIN_ALT": {
+      "style_id": "militant_warlord",
+      "victory_lean": "RELIGION",
+      "archetype_note": "萨拉丁·苏丹：圣战征服"
+    },
+    "LEADER_SEJONG": {
+      "style_id": "erudite_sage",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "世宗：科技文化喷泉"
+    },
+    "LEADER_SEONDEOK": {
+      "style_id": "erudite_sage",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "善德：科学文化双辉煌"
+    },
+    "LEADER_SHAKA": {
+      "style_id": "demonic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "沙卡：军团碾压"
+    },
+    "LEADER_SIMON_BOLIVAR": {
+      "style_id": "strategist_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "玻利瓦尔：解放战争与指挥"
+    },
+    "LEADER_SULEIMAN": {
+      "style_id": "economic_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "苏莱曼：扩张与黄金时代养战"
+    },
+    "LEADER_SULEIMAN_ALT": {
+      "style_id": "strategist_warlord",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "苏莱曼·立法者：科文治理"
+    },
+    "LEADER_SULEIMAN_KANUNI": {
+      "style_id": "strategist_warlord",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "苏莱曼·立法者别名"
+    },
+    "LEADER_SUNDIATA_KEITA": {
+      "style_id": "competitive_merchant",
+      "victory_lean": "CULTURE",
+      "archetype_note": "松迪亚塔：市场巨作与金币买伟人"
+    },
+    "LEADER_TAMAR": {
+      "style_id": "fanatic_isolationist",
+      "victory_lean": "RELIGION",
+      "archetype_note": "塔马尔：信仰护教与城邦"
+    },
+    "LEADER_THEODORA": {
+      "style_id": "artisan_merchant",
+      "victory_lean": "CULTURE",
+      "archetype_note": "狄奥多拉：圣区文化建造"
+    },
+    "LEADER_TOKUGAWA": {
+      "style_id": "solitary_isolationist",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "德川：国内商路封闭发展"
+    },
+    "LEADER_TOMYRIS": {
+      "style_id": "militant_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "托米丽司：轻骑复仇与征伐"
+    },
+    "LEADER_TRAJAN": {
+      "style_id": "imperial_warlord",
+      "victory_lean": "CULTURE",
+      "archetype_note": "图拉真：免费建筑扩城、帝国文产"
+    },
+    "LEADER_TRIEU": {
+      "style_id": "militant_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "赵夫人：文化战斗与林区作战"
+    },
+    "LEADER_T_ROOSEVELT": {
+      "style_id": "artisan_merchant",
+      "victory_lean": "CULTURE",
+      "archetype_note": "驼鹿泰迪：高魅力地块与公园文旅"
+    },
+    "LEADER_T_ROOSEVELT_ROUGHRIDER": {
+      "style_id": "militant_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "莽骑兵泰迪：美洲霸权征伐"
+    },
+    "LEADER_VICTORIA": {
+      "style_id": "imperial_warlord",
+      "victory_lean": "CONQUEST",
+      "archetype_note": "维多利亚：日不落扩张"
+    },
+    "LEADER_VICTORIA_ALT": {
+      "style_id": "artisan_merchant",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "维多利亚·蒸汽：工业产力"
+    },
+    "LEADER_VICTORIA_STEAM": {
+      "style_id": "artisan_merchant",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "维多利亚蒸汽别名"
+    },
+    "LEADER_WILFRID_LAURIER": {
+      "style_id": "authoritarian_diplomat",
+      "victory_lean": "DIPLO",
+      "archetype_note": "劳里埃别名（游戏 Type 为 LEADER_LAURIER）"
+    },
+    "LEADER_WILHELMINA": {
+      "style_id": "authoritarian_diplomat",
+      "victory_lean": "CULTURE",
+      "archetype_note": "威廉明娜：商路忠诚与外交施压"
+    },
+    "LEADER_WU_ZETIAN": {
+      "style_id": "deceptive_spy",
+      "victory_lean": "CULTURE",
+      "archetype_note": "武则天：间谍与文化"
+    },
+    "LEADER_YONGLE": {
+      "style_id": "erudite_sage",
+      "victory_lean": "SCIENCE",
+      "archetype_note": "永乐：人口科文金"
+    }
+  }
+}
