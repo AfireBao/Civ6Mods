@@ -1711,7 +1711,7 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
 
 -- ===========================================================================
 -- 高翔导航 (HIGHFLIGHTNAVRUNE): 首都赠送 1 名「翔」
--- 翔：可捕获民用支援单位（3D 复用补给车队/医疗兵线）；3 环内交战非友军 -1 移动力
+-- 翔：可捕获民用支援单位（3D 复用补给车队/医疗兵线）；4 环内交战非友军 -1 移动力
 -- 机制: Varu 同款 ALL_UNITS_ATTACH_MODIFIER + MODIFIER_PLAYER_UNIT_ADJUST_MOVEMENT
 -- 卡面图标暂借 PANDORASBOXRUNE，不改写占位
 -- ===========================================================================
@@ -1776,15 +1776,15 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
 INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text) VALUES
     ('MODIFIER_NW_XIANG_ENEMY_SLOW_MOV', 'Preview', 'LOC_ABILITY_NW_XIANG_ENEMY_SLOW_DESCRIPTION');
 
--- 距离: MinDistance=1（Varu 同款；0 对 AT_WAR 无效）；MaxDistance=3
+-- 距离: MinDistance=1（Varu 同款；0 对 AT_WAR 无效）；MaxDistance=4
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES
     ('NW_REQUIRES_XIANG_AT_WAR_AOE', 'REQUIREMENT_PLOT_ADJACENT_TO_OWNER_AT_WAR');
 INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value) VALUES
     ('NW_REQUIRES_XIANG_AT_WAR_AOE', 'MinDistance', '1'),
-    ('NW_REQUIRES_XIANG_AT_WAR_AOE', 'MaxDistance', '3');
+    ('NW_REQUIRES_XIANG_AT_WAR_AOE', 'MaxDistance', '4');
 UPDATE RequirementArguments SET Value = '1'
     WHERE RequirementId = 'NW_REQUIRES_XIANG_AT_WAR_AOE' AND Name = 'MinDistance';
-UPDATE RequirementArguments SET Value = '3'
+UPDATE RequirementArguments SET Value = '4'
     WHERE RequirementId = 'NW_REQUIRES_XIANG_AT_WAR_AOE' AND Name = 'MaxDistance';
 
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType, Inverse) VALUES

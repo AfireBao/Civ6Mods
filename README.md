@@ -70,6 +70,8 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-23 | **翔（高翔导航）**：迟滞光环 **3→4 格**（Modifier + 选中高亮 + 文案）。 |
+| 2026-07-23 | **玩家海克斯「城邦工艺」**（`CITYSTATECRAFTSRUNE`）：工人可建造全部城邦特色改良（巨石像/修道院/阿尔卡萨/摩艾/卡霍基亚丘/纳斯卡线条/巴特伊/大寺院/贸易穹顶）；按已加载内容跳过缺失 DLC，无需宗主。 |
 | 2026-07-23 | **COSPLAY（`MIMICRUNE`）附赠修复**：取消 `SelectionOnly`；手快全选本轮另两张 / 掷骰附赠含 COSPLAY 时可正常发卡，并由 `OnConfirm` 打开能力选择窗（手快全选卡本身仍 `SelectionOnly`）。**另修**：蛮族入侵无挂起时 Firaxis `tonumber(nil)` 崩溃。 |
 | 2026-07-23 | **玩家海克斯「狂野符文」**（`LANDLOTTERYRUNE`）：城市可工作地块按格独立重随机**地形层**粮/锤/金/信仰（地貌/资源不动；山脉跳过；原地形合计不足 3 点提到 3）。实现为玩家级抵消 `Terrain_YieldChanges` + Plot Property 加回；扩张吃地回合末再重随。**联机**：回合末待刷格按 `plotIndex` 排序消费同步 RNG，去掉 `math.random` 兜底。 |
 | 2026-07-23 | **ExtAI VictoryLean + 领袖风格基线**：关 RST（或尚无 ActiveStrategy）时用 gather/`VictoryLean` 估计胜线路（`RstStrategyView.source=lean`，不覆盖真 RST）；LOG 通道与 FireTuner 对齐。风格入围门槛 **≥5**（Session 锁定续持 ≥3）；隐士改看**内商偏重**（不再用「商路少」误判）；`leader_baselines.json` v4 补全 `LAURIER`/`SUNDIATA_KEITA` 等并匀摊各风格约 4–8 人（如秦·一统→恶魔督军）。对照页 [`ExtAI_领袖性格对照.md`](ExtAI_领袖性格对照.md)。**玩家海克斯微调**：太仓有粟 +1 住房（POLICY_HOUSING）；刀光剑舞 Ability 补 `CLASS_ALL_COMBAT_UNITS`；秘术冲拳/尤里卡/误中副车/仿生/憨豆等数值与文案同步。详见 [`civ6-mcp-haikesi/knowledge/styles/README.md`](civ6-mcp-haikesi/knowledge/styles/README.md)。 |
@@ -79,7 +81,7 @@
 | 2026-07-20 | **单机 ExtAI**：不弹联机 Ctrl+V 横幅；帧末捞 FireTuner Stage 暂存并广播（修复跨 Context LuaEvent 丢失导致 Submit OK 却不落地）。 |
 | 2026-07-20 | **AI 混乱干扰「仇水连汛」**：关系最差最多 3 文明（未接触=默认分 0）城市附近可泛滥河，下回合起连续 5 回合官方洪水（70% 千年 / 30% 重大）；与南蛮入侵/闪电风暴共享每轮混乱互斥（候选池互斥，提示词不写互斥）。 |
 | 2026-07-20 | **AI 混乱干扰「闪电风暴」**：选中后下一回合起连续 10 回合，每回合按存活主要文明数触发同等场次官方风暴；与南蛮入侵每轮互斥（由 ExtAI 候选池互斥，提示词不再写互斥规则）。 |
-| 2026-07-20 | **玩家海克斯「铝翼坠毁」**：宫殿城 SQL 赠原版直升机（建都后落地，可与同型合成）+ 每回合 +1 铝（李舜臣 EXTRACTION）；Lua 仅给赠送实例打坠毁 Property（每移 1 格 10% 炸，1 环 50 伤 + VFX）。 |
+| 2026-07-20 | **玩家海克斯「铝翼坠毁」**：宫殿城 SQL 赠原版直升机（建都后落地，可与同型合成）+ 每回合 +1 铝（李舜臣 EXTRACTION）；Lua 仅给赠送实例打坠毁 Property（每移 1 格 **1%** 炸，1 环 50 伤 + VFX）。 |
 | 2026-07-20 | **创造万神殿 Dev v16–v18**：神圣之光改为拉夫拉式城市伟人点，避免区域伟人点重复计算；区域神力与地块神力分离，仅统计相邻六格；组合文案同步明确为“相邻六格”；奇迹之神通过 `DistrictReplaces` / `BuildingReplaces` 自动兼容全部特色区域及对应一级特色建筑，并将多选区域收敛为单一确定赠礼：已有选择优先保留，否则优先文明特色建筑（蒙古军营赠斡耳朵），再采用区域预设；市政广场跳过赠送。v18：区域放置时只缓存神力，完工时重算相邻神力后再赠送并 `HasBuilding` 校验；赠送需已解锁科技/市政（军营：未解锁骑马则送兵营，解锁后优先马厩/斡耳朵）；读档时同步重扫神光/家神/酒神神力档位。 |
 | 2026-07-19 | **创造万神殿 Dev（v15，效果待测待查）**：入库 `CreatePantheon_Dev/`（新 Mod ID，勿与工坊原版同开）。组合万神殿 + AI 地形加权 Top-K；奇迹之神事件+神力缓存；神力效果 `AttachModifier`；AI 防极光堆叠（`CP_COMBO`/`CP_FoundPantheon`）。神圣之光/家神/酒神改为互斥档位（`PROP_CP_B24_*`/`B35_*`），规避同区多条 `ADJUST_*` 引擎 ×2；家神 AI 权值下调+神力多样性。**待测待查**：海神+神光港口伟人点是否仍 ×2；家神/酒神读档后互斥旗标是否恢复。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |
 | 2026-07-19 | **种地仙人 UI**：`NaturalWonder ~= 0` 误拒森林/雨林等普通地貌；有地貌只看 ValidFeatures、无地貌只看 ValidTerrains。 |

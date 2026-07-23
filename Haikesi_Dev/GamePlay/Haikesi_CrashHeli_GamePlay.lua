@@ -9,7 +9,7 @@ local HELI_UNIT_TYPE = 'UNIT_HELICOPTER'
 local CRASH_PROP = 'PROP_NW_HAIKESI_CRASH_HELI'
 -- 选卡后置 1：下一架新增的直升机（或已有未标记的首都机）打坠毁标
 local EXPECT_PROP = 'PROP_NW_HAIKESI_CRASH_HELI_EXPECT'
-local CRASH_CHANCE_DENOM = 10 -- 1/10 = 10%
+local CRASH_CHANCE_DENOM = 100 -- 1/100 = 1%
 local EXPLOSION_RADIUS = 1
 local EXPLOSION_DAMAGE = 50
 local MAX_UNIT_DAMAGE = 100
@@ -205,7 +205,7 @@ local function CrashExplode(pUnit, iPlayerID, crashX, crashY)
         return
     end
     g_Exploding = true
-    -- 坠毁点：UnitMoved 刚进入的那一格（多格路径上掷中 10% 的那步）
+    -- 坠毁点：UnitMoved 刚进入的那一格（多格路径上掷中 1% 的那步）
     local x = crashX
     local y = crashY
     if x == nil or y == nil then
@@ -234,7 +234,7 @@ function Haikesi_OnCrashHeliUnitMoved(iPlayerID, iUnitID, iX, iY, bVisible, iUnk
     if not IsMarkedCrashHeli(pUnit) then
         return
     end
-    -- Events.UnitMoved：路径上每进入一格触发一次；该格 10% 坠毁
+    -- Events.UnitMoved：路径上每进入一格触发一次；该格 1% 坠毁
     if PickCrashRoll() ~= 0 then
         return
     end

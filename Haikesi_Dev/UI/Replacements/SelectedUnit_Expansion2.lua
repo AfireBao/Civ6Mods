@@ -12,7 +12,7 @@ include("SelectedUnit");
 
 -- Must match Haikesi_Modifier.sql NW_REQUIRES_JUAN_WITHIN_3 / NW_REQUIRES_XIANG_AT_WAR_AOE MaxDistance
 local JUAN_AOE_RADIUS = 3;
-local XIANG_AOE_RADIUS = 3;
+local XIANG_AOE_RADIUS = 4;
 
 -- ===========================================================================
 local function IsRockBandPromotionUnit(unitTypeIndex)

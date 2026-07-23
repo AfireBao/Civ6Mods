@@ -727,6 +727,16 @@
             <Text>同一片草原，左边是粮仓，右边是金矿——符文说了算。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_CITYSTATECRAFTSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>城邦工艺</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CITYSTATECRAFTSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>工人可建造全部城邦特色改良：巨石像、修道院、阿尔卡萨、摩艾、卡霍基亚丘、纳斯卡线条、巴特伊、大寺院、贸易穹顶（未启用对应扩展包时自动跳过）。无需成为该城邦宗主。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CITYSTATECRAFTSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>蓝图不必来自宗主权杖——工坊里已经抄全了。</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_RELIC_HIGHFLIGHTNAVRUNE_NAME" Language="zh_Hans_CN">
             <Text>高翔导航</Text>
         </Replace>
@@ -761,7 +771,7 @@
             <Text>铝翼坠毁</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>立即在首都获得一架直升机，并获得每回合 +1 [ICON_RESOURCE_ALUMINUM] 铝。[NEWLINE]该直升机每移动 1 格有 10% 概率坠毁；坠毁时在周围 1 格内造成爆炸，对区域内单位造成 50 点伤害。[NEWLINE]可与普通直升机合成军团/军队。</Text>
+            <Text>立即在首都获得一架直升机，并获得每回合 +1 [ICON_RESOURCE_ALUMINUM] 铝。[NEWLINE]该直升机每移动 1 格有 1% 概率坠毁；坠毁时在周围 1 格内造成爆炸，对区域内单位造成 50 点伤害。[NEWLINE]可与普通直升机合成军团/军队。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>说明书第三页写着「铝制机身，轻便易碎」——你翻到了第二页。</Text>
@@ -801,10 +811,10 @@
             <Text>翔</Text>
         </Replace>
         <Replace Tag="LOC_UNIT_NW_XIANG_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>特殊支援单位，可被敌方捕获。周围 3 个单元格内与己方交战的非友军单位 -1 [ICON_Movement] 移动力。</Text>
+            <Text>特殊支援单位，可被敌方捕获。周围 4 个单元格内与己方交战的非友军单位 -1 [ICON_Movement] 移动力。</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_XIANG_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>周围 3 个单元格内与己方交战的非友军单位 -1 [ICON_Movement] 移动力。</Text>
+            <Text>周围 4 个单元格内与己方交战的非友军单位 -1 [ICON_Movement] 移动力。</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_XIANG_ENEMY_SLOW_NAME" Language="zh_Hans_CN">
             <Text>高翔迟滞</Text>

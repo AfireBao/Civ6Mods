@@ -64,6 +64,7 @@
       <File>Data/Haikesi_Planter.sql</File>
       <!-- 须排在 Haikesi_Modifier.sql 之后：引擎可能按文件名排序，LandLottery 旧名会先于 Modifier 执行导致无 Haikesi_Relic_Modifiers 表 -->
       <File>Data/Haikesi_Modifier_LandLottery.sql</File>
+      <File>Data/Haikesi_Modifier_CityStateCraft.sql</File>
     </UpdateDatabase>
     <UpdateDatabase id="HaikesiAIRelics">
       <Properties>
@@ -188,6 +189,7 @@
     <File>Data/Haikesi_Icons.xml</File>
     <File>Data/Haikesi_Modifier.sql</File>
     <File>Data/Haikesi_Modifier_LandLottery.sql</File>
+    <File>Data/Haikesi_Modifier_CityStateCraft.sql</File>
     <File>Data/Haikesi_Planter.sql</File>
     <File>Data/Haikesi_Relics.sql</File>
     <File>Data/Haikesi_Relic_Prerequisites.sql</File>
