@@ -213,16 +213,16 @@ local function InitEncyclopediaData()
         local instance = m_EncyclopediaIM:GetInstance()
         instance.RelicIcon:SetIcon(row.Icon)
 
-        -- DEV 模式：未实装项加 [待实装] 标签前缀，便于一眼分辨
+        -- 仅「效果待填充」/无描述的占位项加标签；已写效果的（含 IsActive=0 的 AI 卡）不标
         local name = Locale.ToUpper(Locale.Lookup(row.Name))
-        if isDevMode and not (row.IsActive == 1) then
+        local desc = Locale.Lookup(row.Description) or ""
+        local hasDesc = (desc ~= "" and desc ~= "效果待填充")
+        if isDevMode and not hasDesc then
             name = "[待实装] " .. name
         end
         instance.RelicName:SetText(name)
 
         -- 描述：DEV 模式下未填的用 RelicType 兜底，避免 UI 行高坍塌
-        local desc = Locale.Lookup(row.Description) or ""
-        local hasDesc = (desc ~= "" and desc ~= "效果待填充")
         if hasDesc then
             instance.RelicDesc:SetText(desc)
         else

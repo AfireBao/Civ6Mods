@@ -2580,6 +2580,28 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     end
 
     -- ==============================
+    -- LANDLOTTERYRUNE 盲盒地脉（见 Haikesi_LandLottery_GamePlay.lua）
+    -- ==============================
+    if relicType == 'LANDLOTTERYRUNE' then
+        local applyLL = nil
+        if ExposedMembers ~= nil then
+            applyLL = ExposedMembers.Haikesi_ApplyLandLotteryRelic
+        end
+        if type(applyLL) ~= "function" then
+            applyLL = rawget(_G, "Haikesi_ApplyLandLotteryRelic")
+        end
+        if type(applyLL) == "function" then
+            local okLL, errLL = pcall(applyLL, iPlayer)
+            if not okLL then
+                print("[Haikesi GamePlay] LANDLOTTERY apply error: " .. tostring(errLL))
+            end
+        else
+            print("[Haikesi GamePlay] LANDLOTTERY missing apply fn (ExposedMembers not ready)")
+        end
+        return
+    end
+
+    -- ==============================
     -- 占位补偿：无真实效果的海克斯补 100 金币过渡（目前已无残留占位）
     -- ==============================
     if not IsRelicPlaceholder(relicType) then
