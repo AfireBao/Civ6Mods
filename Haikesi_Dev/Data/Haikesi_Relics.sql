@@ -1,7 +1,7 @@
 -- ===========================================================================
 -- Haikesi_Relics.sql — 棱彩海克斯符文数据表
 -- Name/Description/Flavor 存 LOC key，Lua 通过 Locale.Lookup 翻译
--- 共 95 个棱彩符文
+-- 共 98 个棱彩符文
 -- ===========================================================================
 
 CREATE TABLE IF NOT EXISTS Haikesi_Relics (
@@ -326,6 +326,30 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'CRASHHELICOPTERUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'CRASHHELICOPTERUNE';
 UPDATE Haikesi_Relics SET MinTurn = 120 WHERE RelicType = 'CRASHHELICOPTERUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'CRASHHELICOPTERUNE';
+
+-- 共产主义：暂借未实装「被遗忘的灵魂」FORGOTTENSOULRUNE 图标（占位不动）
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('COMMUNISMRUNE', 'LOC_HAIKESI_RELIC_COMMUNISMRUNE_NAME', 'LOC_HAIKESI_RELIC_COMMUNISMRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_COMMUNISMRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_COMMUNISMRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'COMMUNISMRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'COMMUNISMRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'COMMUNISMRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'COMMUNISMRUNE';
+
+-- 精英政治：暂借未实装「神秘」MYSTERYRUNE 图标（占位不动）
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('CAPITALLEGENDRUNE', 'LOC_HAIKESI_RELIC_CAPITALLEGENDRUNE_NAME', 'LOC_HAIKESI_RELIC_CAPITALLEGENDRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_CAPITALLEGENDRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_CAPITALLEGENDRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'CAPITALLEGENDRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'CAPITALLEGENDRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 40 WHERE RelicType = 'CAPITALLEGENDRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'CAPITALLEGENDRUNE';
+
+-- 弑杀蜂群：暂借未实装「悔意」REGRETRUNE 图标（占位不动）
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('WARFEEDRUNE', 'LOC_HAIKESI_RELIC_WARFEEDRUNE_NAME', 'LOC_HAIKESI_RELIC_WARFEEDRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_WARFEEDRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_WARFEEDRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'WARFEEDRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'WARFEEDRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'WARFEEDRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'WARFEEDRUNE';
 
 -- District 升级套（7 个，复用未实装海克斯 RelicType 以共享预导入图标，均不可重复）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DRAWYOURSWORDRUNE';       -- 礁石船坞（英国）

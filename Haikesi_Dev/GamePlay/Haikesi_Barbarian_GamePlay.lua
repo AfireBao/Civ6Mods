@@ -6,6 +6,8 @@
 local BARBARIAN_CAMP_IMPROVEMENT = 'IMPROVEMENT_BARBARIAN_CAMP'
 local INVASION_CAMP_DISTANCE = 5
 local INVASION_CAMPS_PER_PLAYER = 3
+-- 建寨初始守军（Firaxis 情景脚本同款：CreateTribeOfType 后 CreateTribeUnits；自然 mapgen 的 C++ 吐兵无 Lua API）
+local INVASION_CAMP_INITIAL_GARRISON = 3
 local INVASION_UNITS_PER_MISSING_CAMP = 3
 local INVASION_NO_CAMP_UNIT_DISTANCE = 4
 local INVASION_NO_CAMP_UNITS = 6
@@ -782,18 +784,36 @@ local function PlaceBarbarianCampAtPlot(pPlot, iBarbCampIndex)
                 return pBarbManager:CreateTribeOfType(tribeRow.Index, pPlot:GetIndex())
             end)
             if ok and pPlot:GetImprovementType() == iBarbCampIndex then
-                CacheBarbarianTribeIndex(pPlot:GetIndex(), iTribe, tribeType, true)
+                if (iTribe == nil or iTribe < 0) and IsBarbarianClansModeEnabled() then
+                    iTribe = EnsureTribeIndexAtCamp(pPlot)
+                end
+                if iTribe ~= nil and iTribe >= 0 then
+                    CacheBarbarianTribeIndex(pPlot:GetIndex(), iTribe, tribeType, true)
+                end
                 print(string.format(
                     "[Haikesi GamePlay] BARBARIAN_INVASION camp+tribe=%s tribeIdx=%s at (%d,%d) clans=%s",
                     tostring(tribeType), tostring(iTribe),
                     pPlot:GetX(), pPlot:GetY(), tostring(IsBarbarianClansModeEnabled())))
                 return true, iTribe
             end
+            print(string.format(
+                "[Haikesi GamePlay] BARBARIAN_INVASION CreateTribeOfType failed tribe=%s ok=%s "
+                    .. "improvement=%s at (%d,%d) → fallback",
+                tostring(tribeType), tostring(ok),
+                tostring(pPlot:GetImprovementType()), pPlot:GetX(), pPlot:GetY()))
         end
     end
     ImprovementBuilder.SetImprovementType(pPlot, iBarbCampIndex, -1)
     if pPlot:GetImprovementType() == iBarbCampIndex then
-        return true, nil
+        local iTribe = nil
+        if IsBarbarianClansModeEnabled() then
+            iTribe = EnsureTribeIndexAtCamp(pPlot)
+        end
+        print(string.format(
+            "[Haikesi GamePlay] BARBARIAN_INVASION camp+fallback tribeIdx=%s at (%d,%d) clans=%s",
+            tostring(iTribe), pPlot:GetX(), pPlot:GetY(),
+            tostring(IsBarbarianClansModeEnabled())))
+        return true, iTribe
     end
     return false, nil
 end
@@ -984,6 +1004,75 @@ local function SpawnBarbarianUnitsAtCamp(pCamp, count)
     return totalSpawned
 end
 
+-- 建寨守军：Firaxis Poland/Vikings 情景同款——CreateTribeOfType 后紧接 CreateTribeUnits(ScoutTag/MeleeTag/RangedTag)
+-- 若 CreateTribeOfType 已吐兵（寨旁已有单位）则跳过；无 tribe 时走 SpawnBarbarianUnitsAtCamp 兜底
+local function SpawnVanillaInitialGarrisonAtCamp(pCamp, iTribe)
+    if pCamp == nil then
+        return 0
+    end
+    local campX, campY = pCamp:GetX(), pCamp:GetY()
+    local plotIndex = pCamp:GetIndex()
+    local nearRadius = BARBARIAN_TRIBE_UNIT_RANGE + 1
+    if CountBarbarianUnitsNear(campX, campY, nearRadius) > 0 then
+        return 0
+    end
+
+    if iTribe == nil or iTribe < 0 then
+        iTribe = EnsureTribeIndexAtCamp(pCamp)
+    end
+
+    local pBarbManager = Game.GetBarbarianManager()
+    if pBarbManager ~= nil and iTribe ~= nil and iTribe >= 0
+        and pBarbManager.CreateTribeUnits ~= nil then
+        local tribeRow, tribeType = ResolveTribeTypeRowAtCamp(pCamp, iTribe)
+        if tribeRow == nil then
+            local guessedType = ResolveBarbarianTribeTypeForPlot(pCamp)
+            tribeRow = guessedType and GameInfo.BarbarianTribes[guessedType] or nil
+            tribeType = guessedType
+        end
+
+        local before = CountBarbarianUnitsNear(campX, campY, nearRadius)
+        local budget = INVASION_CAMP_INITIAL_GARRISON
+        local scoutTag = tribeRow and tribeRow.ScoutTag or nil
+        if scoutTag ~= nil and budget > 1 then
+            CreateTribeUnitsWithTag(pBarbManager, iTribe, scoutTag, 1, plotIndex)
+            budget = budget - 1
+        end
+
+        if budget > 0 then
+            local jobs = BuildTribeUnitSpawnJobs(pCamp, iTribe, budget)
+            for _, job in ipairs(jobs) do
+                local beforeJob = CountBarbarianUnitsNear(campX, campY, nearRadius)
+                CreateTribeUnitsWithTag(
+                    pBarbManager, iTribe, job.tag, job.count, plotIndex)
+                local spawnedTag = CountBarbarianUnitsNear(campX, campY, nearRadius) - beforeJob
+                if spawnedTag < job.count and job.fallbackTag ~= nil then
+                    CreateTribeUnitsWithTag(
+                        pBarbManager, iTribe, job.fallbackTag,
+                        job.count - spawnedTag, plotIndex)
+                end
+            end
+        end
+
+        local got = CountBarbarianUnitsNear(campX, campY, nearRadius) - before
+        if got > 0 then
+            EnsureNameLocForCamp(plotIndex, iTribe, tribeType)
+        end
+        print(string.format(
+            "[Haikesi GamePlay] BARBARIAN_INVASION vanillaInitialGarrison (%d,%d) "
+                .. "tribe=%s req=%d got=%d scout=%s",
+            campX, campY, tostring(iTribe), INVASION_CAMP_INITIAL_GARRISON, got,
+            tostring(scoutTag)))
+        return got
+    end
+
+    local got = SpawnBarbarianUnitsAtCamp(pCamp, INVASION_CAMP_INITIAL_GARRISON)
+    print(string.format(
+        "[Haikesi GamePlay] BARBARIAN_INVASION vanillaInitialGarrison fallback (%d,%d) got=%d",
+        campX, campY, got))
+    return got
+end
+
 -- 复用原版煽动通知图标：仅人类被打时入队。
 -- 队列附带 nameLoc（Gameplay 缓存/再捕获），避免 UI GetTribeNameType 失败时只剩「蛮族氏族」
 local function NotifyBarbarianInvasionAssault(
@@ -1148,6 +1237,7 @@ local function SpawnBarbarianCampsAtDistance(
     centerX, centerY, iBarbCampIndex, usedPlotIDs, requestedCount)
     local spawnedCamps = {}
     local totalCandidates = 0
+    local initialGarrison = 0
 
     while #spawnedCamps < requestedCount do
         -- 每成功放置一个营地后重新收集候选，确保新营地也参与 7 格间距检查。
@@ -1167,10 +1257,12 @@ local function SpawnBarbarianCampsAtDistance(
             usedPlotIDs[plotID] = true
 
             if CanPlaceBarbarianCampWithVanillaSpacing(pPlot, iBarbCampIndex) then
-                local placed = PlaceBarbarianCampAtPlot(pPlot, iBarbCampIndex)
+                local placed, iTribe = PlaceBarbarianCampAtPlot(pPlot, iBarbCampIndex)
                 if placed then
                     placedCamp = pPlot
                     table.insert(spawnedCamps, pPlot)
+                    initialGarrison = initialGarrison
+                        + SpawnVanillaInitialGarrisonAtCamp(pPlot, iTribe)
                 end
             end
         end
@@ -1178,7 +1270,7 @@ local function SpawnBarbarianCampsAtDistance(
             break
         end
     end
-    return spawnedCamps, totalCandidates
+    return spawnedCamps, totalCandidates, initialGarrison
 end
 
 function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
@@ -1236,7 +1328,7 @@ function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
                     pPlayer:GetID()))
             else
                 local centerX, centerY = pCity:GetX(), pCity:GetY()
-                local spawnedCamps, candidateCount = SpawnBarbarianCampsAtDistance(
+                local spawnedCamps, candidateCount, campGarrison = SpawnBarbarianCampsAtDistance(
                     centerX, centerY, iBarbCampIndex, usedPlotIDs,
                     INVASION_CAMPS_PER_PLAYER)
                 local spawnedCampCount = #spawnedCamps
@@ -1244,8 +1336,9 @@ function Haikesi_SpawnBarbarianInvasionCamps(triggeringAIPlayerID)
                 local spawnedUnits = 0
 
                 totalCampsSpawned = totalCampsSpawned + spawnedCampCount
+                totalUnitsSpawned = totalUnitsSpawned + (campGarrison or 0)
 
-                -- 补兵：仅在该城 5 环内已有蛮寨均分；环内无可用寨则本城 4 环生成固定部队
+                -- 缺营补偿（与建寨初始守军无关）：5 环内已有寨均分，无寨则 4 环固定 6 兵
                 if missingCampCount > 0 then
                     local requestedUnits = missingCampCount * INVASION_UNITS_PER_MISSING_CAMP
                     local campPlots, campMeta = GatherBarbarianCampsSorted(

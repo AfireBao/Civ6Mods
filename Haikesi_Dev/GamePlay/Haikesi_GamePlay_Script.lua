@@ -2306,6 +2306,30 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
         return
     end
 
+    -- 共产主义：诊断叠层主体数量（效果本身由 SQL ATTACH 处理）
+    if relicType == 'COMMUNISMRUNE' then
+        local civilianCount = 0
+        local units = pPlayer:GetUnits()
+        if units ~= nil then
+            for _, unit in units:Members() do
+                if unit ~= nil then
+                    local info = GameInfo.Units[unit:GetType()]
+                    if info ~= nil then
+                        for row in GameInfo.TypeTags() do
+                            if row.Type == info.UnitType and row.Tag == 'CLASS_LANDCIVILIAN' then
+                                civilianCount = civilianCount + 1
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        print(string.format(
+            "[Haikesi GamePlay] COMMUNISM diagnose P%d land_civilians=%d (expect +%d prod per city)",
+            iPlayer, civilianCount, civilianCount))
+    end
+
     -- ==============================
     -- CIRCLEOFDEATH 死亡之环
     -- 删除首都7环内全部非己方单位；删除首都9环外全部己方单位

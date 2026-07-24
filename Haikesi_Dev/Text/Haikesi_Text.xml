@@ -523,6 +523,16 @@
             <Text>善猎者使其猎忘其爪，首级既悬，典籍乃生。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDRUNE_NAME" Language="zh_Hans_CN">
+            <Text>弑杀蜂群</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>击杀敌军单位后，最近的己方城市获得生物质：每回合 + 该单位战斗力 5% 的 [ICON_FOOD] 食物，持续 10 回合（多次击杀效果叠层，各自独立计时）。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>我们必须收集所有能收集到的生物质，实现进化，最终吞噬整片星海！</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_RELIC_MADSCIENTISTRUNE_NAME" Language="zh_Hans_CN">
             <Text>科学狂人</Text>
         </Replace>
@@ -735,6 +745,26 @@
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CITYSTATECRAFTSRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>蓝图不必来自宗主权杖——工坊里已经抄全了。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMRUNE_NAME" Language="zh_Hans_CN">
+            <Text>共产主义</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每个存活的陆地平民单位为你的所有城市提供 +1 [ICON_PRODUCTION] 生产力。开拓者建城、工人耗尽最后一锤、商人被俘、伟人激活消耗后，对应加成随之消失。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>世界由劳动共同创造——请珍惜仍在你帐下的每一位人民。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_CAPITALLEGENDRUNE_NAME" Language="zh_Hans_CN">
+            <Text>精英政治</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CAPITALLEGENDRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每位存活的伟人为你的首都提供 +1 全部产出（[ICON_FOOD] 食物、[ICON_PRODUCTION] 生产力、[ICON_GOLD] 金币、[ICON_SCIENCE] 科技、[ICON_CULTURE] 文化、[ICON_FAITH] 信仰）。伟人在首都或外域激活消耗后，对应加成随之消失。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CAPITALLEGENDRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>都城由精英共治——仍在你帐下的每一位伟人，都在为首都添砖加瓦。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_HIGHFLIGHTNAVRUNE_NAME" Language="zh_Hans_CN">
@@ -1662,6 +1692,47 @@
         </Replace>
         <Replace Tag="LOC_PROMOTION_NW_COSPLAY_MIMIC_C2_DESCRIPTION" Language="zh_Hans_CN">
             <Text>在该单位最近的己方城市再获得一个仿生战士。</Text>
+        </Replace>
+
+        <!-- 各海克斯 ModifierStrings Summary（伟人/同盟等可读 Summary 的界面） -->
+        <Replace Tag="LOC_HAIKESI_YIELD_FROM_CAPITALLEGEND_SUMMARY" Language="zh_Hans_CN">
+            <Text>{Value : number +#.#;-#.#}来自精英政治</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_YIELD_FROM_COMMUNISM_SUMMARY" Language="zh_Hans_CN">
+            <Text>{Value : number +#.#;-#.#}来自共产主义</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_YIELD_FROM_WARFEED_SUMMARY" Language="zh_Hans_CN">
+            <Text>{Value : number +#.#;-#.#}来自生物质</Text>
+        </Replace>
+
+        <Replace Tag="LOC_BUILDING_NW_WARFEED_BIOMASS_NAME" Language="zh_Hans_CN">
+            <Text>生物质</Text>
+        </Replace>
+        <Replace Tag="LOC_BUILDING_NW_WARFEED_BIOMASS_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>弑杀蜂群限时食物：本城 +1 [ICON_FOOD] 食物。每层独立计时，默认持续 10 回合。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_BIOMASS_DURATION_LINE" Language="zh_Hans_CN">
+            <Text>本层生物质：剩余 {1} 回合（到期回合 {2}）</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_BIOMASS_DURATION_UNKNOWN" Language="zh_Hans_CN">
+            <Text>本层生物质：未找到到期记录（可能来自旧档）</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_BIOMASS_CITY_SUMMARY" Language="zh_Hans_CN">
+            <Text>本城生物质合计 +{1} [ICON_FOOD]/最早到期回合 {2}（剩余 {3} 回合）</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_BIOMASS_NAME_REMAIN" Language="zh_Hans_CN">
+            <Text>（剩{1}回合）</Text>
+        </Replace>
+
+        <Replace Tag="LOC_UNIT_NW_WARFEED_MORSEL_NAME" Language="zh_Hans_CN">
+            <Text>生物质</Text>
+        </Replace>
+        <Replace Tag="LOC_UNIT_NW_WARFEED_MORSEL_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>（已废弃）旧版生物质单位壳，不再产生食物。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_WARFEED_MORSEL_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>（已废弃）生物质改为城市限时食物修正。</Text>
         </Replace>
 
         <!-- 利刃华尔兹海克斯：敌方境内战斗力 Ability 文本（战斗预览面板会读 Description） -->
