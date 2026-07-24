@@ -277,7 +277,12 @@ insert or ignore into BeliefClasses
 	(BeliefClassType, Name, MaxInReligion, AdoptionOrder)
 values
 	('BELIEF_CLASS_CP_DISABLED', 'LOC_BELIEF_CLASS_PANTHEON_NAME', 0, 99),
-	('BELIEF_CLASS_CP_COMBO', 'LOC_BELIEF_CLASS_PANTHEON_NAME', 1, 1);
+	-- MaxInReligion=0: keep out of ReligionScreen (nil filter shows all non-PANTHEON classes).
+	('BELIEF_CLASS_CP_COMBO', 'LOC_BELIEF_CLASS_PANTHEON_NAME', 0, 99);
+
+update BeliefClasses
+set MaxInReligion = 0, AdoptionOrder = 99
+where BeliefClassType = 'BELIEF_CLASS_CP_COMBO';
 
 insert or ignore into Types
 	(Type,									Kind) select
@@ -1300,7 +1305,12 @@ insert or ignore into BeliefClasses
 	(BeliefClassType, Name, MaxInReligion, AdoptionOrder)
 values
 	('BELIEF_CLASS_CP_DISABLED', 'LOC_BELIEF_CLASS_PANTHEON_NAME', 0, 99),
-	('BELIEF_CLASS_CP_COMBO', 'LOC_BELIEF_CLASS_PANTHEON_NAME', 1, 1);
+	-- MaxInReligion=0: keep out of ReligionScreen (nil filter shows all non-PANTHEON classes).
+	('BELIEF_CLASS_CP_COMBO', 'LOC_BELIEF_CLASS_PANTHEON_NAME', 0, 99);
+
+update BeliefClasses
+set MaxInReligion = 0, AdoptionOrder = 99
+where BeliefClassType = 'BELIEF_CLASS_CP_COMBO';
 
 -- Sole (non-combo) pantheon rows: not choosable by engine/AI.
 update Beliefs
