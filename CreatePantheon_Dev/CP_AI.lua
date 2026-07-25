@@ -584,8 +584,19 @@ local function OnPlayerTurnActivated(playerID, firstTime)
 end
 
 -- Human chooser + shared founding path (combos are not BELIEF_CLASS_PANTHEON).
-GameEvents.CP_FoundPantheon.Add(function(playerID, beliefIndex)
-	if playerID == nil or beliefIndex == nil then
+-- UI must use EXECUTE_SCRIPT so MP clients broadcast FoundPantheon to all peers;
+-- bare GameEvents.Call only runs on the calling machine (host never sees guest picks).
+GameEvents.CP_FoundPantheon.Add(function(playerID, beliefIndexOrParams)
+	if playerID == nil then
+		return
+	end
+	local beliefIndex = beliefIndexOrParams
+	if type(beliefIndexOrParams) == "table" then
+		beliefIndex = tonumber(beliefIndexOrParams.BeliefIndex)
+	else
+		beliefIndex = tonumber(beliefIndex)
+	end
+	if beliefIndex == nil then
 		return
 	end
 	local player = Players[playerID]

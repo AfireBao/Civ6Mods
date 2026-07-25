@@ -256,10 +256,15 @@ function ConfirmPantheon()
 		local PowerType = GameInfo.Pantheons[PowerIndex].BeliefType:gsub('BELIEF_','');
 
 		-- Combos are BELIEF_CLASS_CP_COMBO (not PANTHEON) so engine AI cannot auto-pick.
-		-- FOUND_PANTHEON operation rejects non-PANTHEON class → Lua FoundPantheon via GameEvents.
+		-- FOUND_PANTHEON operation rejects non-PANTHEON class → Lua FoundPantheon.
+		-- MP: must EXECUTE_SCRIPT so guest confirmation reaches host/peers (Call is local-only).
 		local beliefInfo = GameInfo.Beliefs['BELIEF_'..GodhoodType..'_WITH_'..PowerType];
-		if beliefInfo ~= nil then
-			GameEvents.CP_FoundPantheon.Call(Game.GetLocalPlayer(), beliefInfo.Index);
+		local localPlayer = Game.GetLocalPlayer();
+		if beliefInfo ~= nil and localPlayer ~= nil and localPlayer >= 0 then
+			UI.RequestPlayerOperation(localPlayer, PlayerOperations.EXECUTE_SCRIPT, {
+				OnStart = "CP_FoundPantheon",
+				BeliefIndex = beliefInfo.Index,
+			});
 			UI.PlaySound("Confirm_Religion");
 		end
 

@@ -70,6 +70,7 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-25 | **创造万神殿 Dev v22**：联机客机确认万神殿改为 `EXECUTE_SCRIPT` 广播创立，修复客机每回合重选、主机看不到客机已选的问题。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |
 | 2026-07-24 | **创造万神殿 Dev v21**：组合词条类 `BELIEF_CLASS_CP_COMBO` 的 `MaxInReligion` 改为 **0**，避免创立宗教时「美神+神圣之光」等组合泄漏进信条列表（原版 UI 会展示除万神殿外的全部 BeliefClass）。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |
 | 2026-07-24 | **玩家海克斯「弑杀蜂群」**（`WARFEEDRUNE`）：击杀敌军后，最近城市每回合获得其战斗力 **5%** 的食物，持续 10 回合；多次击杀以隐藏建筑槽独立计时，配套虫群生物质图标、粮食飞字及城市面板剩余回合提示。 |
 | 2026-07-24 | **玩家海克斯「精英政治」**（`CAPITALLEGENDRUNE`）：每位存活伟人为**首都** +1 全产出；拆为六条独立产出 Modifier，伟人消耗后可逐项正确卸载。 |
