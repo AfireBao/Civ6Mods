@@ -16,6 +16,7 @@ WHERE R.ResourceClassType IN ('RESOURCECLASS_BONUS', 'RESOURCECLASS_LUXURY')
 
 -- 扣充能：每次种植启用一个 Inactive Ability（Amount=-1）
 -- 槽数覆盖基础 BuildCharges + 金字塔/农奴制等加成余量
+-- （次数政策靠扩 UNIT_IS_BUILDER，见 Haikesi_Modifier.sql 种地仙人段）
 CREATE TABLE IF NOT EXISTS Haikesi_PlanterChargeSlots (
     Slot INTEGER PRIMARY KEY
 );

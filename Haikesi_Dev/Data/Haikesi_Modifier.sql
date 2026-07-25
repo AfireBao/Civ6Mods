@@ -1547,7 +1547,8 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
 
 -- ===========================================================================
 -- 种地仙人 (FARMIMMORTALRUNE): 首都赠送 1 名特殊建造者
--- 挂 CLASS_BUILDER 以吃金字塔/农奴制等建造次数修正；另可种植白名单资源
+-- CLASS_BUILDER 便于改良/能力；次数政策实际看 UNIT_IS_BUILDER（UnitType=UNIT_BUILDER），
+-- 故下方把该 RequirementSet 扩成「建造者 OR 种地仙人」。
 -- 图标暂借未实装 WATCHOUTGRAPEFRUITRUNE；种植 UI/白名单见 Haikesi_Planter.sql
 -- ===========================================================================
 INSERT OR IGNORE INTO Types (Type, Kind) VALUES
@@ -1614,6 +1615,18 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
 
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('FARMIMMORTALRUNE', 'MODIFIER_NW_FARM_IMMORTAL_GRANT');
+
+-- 农奴制/公共工程/金字塔/梁·行会会长/金铲铲等均用 UNIT_IS_BUILDER（仅 UNIT_BUILDER）。
+-- 扩成 TEST_ANY，使种地仙人同样获得建造次数（及同条件的建造者移动等）修正。
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES
+    ('NW_REQUIRES_UNIT_IS_FARM_IMMORTAL', 'REQUIREMENT_UNIT_TYPE_MATCHES');
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value) VALUES
+    ('NW_REQUIRES_UNIT_IS_FARM_IMMORTAL', 'UnitType', 'UNIT_NW_FARM_IMMORTAL');
+UPDATE RequirementSets
+SET RequirementSetType = 'REQUIREMENTSET_TEST_ANY'
+WHERE RequirementSetId = 'UNIT_IS_BUILDER';
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
+    ('UNIT_IS_BUILDER', 'NW_REQUIRES_UNIT_IS_FARM_IMMORTAL');
 
 -- ===========================================================================
 -- 掌上明猪 (PEARLPIGRUNE): 首都赠送 1 名「娟」
