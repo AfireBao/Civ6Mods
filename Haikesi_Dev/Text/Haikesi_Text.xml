@@ -751,7 +751,7 @@
             <Text>共产主义</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>每个存活的陆地平民单位为你的所有城市提供 +1 [ICON_PRODUCTION] 生产力。开拓者建城、工人耗尽最后一锤、商人被俘、伟人激活消耗后，对应加成随之消失。</Text>
+            <Text>每个存活的陆地平民单位为你的[ICON_Capital]首都提供 +1 [ICON_FOOD] 食物与 +1 [ICON_PRODUCTION] 生产力。开拓者建城、工人耗尽最后一锤、商人被俘、伟人激活消耗后，对应加成随之消失。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>世界由劳动共同创造——请珍惜仍在你帐下的每一位人民。</Text>

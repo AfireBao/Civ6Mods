@@ -2326,8 +2326,8 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
             end
         end
         print(string.format(
-            "[Haikesi GamePlay] COMMUNISM diagnose P%d land_civilians=%d (expect +%d prod per city)",
-            iPlayer, civilianCount, civilianCount))
+            "[Haikesi GamePlay] COMMUNISM diagnose P%d land_civilians=%d (expect +%d food/+%d prod to capital)",
+            iPlayer, civilianCount, civilianCount, civilianCount))
     end
 
     -- ==============================

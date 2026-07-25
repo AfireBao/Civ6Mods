@@ -2086,13 +2086,9 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('CRASHHELICOPTERUNE', 'MODIFIER_NW_CRASH_HELI_ALUMINUM');
 
 -- ===========================================================================
--- 共产主义 (COMMUNISMRUNE): 每个存活陆地平民 → 所有城市 +1 锤（仅生产力）
--- 与「精英政治」同路径：MODIFIER_PLAYER_UNITS_ATTACH_MODIFIER 按单位叠层挂
--- PLAYER_CITIES_ADJUST_CITY_YIELD_CHANGE（精英政治已实测生效）。
--- 注意：此 Effect 的 Amount 按整数解析，0.5 会被截成 0 → 看起来「完全不生效」。
--- （滋长的每人口 +0.3 走的是 YIELD_PER_POPULATION，才支持小数。）
--- 勿依赖 GRANT_ABILITY→UnitAbilityModifiers→PLAYER_CITIES：该链对平民常无产量。
--- 旧版曾附带 +1 粮（FOOD_ATTACH）；已从表绑定中移除。
+-- 共产主义 (COMMUNISMRUNE): 每个存活陆地平民 → 首都 +1 锤 +1 粮
+-- 与「精英政治」同路径：按产量拆两条 ATTACH，便于卸载；目标城为宫殿城（首都）。
+-- Amount 须为整数（0.5 会截成 0）。勿走 GRANT_ABILITY→UnitAbilityModifiers 链。
 -- ===========================================================================
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES
     ('NW_REQ_UNIT_IS_LAND_CIVILIAN', 'REQUIREMENT_UNIT_TAG_MATCHES');
@@ -2104,40 +2100,53 @@ INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType) VAL
 INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
     ('NW_UNIT_IS_LAND_CIVILIAN', 'NW_REQ_UNIT_IS_LAND_CIVILIAN');
 
-INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES
-    ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_CHANGE');
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId) VALUES
+    ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_CHANGE', 'NW_CITY_HAS_BUILDING_PALACE'),
+    ('MODIFIER_NW_COMMUNISM_CITY_FOOD', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_CHANGE', 'NW_CITY_HAS_BUILDING_PALACE');
+
+UPDATE Modifiers
+SET SubjectRequirementSetId = 'NW_CITY_HAS_BUILDING_PALACE'
+WHERE ModifierId IN ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'MODIFIER_NW_COMMUNISM_CITY_FOOD');
 
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
     ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'YieldType', 'YIELD_PRODUCTION'),
-    ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'Amount',    '1');
+    ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'Amount',    '1'),
+    ('MODIFIER_NW_COMMUNISM_CITY_FOOD', 'YieldType', 'YIELD_FOOD'),
+    ('MODIFIER_NW_COMMUNISM_CITY_FOOD', 'Amount',    '1');
 
--- 强制写回整数 1（旧档若残留 0.5 会截成 0，表现为「完全不生效」）
 UPDATE ModifierArguments SET Value = '1'
-    WHERE ModifierId = 'MODIFIER_NW_COMMUNISM_CITY_PROD'
+    WHERE ModifierId IN ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'MODIFIER_NW_COMMUNISM_CITY_FOOD')
       AND Name = 'Amount';
+UPDATE ModifierArguments SET Value = 'YIELD_PRODUCTION'
+    WHERE ModifierId = 'MODIFIER_NW_COMMUNISM_CITY_PROD' AND Name = 'YieldType';
+UPDATE ModifierArguments SET Value = 'YIELD_FOOD'
+    WHERE ModifierId = 'MODIFIER_NW_COMMUNISM_CITY_FOOD' AND Name = 'YieldType';
 
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId) VALUES
-    ('MODIFIER_NW_COMMUNISM_PROD_ATTACH', 'MODIFIER_PLAYER_UNITS_ATTACH_MODIFIER', 'NW_UNIT_IS_LAND_CIVILIAN');
+    ('MODIFIER_NW_COMMUNISM_PROD_ATTACH', 'MODIFIER_PLAYER_UNITS_ATTACH_MODIFIER', 'NW_UNIT_IS_LAND_CIVILIAN'),
+    ('MODIFIER_NW_COMMUNISM_FOOD_ATTACH', 'MODIFIER_PLAYER_UNITS_ATTACH_MODIFIER', 'NW_UNIT_IS_LAND_CIVILIAN');
 
--- 若早期 INSERT OR IGNORE 建成无 SubjectReq 的行，强制写回
 UPDATE Modifiers SET SubjectRequirementSetId = 'NW_UNIT_IS_LAND_CIVILIAN'
-    WHERE ModifierId = 'MODIFIER_NW_COMMUNISM_PROD_ATTACH';
+    WHERE ModifierId IN ('MODIFIER_NW_COMMUNISM_PROD_ATTACH', 'MODIFIER_NW_COMMUNISM_FOOD_ATTACH');
 
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
-    ('MODIFIER_NW_COMMUNISM_PROD_ATTACH', 'ModifierId', 'MODIFIER_NW_COMMUNISM_CITY_PROD');
+    ('MODIFIER_NW_COMMUNISM_PROD_ATTACH', 'ModifierId', 'MODIFIER_NW_COMMUNISM_CITY_PROD'),
+    ('MODIFIER_NW_COMMUNISM_FOOD_ATTACH', 'ModifierId', 'MODIFIER_NW_COMMUNISM_CITY_FOOD');
 
--- 卸掉旧版 +1 粮绑定（重载 SQL / 新局生效；已选卡存档需重选或新开）
-DELETE FROM Haikesi_Relic_Modifiers
-    WHERE RelicType = 'COMMUNISMRUNE'
-      AND ModifierId = 'MODIFIER_NW_COMMUNISM_FOOD_ATTACH';
+UPDATE ModifierArguments SET Value = 'MODIFIER_NW_COMMUNISM_CITY_PROD'
+    WHERE ModifierId = 'MODIFIER_NW_COMMUNISM_PROD_ATTACH' AND Name = 'ModifierId';
+UPDATE ModifierArguments SET Value = 'MODIFIER_NW_COMMUNISM_CITY_FOOD'
+    WHERE ModifierId = 'MODIFIER_NW_COMMUNISM_FOOD_ATTACH' AND Name = 'ModifierId';
 
 INSERT OR IGNORE INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
-    ('COMMUNISMRUNE', 'MODIFIER_NW_COMMUNISM_PROD_ATTACH');
+    ('COMMUNISMRUNE', 'MODIFIER_NW_COMMUNISM_PROD_ATTACH'),
+    ('COMMUNISMRUNE', 'MODIFIER_NW_COMMUNISM_FOOD_ATTACH');
 
 INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text) VALUES
-    ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'Summary', 'LOC_HAIKESI_YIELD_FROM_COMMUNISM_SUMMARY');
+    ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'Summary', 'LOC_HAIKESI_YIELD_FROM_COMMUNISM_SUMMARY'),
+    ('MODIFIER_NW_COMMUNISM_CITY_FOOD', 'Summary', 'LOC_HAIKESI_YIELD_FROM_COMMUNISM_SUMMARY');
 UPDATE ModifierStrings SET Text = 'LOC_HAIKESI_YIELD_FROM_COMMUNISM_SUMMARY'
-    WHERE ModifierId = 'MODIFIER_NW_COMMUNISM_CITY_PROD'
+    WHERE ModifierId IN ('MODIFIER_NW_COMMUNISM_CITY_PROD', 'MODIFIER_NW_COMMUNISM_CITY_FOOD')
       AND Context = 'Summary';
 
 -- ===========================================================================
