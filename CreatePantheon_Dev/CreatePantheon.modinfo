@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Mod id="c3a8f1e4-7b2d-4a91-9e5c-6d0f8b4a2c17" version="22">
+<Mod id="c3a8f1e4-7b2d-4a91-9e5c-6d0f8b4a2c17" version="23">
   <Properties>
     <Name>LOC_CREATE_PANTHEON_NAME</Name>
     <Description>LOC_CREATE_PANTHEON_DESCRIPTION</Description>
@@ -9,10 +9,13 @@
     <CompatibleVersions>1.2,2.0</CompatibleVersions>
   </Properties>
   <ActionCriteria>
-    <Criteria id="DA_Disabled">
+    <!-- GS required -->
+    <Criteria id="CreatePantheon_GS">
       <RuleSetInUse>RULESET_EXPANSION_2</RuleSetInUse>
-      <!-- 黑暗时代未开启 -->
-      <ModInUse inverse="1">236af578-08bc-4278-ab57-c700ab114515</ModInUse>
+    </Criteria>
+    <!-- Disable when Dark Age integrated pack is active (inverse on Criteria, not ModInUse) -->
+    <Criteria id="CreatePantheon_NoDarkAge" inverse="1">
+      <ModInUse>236af578-08bc-4278-ab57-c700ab114515</ModInUse>
     </Criteria>
   </ActionCriteria>
   <Dependencies>
@@ -20,57 +23,57 @@
   </Dependencies>
 
   <FrontEndActions>
-    <UpdateText id="CreatePantheon_mod" criteria="DA_Disabled">
+    <UpdateText id="CreatePantheon_mod" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <Properties><LoadOrder>28000</LoadOrder></Properties>
       <File>CP_Text_Frontend.sql</File>
     </UpdateText>
   </FrontEndActions>
 
   <InGameActions>
-    <UpdateText id="CreatePantheon_mod" criteria="DA_Disabled">
+    <UpdateText id="CreatePantheon_mod" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <File>CP_Text_Pantheons.sql</File>
     </UpdateText>
-    <UpdateText id="CreatePantheon_Frontend" criteria="DA_Disabled">
+    <UpdateText id="CreatePantheon_Frontend" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <Properties><LoadOrder>28000</LoadOrder></Properties>
       <File>CP_Text_Frontend.sql</File>
     </UpdateText>
-    <UpdateArt id="CreatePantheon_mod" criteria="DA_Disabled">
+    <UpdateArt id="CreatePantheon_mod" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <File>CreatePantheon.dep</File>
     </UpdateArt>
-    <UpdateIcons id="CreatePantheon_mod" criteria="DA_Disabled">
+    <UpdateIcons id="CreatePantheon_mod" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <File>CP_Icon_Pantheons.sql</File>
     </UpdateIcons>
 
-    <UpdateDatabase id="CreatePantheon_mod" criteria="DA_Disabled">
+    <UpdateDatabase id="CreatePantheon_mod" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <File>CP_Pantheons.sql</File>
     </UpdateDatabase>
 
     <!-- VFS override of base PantheonChooser (same filename = single InGame context) -->
-    <ImportFiles id="CreatePantheon_ImportChooser" criteria="DA_Disabled">
+    <ImportFiles id="CreatePantheon_ImportChooser" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <File>PantheonChooser.lua</File>
       <File>PantheonChooser.xml</File>
       <File>Pantheon_HeaderBanner.dds</File>
       <File>Platforms/Windows/BLPs/CP_Texture_Pantheons.blp</File>
     </ImportFiles>
 
-    <AddUserInterfaces id="CreatePantheon_UtilsUI" criteria="DA_Disabled">
+    <AddUserInterfaces id="CreatePantheon_UtilsUI" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <Properties>
         <Context>InGame</Context>
         <LoadOrder>28199</LoadOrder>
       </Properties>
       <File>CP_Utils_UI.xml</File>
     </AddUserInterfaces>
-    <ImportFiles id="CreatePantheon_UtilsUI_Lua" criteria="DA_Disabled">
+    <ImportFiles id="CreatePantheon_UtilsUI_Lua" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <File>CP_Utils_UI.lua</File>
     </ImportFiles>
 
-    <AddGameplayScripts id="CreatePantheon_Utils" criteria="DA_Disabled">
+    <AddGameplayScripts id="CreatePantheon_Utils" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <File>CP_Utils.lua</File>
     </AddGameplayScripts>
-    <AddGameplayScripts id="CreatePantheon_Miracles" criteria="DA_Disabled">
+    <AddGameplayScripts id="CreatePantheon_Miracles" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <File>CP_Miracles.lua</File>
     </AddGameplayScripts>
-    <AddGameplayScripts id="CreatePantheon_AI" criteria="DA_Disabled">
+    <AddGameplayScripts id="CreatePantheon_AI" criteria="CreatePantheon_GS,CreatePantheon_NoDarkAge">
       <File>CP_AI.lua</File>
     </AddGameplayScripts>
   </InGameActions>
@@ -106,7 +109,7 @@
 
     <Text id="LOC_CREATE_PANTHEON_DESCRIPTION">
       <en_US>Dev fork of Create Your Pantheon. Combos only; AI terrain weights; effects via Gameplay AttachModifier (BeliefModifiers path was a no-op for devotion thresholds). Miracles event+cache. Do NOT enable with the Workshop original.</en_US>
-      <zh_Hans_CN>工坊「创造万神殿」本地 Dev：仅组合；AI 地形加权；Gameplay AttachModifier；奇迹事件+缓存；v22 联机客机创立经 EXECUTE_SCRIPT 同步。请勿与工坊原版同时启用。</zh_Hans_CN>
+      <zh_Hans_CN>工坊「创造万神殿」本地 Dev：仅组合；AI 地形加权；Gameplay AttachModifier；奇迹事件+缓存；v23 修复联机 criteria；v22 客机创立经 EXECUTE_SCRIPT 同步。请勿与工坊原版同时启用。</zh_Hans_CN>
     </Text>
 
     <Text id="LOC_CREATE_PANTHEON_TEASER">
