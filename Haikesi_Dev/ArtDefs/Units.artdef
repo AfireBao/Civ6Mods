@@ -255,6 +255,8 @@
 				<m_Name text="UNIT_NW_ETERNAL_ROCK_BAND"/>
 				<m_AppendMergedParameterCollections>false</m_AppendMergedParameterCollections>
 			</Element>
+			<!-- 种地仙人：复用原版 UNIT_BUILDER 成员（Builder_Ancient01..04）。
+			     旧稿误把阵型名 Builder 当作 UnitMemberTypes，导致地图上无模型。 -->
 			<Element>
 				<m_Fields>
 					<m_Values>
@@ -262,12 +264,12 @@
 							<m_ElementName text="Builder"/>
 							<m_RootCollectionName text="UnitFormationTypes"/>
 							<m_ArtDefPath text="Units.artdef"/>
-							<m_CollectionIsLocked>false</m_CollectionIsLocked>
-							<m_TemplateName text=""/>
+							<m_CollectionIsLocked>true</m_CollectionIsLocked>
+							<m_TemplateName text="Units"/>
 							<m_ParamName text="Formation"/>
 						</Element>
 						<Element class="AssetObjects..ArtDefReferenceValue">
-							<m_ElementName text="Civilian"/>
+							<m_ElementName text=""/>
 							<m_RootCollectionName text="UnitCombat"/>
 							<m_ArtDefPath text="Units.artdef"/>
 							<m_CollectionIsLocked>false</m_CollectionIsLocked>
@@ -322,13 +324,9 @@
 							<m_bValue>false</m_bValue>
 							<m_ParamName text="PlayDeathOnDestroy"/>
 						</Element>
-						<Element class="AssetObjects..ArtDefReferenceValue">
-							<m_ElementName text=""/>
-							<m_RootCollectionName text="Units"/>
-							<m_ArtDefPath text="Units.artdef"/>
-							<m_CollectionIsLocked>true</m_CollectionIsLocked>
-							<m_TemplateName text=""/>
-							<m_ParamName text="EmbarkedUnitCombat"/>
+						<Element class="AssetObjects..IntValue">
+							<m_nValue>-500</m_nValue>
+							<m_ParamName text="DisplayLevel"/>
 						</Element>
 					</m_Values>
 				</m_Fields>
@@ -348,23 +346,124 @@
 										<m_ParamName text="Count"/>
 									</Element>
 									<Element class="AssetObjects..ArtDefReferenceValue">
-										<m_ElementName text="Builder"/>
+										<m_ElementName text="Builder_Ancient01"/>
 										<m_RootCollectionName text="UnitMemberTypes"/>
 										<m_ArtDefPath text="Units.artdef"/>
-										<m_CollectionIsLocked>false</m_CollectionIsLocked>
-										<m_TemplateName text=""/>
+										<m_CollectionIsLocked>true</m_CollectionIsLocked>
+										<m_TemplateName text="Units"/>
 										<m_ParamName text="Type"/>
 									</Element>
 								</m_Values>
 							</m_Fields>
 							<m_ChildCollections/>
-							<m_Name text="Members1"/>
+							<m_Name text="A"/>
+							<m_AppendMergedParameterCollections>false</m_AppendMergedParameterCollections>
+						</Element>
+						<Element>
+							<m_Fields>
+								<m_Values>
+									<Element class="AssetObjects..FloatValue">
+										<m_fValue>1.000000</m_fValue>
+										<m_ParamName text="Scale"/>
+									</Element>
+									<Element class="AssetObjects..IntValue">
+										<m_nValue>1</m_nValue>
+										<m_ParamName text="Count"/>
+									</Element>
+									<Element class="AssetObjects..ArtDefReferenceValue">
+										<m_ElementName text="Builder_Ancient02"/>
+										<m_RootCollectionName text="UnitMemberTypes"/>
+										<m_ArtDefPath text="Units.artdef"/>
+										<m_CollectionIsLocked>true</m_CollectionIsLocked>
+										<m_TemplateName text="Units"/>
+										<m_ParamName text="Type"/>
+									</Element>
+								</m_Values>
+							</m_Fields>
+							<m_ChildCollections/>
+							<m_Name text="B"/>
+							<m_AppendMergedParameterCollections>false</m_AppendMergedParameterCollections>
+						</Element>
+						<Element>
+							<m_Fields>
+								<m_Values>
+									<Element class="AssetObjects..FloatValue">
+										<m_fValue>1.000000</m_fValue>
+										<m_ParamName text="Scale"/>
+									</Element>
+									<Element class="AssetObjects..IntValue">
+										<m_nValue>1</m_nValue>
+										<m_ParamName text="Count"/>
+									</Element>
+									<Element class="AssetObjects..ArtDefReferenceValue">
+										<m_ElementName text="Builder_Ancient03"/>
+										<m_RootCollectionName text="UnitMemberTypes"/>
+										<m_ArtDefPath text="Units.artdef"/>
+										<m_CollectionIsLocked>true</m_CollectionIsLocked>
+										<m_TemplateName text="Units"/>
+										<m_ParamName text="Type"/>
+									</Element>
+								</m_Values>
+							</m_Fields>
+							<m_ChildCollections/>
+							<m_Name text="C"/>
+							<m_AppendMergedParameterCollections>false</m_AppendMergedParameterCollections>
+						</Element>
+						<Element>
+							<m_Fields>
+								<m_Values>
+									<Element class="AssetObjects..FloatValue">
+										<m_fValue>1.000000</m_fValue>
+										<m_ParamName text="Scale"/>
+									</Element>
+									<Element class="AssetObjects..IntValue">
+										<m_nValue>1</m_nValue>
+										<m_ParamName text="Count"/>
+									</Element>
+									<Element class="AssetObjects..ArtDefReferenceValue">
+										<m_ElementName text="Builder_Ancient04"/>
+										<m_RootCollectionName text="UnitMemberTypes"/>
+										<m_ArtDefPath text="Units.artdef"/>
+										<m_CollectionIsLocked>true</m_CollectionIsLocked>
+										<m_TemplateName text="Units"/>
+										<m_ParamName text="Type"/>
+									</Element>
+								</m_Values>
+							</m_Fields>
+							<m_ChildCollections/>
+							<m_Name text="D"/>
 							<m_AppendMergedParameterCollections>false</m_AppendMergedParameterCollections>
 						</Element>
 					</Element>
 					<Element>
 						<m_CollectionName text="Audio"/>
 						<m_ReplaceMergedCollectionElements>false</m_ReplaceMergedCollectionElements>
+						<Element>
+							<m_Fields>
+								<m_Values>
+									<Element class="AssetObjects..StringValue">
+										<m_Value text=""/>
+										<m_ParamName text="XrefName"/>
+									</Element>
+								</m_Values>
+							</m_Fields>
+							<m_ChildCollections/>
+							<m_Name text="Entry"/>
+							<m_AppendMergedParameterCollections>false</m_AppendMergedParameterCollections>
+						</Element>
+						<Element>
+							<m_Fields>
+								<m_Values>
+									<Element class="AssetObjects..StringValue">
+										<m_Value text="Builder"/>
+										<m_ParamName text="XrefName"/>
+									</Element>
+								</m_Values>
+							</m_Fields>
+							<m_ChildCollections/>
+							<m_Name text="BUILDER"/>
+							<m_AppendMergedParameterCollections>false</m_AppendMergedParameterCollections>
+						</Element>
 					</Element>
 					<Element>
 						<m_CollectionName text="AttachmentVisibility"/>
@@ -809,7 +908,7 @@
 										<m_ParamName text="Count"/>
 									</Element>
 									<Element class="AssetObjects..ArtDefReferenceValue">
-										<m_ElementName text="Builder"/>
+										<m_ElementName text="Builder_Ancient01"/>
 										<m_RootCollectionName text="UnitMemberTypes"/>
 										<m_ArtDefPath text="Units.artdef"/>
 										<m_CollectionIsLocked>true</m_CollectionIsLocked>

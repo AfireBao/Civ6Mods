@@ -178,7 +178,7 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'MOSTUNIVERSALSCOPERUNE
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'MOSTUNIVERSALSCOPERUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'LAVRAUPGRADERUNE';      -- 升级：拉夫拉修道院
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'LAVRAUPGRADERUNE';
-UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'GROUNDEDRUNE';          -- 坚壁清野（己方领土非队友单位-1移动力-1射程）
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'GROUNDEDRUNE';          -- 坚壁清野（己方领土非队友单位-2移动力-1射程）
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'GROUNDEDRUNE';
 
 -- 仿生战士批次（独立单位 + 晋升树）

@@ -2430,7 +2430,7 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
 
     -- ==============================
     -- NW_AI_RIVER_FLOOD 仇水连汛
-    -- 关系最差最多 3 文明城市附近命名河，下回合起连续 5 回合洪水
+    -- 关系最差最多 3 文明城市附近命名河，下回合起连续 3 回合洪水
     -- ==============================
     if relicType == RIVER_FLOOD_RELIC then
         local floodFn = nil

@@ -29,21 +29,21 @@
             <Text>将军金印</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BIGKNIFERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>单位从附近的大将军处获得的 [ICON_Strength] 战斗力增益+60%。</Text>
+            <Text>单位从附近的大将军处获得的 [ICON_Strength] 战斗力增益+100%。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BIGKNIFERUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>印重三斤，号令所及，纲常退让。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_BIGKNIFE_COMBAT_PREVIEW" Language="zh_Hans_CN">
-            <Text>将军金印：大将军增益额外 +3 [ICON_Strength] 战斗力</Text>
+            <Text>将军金印：大将军增益额外 +5 [ICON_Strength] 战斗力</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_BLADEWALTZRUNE_NAME" Language="zh_Hans_CN">
             <Text>利刃华尔兹</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BLADEWALTZRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>位于敌方的单位+1 [ICON_MOVEMENT] 移动力，+3 [ICON_Strength] 战斗力。</Text>
+            <Text>位于敌方的单位+1 [ICON_MOVEMENT] 移动力，+5 [ICON_Strength] 战斗力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BLADEWALTZRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>旋身三匝，刃落处便是终章。</Text>
@@ -123,7 +123,7 @@
             <Text>裂变</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_COSPLAYRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>立刻在首都获得一个仿生战士。[ICON_Strength] 战斗力等于你曾训练过的最强近战单位。获得最终升级时，在该单位最近的己方城市再获得三个仿生战士。</Text>
+            <Text>立刻在首都获得三个仿生战士。[ICON_Strength] 战斗力等于你曾训练过的最强近战单位。获得最终升级时，在该单位最近的己方城市再获得三个仿生战士。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_COSPLAYRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>把别人的招式穿在身上，命运也认不出你。</Text>
@@ -423,7 +423,7 @@
             <Text>坚壁清野</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GROUNDEDRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>位于己方领土的非队友单位 -1 移动力、-1 射程。</Text>
+            <Text>位于己方领土的非队友单位 -2 移动力、-1 射程。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GROUNDEDRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>焦土何堪再耕，来犯者步履自沉。</Text>
@@ -761,7 +761,7 @@
             <Text>精英政治</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CAPITALLEGENDRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>每位存活的伟人为你的首都提供 +1 全部产出（[ICON_FOOD] 食物、[ICON_PRODUCTION] 生产力、[ICON_GOLD] 金币、[ICON_SCIENCE] 科技、[ICON_CULTURE] 文化、[ICON_FAITH] 信仰）。伟人在首都或外域激活消耗后，对应加成随之消失。</Text>
+            <Text>每位存活的伟人为你的首都提供 +3 全部产出（[ICON_FOOD] 食物、[ICON_PRODUCTION] 生产力、[ICON_GOLD] 金币、[ICON_SCIENCE] 科技、[ICON_CULTURE] 文化、[ICON_FAITH] 信仰）。伟人在首都或外域激活消耗后，对应加成随之消失。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CAPITALLEGENDRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>都城由精英共治——仍在你帐下的每一位伟人，都在为首都添砖加瓦。</Text>
@@ -781,7 +781,7 @@
             <Text>世外桃源</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市的所有地块 +1 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Production] 生产力。</Text>
+            <Text>所有城市的所有地块 +2 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Production] 生产力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>桃林深处无车马喧，唯听风过水田。</Text>
@@ -801,7 +801,7 @@
             <Text>铝翼坠毁</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>立即在首都获得一架直升机，并获得每回合 +1 [ICON_RESOURCE_ALUMINUM] 铝。[NEWLINE]该直升机每移动 1 格有 1% 概率坠毁；坠毁时在周围 1 格内造成爆炸，对区域内单位造成 50 点伤害。[NEWLINE]可与普通直升机合成军团/军队。</Text>
+            <Text>立即在首都获得一架三星直升机，并获得每回合 +1 [ICON_RESOURCE_ALUMINUM] 铝。[NEWLINE]该直升机每移动 1 格有 1% 概率坠毁；坠毁时在周围 1 格内造成爆炸，对区域内单位造成 50 点伤害。[NEWLINE]可与普通直升机合成军团/军队。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CRASHHELICOPTERUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>说明书第三页写着「铝制机身，轻便易碎」——你翻到了第二页。</Text>
@@ -1520,7 +1520,7 @@
             <Text>仇水连汛</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_RIVER_FLOOD_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>【混乱干扰】选取与触发者关系最差的最多 3 名存活主要文明（未接触视为中立默认分）；收集这些文明城市 3 环内可泛滥命名河，从下一游戏回合起连续 5 回合对这些河触发官方洪水（70% 千年洪水、30% 重大洪水）。无可用河则空放。</Text>
+            <Text>【混乱干扰】选取与触发者关系最差的最多 3 名存活主要文明（未接触视为中立默认分）；收集这些文明城市 3 环内可泛滥命名河，从下一游戏回合起连续 3 回合对这些河触发官方洪水（70% 千年洪水、30% 重大洪水）。无可用河则空放。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_RIVER_FLOOD_FLAVOR" Language="zh_Hans_CN">
             <Text>先看谁最讨厌你，再让他们的河记住这件事。</Text>
@@ -1740,7 +1740,7 @@
             <Text>利刃华尔兹</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_BLADEWALTZ_ENEMY_COMBAT_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>位于敌方境内时+3 [ICON_Strength] 战斗力。</Text>
+            <Text>位于敌方境内时+5 [ICON_Strength] 战斗力。</Text>
         </Replace>
 
     </LocalizedText>

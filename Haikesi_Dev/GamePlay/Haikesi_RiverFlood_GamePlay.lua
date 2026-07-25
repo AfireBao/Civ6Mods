@@ -2,11 +2,11 @@
 -- Haikesi_RiverFlood_GamePlay.lua
 -- 仇水连汛 (NW_AI_RIVER_FLOOD)：
 -- 对触发者关系最差的最多 3 名存活主要文明，收集其城市附近可泛滥命名河；
--- 选中后从下一 TurnBegin 起连续 5 回合，每回合对这些河 ApplyEvent 官方洪水。
+-- 选中后从下一 TurnBegin 起连续 3 回合，每回合对这些河 ApplyEvent 官方洪水。
 -- 强度：70% 千年洪水 / 30% 重大洪水。未接触文明 DEFAULT_REL_SCORE=0。
 -- ===========================================================================
 
-local FLOOD_DURATION_TURNS = 5
+local FLOOD_DURATION_TURNS = 3
 local WORST_TARGET_COUNT = 3
 local CITY_RIVER_RADIUS = 3
 local DEFAULT_REL_SCORE = 0 -- 未接触

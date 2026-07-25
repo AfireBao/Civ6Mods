@@ -2,13 +2,15 @@
 -- Haikesi_CrashHeli_GamePlay.lua
 -- 铝翼坠毁 (CRASHHELICOPTERUNE)：
 -- 单位由 SQL 宫殿城 Grant 原版 UNIT_HELICOPTER（与娟/种地仙人同款，建都后落地）。
--- 本脚本只给「期望赠送」的那一架打坠毁 Property，并处理移动坠毁 AOE。
+-- 本脚本给「期望赠送」的那一架打坠毁 Property、授予三星（2 次待选晋升），并处理移动坠毁 AOE。
 -- ===========================================================================
 
 local HELI_UNIT_TYPE = 'UNIT_HELICOPTER'
 local CRASH_PROP = 'PROP_NW_HAIKESI_CRASH_HELI'
 -- 选卡后置 1：下一架新增的直升机（或已有未标记的首都机）打坠毁标
 local EXPECT_PROP = 'PROP_NW_HAIKESI_CRASH_HELI_EXPECT'
+-- 等价 Units.InitialLevel=3：已有 2 次待选晋升
+local THREE_STAR_STORED_PROMOTIONS = 2
 local CRASH_CHANCE_DENOM = 100 -- 1/100 = 1%
 local EXPLOSION_RADIUS = 1
 local EXPLOSION_DAMAGE = 50
@@ -53,11 +55,30 @@ local function PlayerExpectsCrashMark(pPlayer)
     return prop == true or prop == 1
 end
 
+local function GrantThreeStarPromotions(pUnit)
+    if pUnit == nil or pUnit.GetExperience == nil then
+        return false
+    end
+    local ok, err = pcall(function()
+        local exp = pUnit:GetExperience()
+        if exp == nil or exp.ChangeStoredPromotions == nil then
+            error('no ChangeStoredPromotions')
+        end
+        exp:ChangeStoredPromotions(THREE_STAR_STORED_PROMOTIONS)
+    end)
+    if not ok then
+        print('[Haikesi CrashHeli] three-star grant fail: ' .. tostring(err))
+        return false
+    end
+    return true
+end
+
 local function MarkCrashHeli(pUnit, iPlayer, reason)
     if pUnit == nil then
         return false
     end
     pUnit:SetProperty(CRASH_PROP, 1)
+    GrantThreeStarPromotions(pUnit)
     local pPlayer = Players[iPlayer]
     if pPlayer ~= nil then
         pPlayer:SetProperty(EXPECT_PROP, 0)

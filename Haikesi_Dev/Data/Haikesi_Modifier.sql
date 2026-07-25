@@ -20,7 +20,7 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
 
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('CORRUPTEDBRANCHRUNE', 'MODIFIER_NW_CORRUPTEDBRANCH_ATTACH');
 
--- 大号匕首 (BIGKNIFERUNE): 携带大将军战斗力加成 Ability 的单位再 +3 战斗力
+-- 将军金印 (BIGKNIFERUNE): 携带大将军战斗力加成 Ability 的单位再 +5 战斗力（≈大将军光环加力 +100%）
 INSERT OR IGNORE INTO Types (Type, Kind)
     VALUES ('ABILITY_NW_BIGKNIFE', 'KIND_ABILITY');
 INSERT OR IGNORE INTO TypeTags (Type, Tag)
@@ -34,7 +34,9 @@ VALUES ('ABILITY_NW_BIGKNIFE', 'MODIFIER_NW_BIGKNIFE_COMBAT');
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
     VALUES ('MODIFIER_NW_BIGKNIFE_COMBAT', 'MODIFIER_UNIT_ADJUST_COMBAT_STRENGTH');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
-    VALUES ('MODIFIER_NW_BIGKNIFE_COMBAT', 'Amount', '3');
+    VALUES ('MODIFIER_NW_BIGKNIFE_COMBAT', 'Amount', '5');
+UPDATE ModifierArguments SET Value = '5'
+    WHERE ModifierId = 'MODIFIER_NW_BIGKNIFE_COMBAT' AND Name = 'Amount';
 
 INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text)
     VALUES ('MODIFIER_NW_BIGKNIFE_COMBAT', 'Preview', 'LOC_HAIKESI_BIGKNIFE_COMBAT_PREVIEW');
@@ -214,7 +216,7 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
 
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('COURAGEOFCOLOSSUSRUNE', 'MODIFIER_NW_COURAGEOFCOLOSSUS_WONDER');
 
--- 利刃华尔兹 (BLADEWALTZRUNE): 敌方境内 +1 移动力、+3 战斗力
+-- 利刃华尔兹 (BLADEWALTZRUNE): 敌方境内 +1 移动力、+5 战斗力
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
     VALUES ('MODIFIER_NW_BLADEWALTZ_MOVEMENT', 'MODIFIER_PLAYER_UNITS_ADJUST_ENEMY_TERRITORY_START_MOVEMENT');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
@@ -232,7 +234,9 @@ INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementI
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
     VALUES ('MODIFIER_NW_BLADEWALTZ_ENEMY_COMBAT_STRENGTH', 'MODIFIER_UNIT_ADJUST_COMBAT_STRENGTH', 'NW_BLADEWALTZ_PLOT_IS_ENEMY_TERRITORY');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
-    VALUES ('MODIFIER_NW_BLADEWALTZ_ENEMY_COMBAT_STRENGTH', 'Amount', '3');
+    VALUES ('MODIFIER_NW_BLADEWALTZ_ENEMY_COMBAT_STRENGTH', 'Amount', '5');
+UPDATE ModifierArguments SET Value = '5'
+    WHERE ModifierId = 'MODIFIER_NW_BLADEWALTZ_ENEMY_COMBAT_STRENGTH' AND Name = 'Amount';
 INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text)
     VALUES ('MODIFIER_NW_BLADEWALTZ_ENEMY_COMBAT_STRENGTH', 'Preview', '+{1_Amount} 敌方境内战斗力增益');
 
@@ -876,15 +880,17 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
 INSERT OR IGNORE INTO UnitPromotionModifiers (UnitPromotionType, ModifierId) VALUES
     ('PROMOTION_NW_COSPLAY_MIMIC_C2', 'MODIFIER_NW_COSPLAY_C2_GRANT_REPLICA');
 
--- COSPLAY (COSPLAYRUNE): 首都赠 1 仿生战士;最终升级时再赠 3 个
+-- COSPLAY (COSPLAYRUNE): 首都赠 3 仿生战士;最终升级时再赠 3 个
 INSERT OR IGNORE INTO Modifiers
     (ModifierId, ModifierType, RunOnce, Permanent, NewOnly, SubjectStackLimit) VALUES
     ('MODIFIER_NW_COSPLAY_GRANT_INITIAL_UNIT_EFFECT',
      'MODIFIER_SINGLE_CITY_GRANT_UNIT_IN_CITY', 1, 1, 0, 1);
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
     ('MODIFIER_NW_COSPLAY_GRANT_INITIAL_UNIT_EFFECT', 'UnitType',            'UNIT_NW_COSPLAY_MIMIC'),
-    ('MODIFIER_NW_COSPLAY_GRANT_INITIAL_UNIT_EFFECT', 'Amount',              '1'),
+    ('MODIFIER_NW_COSPLAY_GRANT_INITIAL_UNIT_EFFECT', 'Amount',              '3'),
     ('MODIFIER_NW_COSPLAY_GRANT_INITIAL_UNIT_EFFECT', 'AllowUniqueOverride', 'false');
+UPDATE ModifierArguments SET Value = '3'
+    WHERE ModifierId = 'MODIFIER_NW_COSPLAY_GRANT_INITIAL_UNIT_EFFECT' AND Name = 'Amount';
 
 INSERT OR IGNORE INTO Modifiers
     (ModifierId, ModifierType, SubjectRequirementSetId, SubjectStackLimit) VALUES
@@ -1338,19 +1344,20 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIF
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_LAVRA_ADJACENCY_PRODUCTION', 'YieldTypeToGrant', 'YIELD_PRODUCTION');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('LAVRAUPGRADERUNE', 'MODIFIER_NW_LAVRA_ADJACENCY_PRODUCTION');
 
--- 坚壁清野 (GROUNDEDRUNE): 位于己方领土的非队友单位 -1 移动力、-1 射程
+-- 坚壁清野 (GROUNDEDRUNE): 位于己方领土的非队友单位 -2 移动力、-1 射程
 -- 机制: ALL_UNITS_GRANT_ABILITY 给符合 SubjectReqSet 的单位授 ABILITY_NW_SCORCHED_EARTH
---   Ability 挂两条 debuff modifier(MOVEMENT/RANGE -1)；过滤全在 GRANT_ABILITY 的 SubjectReqSet
+--   Ability 挂两条 debuff modifier(MOVEMENT -2 / RANGE -1)；过滤全在 GRANT_ABILITY 的 SubjectReqSet
 --   ① UNIT_IN_OWNER_TERRITORY: 单位位于 modifier owner(玩家)领土
 --   ② PLAYER_IS_TEAM_MEMBER Inverse=1: 非同队（排除自己与队友）
 -- 参考: EVEREST_ADJACENT_UNITS_GRANT_ABILITY（ALL_UNITS_GRANT_ABILITY 范式）/ BIGKNIFE（Ability 挂 debuff）
--- 注: 射程 -1 原版无负值先例，待进游戏验证；移动力 -1 可靠
 INSERT OR IGNORE INTO Types (Type, Kind) VALUES ('ABILITY_NW_SCORCHED_EARTH', 'KIND_ABILITY');
 INSERT OR IGNORE INTO TypeTags (Type, Tag) VALUES ('ABILITY_NW_SCORCHED_EARTH', 'CLASS_ALL_COMBAT_UNITS');
 INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactive) VALUES ('ABILITY_NW_SCORCHED_EARTH', 'LOC_HAIKESI_RELIC_GROUNDEDRUNE_NAME', 'LOC_HAIKESI_RELIC_GROUNDEDRUNE_DESCRIPTION', 1);
 
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_SCORCHED_MOVEMENT', 'MODIFIER_UNIT_ADJUST_MOVEMENT');
-INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_SCORCHED_MOVEMENT', 'Amount', '-1');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_SCORCHED_MOVEMENT', 'Amount', '-2');
+UPDATE ModifierArguments SET Value = '-2'
+    WHERE ModifierId = 'MODIFIER_NW_SCORCHED_MOVEMENT' AND Name = 'Amount';
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_SCORCHED_RANGE', 'MODIFIER_UNIT_ADJUST_ATTACK_RANGE');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_SCORCHED_RANGE', 'Amount', '-1');
 INSERT OR IGNORE INTO UnitAbilityModifiers (UnitAbilityType, ModifierId) VALUES ('ABILITY_NW_SCORCHED_EARTH', 'MODIFIER_NW_SCORCHED_MOVEMENT');
@@ -1853,7 +1860,7 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('HIGHFLIGHTNAVRUNE', 'MODIFIER_NW_XIANG_GRANT');
 
 -- ===========================================================================
--- 世外桃源 (SHANGRILARUNE): 全城地块 +1 魅力；惊艳（魅力≥4）地块 +1 生产力
+-- 世外桃源 (SHANGRILARUNE): 全城地块 +2 魅力；惊艳（魅力≥4）地块 +1 生产力
 -- 产量侧抄大地女神 GS（CITY_PLOT_YIELDS + PLOT_BREATHTAKING / MinimumAppeal=4）
 -- ===========================================================================
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
@@ -1866,11 +1873,13 @@ INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
 INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId)
     VALUES ('NW_PLOT_APPEAL_GE_4', 'NW_REQUIRES_PLOT_APPEAL_GE_4');
 
--- 所有城市地块 +1 魅力（埃菲尔同款）
+-- 所有城市地块 +2 魅力（埃菲尔同款）
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
     VALUES ('MODIFIER_NW_SHANGRILA_APPEAL', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_APPEAL');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
-    VALUES ('MODIFIER_NW_SHANGRILA_APPEAL', 'Amount', '1');
+    VALUES ('MODIFIER_NW_SHANGRILA_APPEAL', 'Amount', '2');
+UPDATE ModifierArguments SET Value = '2'
+    WHERE ModifierId = 'MODIFIER_NW_SHANGRILA_APPEAL' AND Name = 'Amount';
 
 -- 内层：城内地块产量；外层：挂到玩家所有城市
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
@@ -2053,9 +2062,9 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('BEANAGENTRUNE', 'MODIFIER_NW_BEAN_GRANT');
 
 -- ===========================================================================
--- 铝翼坠毁 (CRASHHELICOPTERUNE): 首都赠送 1 架原版直升机 + 每回合 +1 铝
+-- 铝翼坠毁 (CRASHHELICOPTERUNE): 首都赠送 1 架原版直升机（三星）+ 每回合 +1 铝
 -- 赠单位：与娟/种地仙人同款宫殿城 Grant（无城时挂着，建都有宫殿后落地）
--- 坠毁标记：Haikesi_CrashHeli_GamePlay.lua 给赠送实例打 Property
+-- 坠毁标记 + 三星（2 次待选晋升，等价 InitialLevel=3）：Haikesi_CrashHeli_GamePlay.lua
 -- 卡面图标暂借 MISERABLEFATERUNE，不改写占位
 -- ===========================================================================
 INSERT OR IGNORE INTO Modifiers
@@ -2150,7 +2159,7 @@ UPDATE ModifierStrings SET Text = 'LOC_HAIKESI_YIELD_FROM_COMMUNISM_SUMMARY'
       AND Context = 'Summary';
 
 -- ===========================================================================
--- 精英政治 (CAPITALLEGENDRUNE): 每位存活伟人 → 首都 +1 各产出
+-- 精英政治 (CAPITALLEGENDRUNE): 每位存活伟人 → 首都 +3 各产出
 -- 不用 ALL_YIELDS：伟人隐退后科/信会清、粮锤金文常残留（引擎拆层卸载 bug）。
 -- 改为 6 条独立 YIELD_CHANGE，随单位 ATTACH 叠层，卸载时按产量分别剥离。
 -- ===========================================================================
@@ -2164,17 +2173,26 @@ INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSet
 
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
     ('MODIFIER_NW_CAPITAL_LEGEND_FOOD',    'YieldType', 'YIELD_FOOD'),
-    ('MODIFIER_NW_CAPITAL_LEGEND_FOOD',    'Amount',    '1'),
+    ('MODIFIER_NW_CAPITAL_LEGEND_FOOD',    'Amount',    '3'),
     ('MODIFIER_NW_CAPITAL_LEGEND_PROD',    'YieldType', 'YIELD_PRODUCTION'),
-    ('MODIFIER_NW_CAPITAL_LEGEND_PROD',    'Amount',    '1'),
+    ('MODIFIER_NW_CAPITAL_LEGEND_PROD',    'Amount',    '3'),
     ('MODIFIER_NW_CAPITAL_LEGEND_GOLD',    'YieldType', 'YIELD_GOLD'),
-    ('MODIFIER_NW_CAPITAL_LEGEND_GOLD',    'Amount',    '1'),
+    ('MODIFIER_NW_CAPITAL_LEGEND_GOLD',    'Amount',    '3'),
     ('MODIFIER_NW_CAPITAL_LEGEND_SCIENCE', 'YieldType', 'YIELD_SCIENCE'),
-    ('MODIFIER_NW_CAPITAL_LEGEND_SCIENCE', 'Amount',    '1'),
+    ('MODIFIER_NW_CAPITAL_LEGEND_SCIENCE', 'Amount',    '3'),
     ('MODIFIER_NW_CAPITAL_LEGEND_CULTURE', 'YieldType', 'YIELD_CULTURE'),
-    ('MODIFIER_NW_CAPITAL_LEGEND_CULTURE', 'Amount',    '1'),
+    ('MODIFIER_NW_CAPITAL_LEGEND_CULTURE', 'Amount',    '3'),
     ('MODIFIER_NW_CAPITAL_LEGEND_FAITH',   'YieldType', 'YIELD_FAITH'),
-    ('MODIFIER_NW_CAPITAL_LEGEND_FAITH',   'Amount',    '1');
+    ('MODIFIER_NW_CAPITAL_LEGEND_FAITH',   'Amount',    '3');
+UPDATE ModifierArguments SET Value = '3'
+    WHERE ModifierId IN (
+        'MODIFIER_NW_CAPITAL_LEGEND_FOOD',
+        'MODIFIER_NW_CAPITAL_LEGEND_PROD',
+        'MODIFIER_NW_CAPITAL_LEGEND_GOLD',
+        'MODIFIER_NW_CAPITAL_LEGEND_SCIENCE',
+        'MODIFIER_NW_CAPITAL_LEGEND_CULTURE',
+        'MODIFIER_NW_CAPITAL_LEGEND_FAITH'
+    ) AND Name = 'Amount';
 
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId) VALUES
     ('MODIFIER_NW_CAPITAL_LEGEND_FOOD_ATTACH',    'MODIFIER_PLAYER_UNITS_ATTACH_MODIFIER', 'NW_UNIT_IS_GREAT_PERSON'),
