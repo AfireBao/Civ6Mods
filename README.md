@@ -70,6 +70,7 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-26 | **海克斯平衡性调整**：坚壁清野己方领土非队友 **-2 移动力**（射程 -1 不变）；利刃华尔兹敌境战斗力 **+3→+5**；将军金印大将军加力 **+100%**（额外 +5）；仇水连汛洪水 **5→3 回合**；铝翼坠毁赠送**三星**直升机；世外桃源魅力 **+1→+2**；精英政治每位伟人首都全产 **+1→+3**；裂变（仿生战士）首都初始赠送 **1→3**。另修种地仙人 / 生物质壳 artdef：成员改为原版 `Builder_Ancient01..04`，修复地图无模型。 |
 | 2026-07-25 | **创造万神殿 Dev v23**：修复 `modinfo` 中非法的 `ModInUse inverse`（Modding.log 报 criteria malformed），避免联机开房提示模组异常；主客须同为 v23。 |
 | 2026-07-25 | **创造万神殿 Dev v22**：联机客机确认万神殿改为 `EXECUTE_SCRIPT` 广播创立，修复客机每回合重选、主机看不到客机已选的问题。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |
 | 2026-07-24 | **创造万神殿 Dev v21**：组合词条类 `BELIEF_CLASS_CP_COMBO` 的 `MaxInReligion` 改为 **0**，避免创立宗教时「美神+神圣之光」等组合泄漏进信条列表（原版 UI 会展示除万神殿外的全部 BeliefClass）。详见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md)。 |
