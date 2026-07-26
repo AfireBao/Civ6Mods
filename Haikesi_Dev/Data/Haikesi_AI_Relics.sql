@@ -135,7 +135,7 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_ECHO_
 -- ===========================================================================
 -- 三、混乱干扰系列（对其他文明施压/捣乱；可扩展）
 -- 南蛮入侵：最新城市 5 环尝试生成 3 营地；每缺 1 个仅在该城 5 环内已有营地补 3 战士；环内无可用寨则该城 4 环生成 6 战士
--- 闪电风暴：选中后下一回合起连续 10 游戏回合，每回合按存活主要文明数 ApplyEvent 官方风暴
+-- 闪电风暴：选中后下一回合起连续 5 游戏回合，每回合场次= floor(存活主要文明/2)（至少1）
 -- 仇水连汛：关系最差最多 3 文明（未接触=默认分0）；其城市附近可泛滥河，下一回合起连续 3 回合洪水
 -- 每轮全场至多 1 个 AI 抽中混乱干扰类之一
 -- ===========================================================================
@@ -147,7 +147,7 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIF
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_AI_BARBARIAN_INVASION_MARKER', 'Amount', '1');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('NW_AI_BARBARIAN_INVASION', 'MODIFIER_NW_AI_BARBARIAN_INVASION_MARKER');
 
--- 闪电风暴：选中后下一回合起连续 10 游戏回合，每回合按存活主要文明数 ApplyEvent 官方风暴
+-- 闪电风暴：选中后下一回合起连续 5 游戏回合，每回合场次= floor(存活主要文明/2)（至少1）
 INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
     ('NW_AI_LIGHTNING_STORM', 'LOC_HAIKESI_RELIC_NW_AI_LIGHTNING_STORM_NAME', 'LOC_HAIKESI_RELIC_NW_AI_LIGHTNING_STORM_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_LIGHTNING_STORM_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 1);
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_AI_LIGHTNING_STORM_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
@@ -355,13 +355,15 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId)
     VALUES ('NW_AI_ENVOY_FOOTHOLD', 'MODIFIER_NW_AI_ENVOY_FOOTHOLD_MARKER');
 
--- ----- 奇观工坊：奇观产能 +30% -----
+-- ----- 奇观工坊：奇观产能 +15% -----
 INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
     ('NW_AI_WONDER_WORKSHOP', 'LOC_HAIKESI_RELIC_NW_AI_WONDER_WORKSHOP_NAME', 'LOC_HAIKESI_RELIC_NW_AI_WONDER_WORKSHOP_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_WONDER_WORKSHOP_FLAVOR', 'ICON_HAIKESI_RELIC_COURAGEOFCOLOSSUSRUNE', 'PRISMATIC', 0, 0);
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
     VALUES ('MODIFIER_NW_AI_WONDER_WORKSHOP_PROD', 'MODIFIER_PLAYER_CITIES_ADJUST_WONDER_PRODUCTION');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
-    VALUES ('MODIFIER_NW_AI_WONDER_WORKSHOP_PROD', 'Amount', '30');
+    VALUES ('MODIFIER_NW_AI_WONDER_WORKSHOP_PROD', 'Amount', '15');
+UPDATE ModifierArguments SET Value = '15'
+    WHERE ModifierId = 'MODIFIER_NW_AI_WONDER_WORKSHOP_PROD' AND Name = 'Amount';
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId)
     VALUES ('NW_AI_WONDER_WORKSHOP', 'MODIFIER_NW_AI_WONDER_WORKSHOP_PROD');
 

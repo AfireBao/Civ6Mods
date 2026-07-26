@@ -44,8 +44,8 @@ AI_LLM_DESCRIPTIONS: dict[str, str] = {
         "existing camps in that r5; if no camp, spawn 6 warriors in city r4. Picker immune."
     ),
     "NW_AI_LIGHTNING_STORM": (
-        "[Chaos] From next turn, 10 turns: each turn fire N official storms "
-        "(dust/blizzard/tornado/hurricane, random intensity) where N = living majors; "
+        "[Chaos] From next turn, 5 turns: each turn fire floor(N/2) official storms "
+        "(at least 1; dust/blizzard/tornado/hurricane, random intensity) where N = living majors; "
         "engine picks tiles."
     ),
     "NW_AI_RIVER_FLOOD": (
@@ -95,7 +95,7 @@ AI_LLM_DESCRIPTIONS: dict[str, str] = {
     "NW_AI_ENVOY_FOOTHOLD": (
         "For each met city-state with >=1 envoy already: immediately +2 envoys."
     ),
-    "NW_AI_WONDER_WORKSHOP": "+30% YIELD_PRODUCTION when building Wonders.",
+    "NW_AI_WONDER_WORKSHOP": "+15% YIELD_PRODUCTION when building Wonders.",
     "NW_AI_WALL_ENGINEERING": (
         "+50% YIELD_PRODUCTION for BUILDING_WALLS / BUILDING_CASTLE / BUILDING_STAR_FORT; "
         "BUILDING_WALLS +2 YIELD_FAITH; BUILDING_CASTLE +2 YIELD_SCIENCE; "
@@ -664,7 +664,7 @@ def relic_timing_tag(
     if relic_type == "NW_AI_BARBARIAN_INVASION":
         return "【即时·触发者免疫】"
     if relic_type == "NW_AI_LIGHTNING_STORM":
-        return "【延迟·下回合起持续10回合风暴】"
+        return "【延迟·下回合起持续5回合风暴·场次为存活文明一半】"
     if relic_type == "NW_AI_RIVER_FLOOD":
         return "【延迟·下回合起持续5回合仇水洪水】"
     if relic_type.startswith("NW_AI_ECHO_"):
@@ -686,7 +686,7 @@ def relic_timing_tag(
             "造UNIT_SPY需市政CIVIC_DIPLOMATIC_SERVICE】"
         )
     if relic_type == "NW_AI_WONDER_WORKSHOP":
-        return "【即时·奇观产能+30%】"
+        return "【即时·奇观产能+15%】"
     if relic_type == "NW_AI_WALL_ENGINEERING":
         return (
             "【即时·BUILDING_WALLS/CASTLE/STAR_FORT +50%产·"

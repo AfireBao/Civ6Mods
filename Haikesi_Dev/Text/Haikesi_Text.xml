@@ -160,7 +160,7 @@
             <Text>掷骰狂人</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_DICEMANIACRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>本轮获得一个随机海克斯。后续海克斯可额外刷新1次。</Text>
+            <Text>本轮获得一个随机海克斯。后续海克斯刷新点数 +1（默认每卡 2 次，持有本卡后为 3 次）。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_DICEMANIACRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>骰未坠地，命数已三易其辞。</Text>
@@ -170,7 +170,7 @@
             <Text>手快全选</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_DOUBLEEXISTENCERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>获得当前界面的其他两个海克斯效果。你之后无法再刷新海克斯，本队队友也不会再刷出此海克斯。</Text>
+            <Text>获得当前界面的其他两个海克斯效果。你的海克斯刷新点数 -1，本队队友也不会再刷出此海克斯。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_DOUBLEEXISTENCERUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>既入我袖，便是我物；此后再无他赐。</Text>
@@ -1510,7 +1510,7 @@
             <Text>闪电风暴</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_LIGHTNING_STORM_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>【混乱干扰】选中后从下一游戏回合起连续 10 回合，每回合按当前场上存活主要文明数量触发同等场次的官方风暴（尘暴/暴风雪/龙卷风/飓风，强度随机）；落点由引擎按灾种规则选取。</Text>
+            <Text>【混乱干扰】选中后从下一游戏回合起连续 5 回合，每回合按当前场上存活主要文明数量的一半（向下取整，至少 1）触发官方风暴（尘暴/暴风雪/龙卷风/飓风，强度随机）；落点由引擎按灾种规则选取。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_LIGHTNING_STORM_FLAVOR" Language="zh_Hans_CN">
             <Text>雷达屏上先亮一点，然后全世界一起闪。</Text>
@@ -1630,7 +1630,7 @@
             <Text>奇观工坊</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_WONDER_WORKSHOP_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>【基建】建造奇观时 +30% [ICON_Production] 生产力。</Text>
+            <Text>【基建】建造奇观时 +15% [ICON_Production] 生产力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_WONDER_WORKSHOP_FLAVOR" Language="zh_Hans_CN">
             <Text>脚手架与蓝图同日齐备。</Text>

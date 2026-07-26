@@ -756,25 +756,35 @@ local function OnCardClicked(index)
     UpdateConfirmButton()
 end
 
--- 当前本地玩家的单卡最大刷新次数（DICEMANIAC +1；DOUBLEEXISTENCERUNE 全锁为 0）
--- 定义于 RerollCard / Open 之前，确保两者引用的 local 已绑定（避免前向引用 nil）
+-- 当前本地玩家的单卡最大刷新次数
+-- 默认 2；掷骰狂人 +1；手快全选 -1（可叠；旧档 NO_REROLL 视作 -1）
 local function GetMaxRerolls()
     -- 开发者模式（NW_HAIKESI_MODE == 3）：无限刷新，便于设计期反复抽取与测试
-    -- 返回足够大的整数充当"无上限"，无需触及 m_RerollCount / DOUBLEEXISTENCERUNE 锁定逻辑
     if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) == 3 then
         return 9999
     end
     local localPlayerID = Game.GetLocalPlayer()
     local pLocal = Players[localPlayerID]
+    local base = 2
+    local bonus = 0
+    local penalty = 0
     if pLocal then
-        if (pLocal:GetProperty('PROP_NW_HAIKESI_NO_REROLL') or 0) > 0 then
-            return 0
-        end
         if (pLocal:GetProperty('PROP_NW_HAIKESI_DICEMANIAC') or 0) > 0 then
-            return 2
+            bonus = bonus + 1
+        end
+        penalty = tonumber(pLocal:GetProperty('PROP_NW_HAIKESI_REROLL_PENALTY') or 0) or 0
+        -- 旧档：手快全选曾写 NO_REROLL=1，现按 -1 点数兼容
+        if (pLocal:GetProperty('PROP_NW_HAIKESI_NO_REROLL') or 0) > 0 then
+            if penalty < 1 then
+                penalty = 1
+            end
         end
     end
-    return 1
+    local maxR = base + bonus - penalty
+    if maxR < 0 then
+        return 0
+    end
+    return maxR
 end
 
 -- ===========================================================================
@@ -786,17 +796,11 @@ local function RerollCard(index)
         return
     end
 
-    -- DOUBLEEXISTENCERUNE 副作用：持有该海克斯后无法再刷新
-    -- 开发者模式（NW_HAIKESI_MODE == 3）下绕过 NO_REROLL 锁，保证无限刷新
-    local localPlayerID = Game.GetLocalPlayer()
-    local pLocal = Players[localPlayerID]
-    local devMode = (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) == 3
-    if not devMode and pLocal and (pLocal:GetProperty('PROP_NW_HAIKESI_NO_REROLL') or 0) > 0 then
-        print("[Haikesi] 无法重Roll — 手快全拿已锁定刷新")
+    local maxRerolls = GetMaxRerolls()
+    if maxRerolls <= 0 then
+        print("[Haikesi] 无法重Roll — 当前刷新点数为 0")
         return
     end
-
-    local maxRerolls = GetMaxRerolls()
 
     if m_RerollCount[index] >= maxRerolls then
         print("[Haikesi] Card" .. index .. " 已达刷新上限 (" .. maxRerolls .. "次)")

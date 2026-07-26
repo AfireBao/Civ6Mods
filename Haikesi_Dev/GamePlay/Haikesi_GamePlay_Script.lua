@@ -1175,13 +1175,26 @@ local function Haikesi_PickRandomRelicsFromPool(pool, count, salt)
 end
 
 local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countBefore, createdTurn)
-    -- ExtAI / 大模型选卡：不施加混乱互斥（多 AI 可同时有混乱候选与多选）。
-    -- 非 ExtAI 的确定性/房主随机路径仍由 Haikesi_EnforceChaosMutexInChoices 约束。
+    -- ExtAI / 大模型：同一种混乱干扰卡全场至多进入 1 个 AI 的候选池
+    -- （例：闪电风暴不会同时出现在多名 AI 的 options 里）。
+    -- 非 ExtAI 的确定性/房主随机路径仍由 Haikesi_EnforceChaosMutexInChoices 约束「每轮至多 1 类混乱落地」。
     -- 可用池为空的 AI 本轮跳过（不进 OPTION_IDS），避免 ExtAI 空候选卡死。
     local aiOptionIDs = {}
+    local chaosTypesUsedInPools = {}
     for _, pAI in ipairs(Haikesi_GetAliveAIPlayers()) do
         local aiID = pAI:GetID()
         local available = GetAIAvailableRelics(pAI, false)
+        if available ~= nil and #available > 0 then
+            local filtered = {}
+            for _, t in ipairs(available) do
+                if IsChaosInterferenceRelic(t) and chaosTypesUsedInPools[t] then
+                    -- 该混乱卡已进其他 AI 候选池，本 AI 排除
+                else
+                    table.insert(filtered, t)
+                end
+            end
+            available = filtered
+        end
         if available == nil or #available == 0 then
             Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, nil)
             print("[Haikesi GamePlay] External AI skip empty pool Player" .. aiID
@@ -1196,6 +1209,11 @@ local function Haikesi_StoreExternalAIOptionsForAllAIs(requesterPlayerID, countB
                 Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, nil)
                 print("[Haikesi GamePlay] External AI skip empty after pick Player" .. aiID)
             else
+                for _, t in ipairs(options) do
+                    if IsChaosInterferenceRelic(t) then
+                        chaosTypesUsedInPools[t] = true
+                    end
+                end
                 local pickWant = Haikesi_AIPickCountForPlayer(pAI)
                 local pickEff = math.min(pickWant, #options)
                 Game:SetProperty(EXT_AI_OPTIONS_PREFIX .. aiID, table.concat(options, ","))
@@ -1442,8 +1460,8 @@ local function Haikesi_ValidateExternalAIChoices(choicesTable)
         end
     end
 
-    -- ExtAI / 大模型：允许多 AI 同轮选混乱干扰（与 Store options / Apply fromExtAI 一致）
-    -- 仅校验选项合法性，不再因 chaosCount>1 拒绝提交。
+    -- ExtAI / 大模型：候选池已按「同一种混乱卡全场至多 1 个 AI」互斥；
+    -- 不同混乱卡仍可分属不同 AI。此处仅校验选项合法性。
 
     for aiIDStr, packed in pairs(choicesTable) do
         local aiID = tonumber(aiIDStr)
@@ -2293,11 +2311,11 @@ local function IsRelicPlaceholder(relicType)
     return true
 end
 
--- DICEMANIAC 持久化 Key：记录该玩家是否拥有额外刷新
+-- DICEMANIAC 持久化 Key：记录该玩家是否拥有额外刷新（+1）
 local DICEMANIAC_PROP_KEY = 'PROP_NW_HAIKESI_DICEMANIAC'
-
--- DOUBLEEXISTENCERUNE 持久化 Key：记录该玩家是否被禁止刷新海克斯
-local NO_REROLL_PROP_KEY = 'PROP_NW_HAIKESI_NO_REROLL'
+-- DOUBLEEXISTENCERUNE：刷新点数 -1（可叠）；旧档曾用 NO_REROLL 全锁，UI 现按 -1 兼容
+local REROLL_PENALTY_PROP_KEY = 'PROP_NW_HAIKESI_REROLL_PENALTY'
+local NO_REROLL_PROP_KEY = 'PROP_NW_HAIKESI_NO_REROLL' -- 遗留只读兼容，新逻辑不再写入
 
 function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     local pPlayer = Players[iPlayer]
@@ -2407,7 +2425,7 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
 
     -- ==============================
     -- NW_AI_LIGHTNING_STORM 闪电风暴
-    -- 按存活主要文明数连续 ApplyEvent 官方风暴（独立脚本）
+    -- 下回合起 5 回合；每回合场次=存活主要文明一半（独立脚本）
     -- ==============================
     if relicType == LIGHTNING_STORM_RELIC then
         local stormFn = nil
@@ -2540,10 +2558,11 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     -- ==============================
     -- DOUBLEEXISTENCERUNE 手快全拿
     -- "另外两个海克斯"由 UI 侧通过 ExtraRelicTypes 一并下发，服务端循环 ApplyRelicToPlayer 处理。
-    -- 本分支只负责副作用：之后无法再刷新海克斯（UI 读取 NO_REROLL_PROP_KEY 锁定 RerollCard）。
+    -- 副作用：刷新点数 -1（UI 读取 REROLL_PENALTY）；同队人类不再刷出手快全选。
     -- ==============================
     if relicType == 'DOUBLEEXISTENCERUNE' then
-        pPlayer:SetProperty(NO_REROLL_PROP_KEY, 1)
+        local curPen = tonumber(pPlayer:GetProperty(REROLL_PENALTY_PROP_KEY) or 0) or 0
+        pPlayer:SetProperty(REROLL_PENALTY_PROP_KEY, curPen + 1)
         -- 全队锁定：同队所有人类玩家不再能刷出手快全选
         local myTeam = pPlayer:GetTeam()
         for i = 0, 63 do
@@ -2552,7 +2571,8 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
                 pOther:SetProperty('PROP_NW_HAIKESI_LOCKED_DOUBLEEXISTENCERUNE', 1)
             end
         end
-        print("[Haikesi GamePlay] DOUBLEEXISTENCE — 刷新已锁定 (Player" .. iPlayer .. ")")
+        print("[Haikesi GamePlay] DOUBLEEXISTENCE — reroll penalty+1 now="
+            .. tostring(curPen + 1) .. " (Player" .. iPlayer .. ")")
         return
     end
 

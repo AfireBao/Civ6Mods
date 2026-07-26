@@ -147,7 +147,7 @@ ExtAI / 大模型候选池固定 **6** 张（黄金双选仍 picks=2）。
 
 ## NW_AI_LIGHTNING_STORM（闪电风暴 · 混乱干扰）
 
-选中后从**下一游戏回合**起连续 10 回合，每回合按存活主要文明数 `GameRandomEvents.ApplyEvent` 同等场次官方风暴；落点由引擎决定。与南蛮入侵/仇水连汛共享每轮混乱干扰互斥（落地由候选池互斥，不写进大模型提示词）。实现：`Haikesi_LightningStorm_GamePlay.lua`。
+选中后从**下一游戏回合**起连续 5 回合，每回合场次为存活主要文明数的一半（`floor(N/2)`，至少 1）`GameRandomEvents.ApplyEvent` 官方风暴；落点由引擎决定。与南蛮入侵/仇水连汛共享每轮混乱干扰互斥（落地由候选池互斥，不写进大模型提示词）。实现：`Haikesi_LightningStorm_GamePlay.lua`。
 
 ## NW_AI_RIVER_FLOOD（仇水连汛 · 混乱干扰）
 
@@ -168,7 +168,7 @@ ExtAI / 大模型候选池固定 **6** 张（黄金双选仍 picks=2）。
 | 项 | 说明 |
 |----|------|
 | LLM 描述 Key 化 | `civ6-mcp-haikesi`：`AI_LLM_DESCRIPTIONS` 覆盖全部 `NW_AI_*`；候选/lookup 用 `YIELD_*`/`UNIT_*`/`CLASS_*`/`RESOURCE_*`/`BUILDING_*`/`CIVIC_*`。XML Name 仍中文；不改玩家卡文案。重启 watch 即生效。 |
-| 混乱互斥 | ExtAI 候选与提交允许多 AI 同轮混乱；**确定性/超时回退**仍走 `Haikesi_EnforceChaosMutexInChoices`。`Haikesi_ApplyAIChoicesForRound(..., fromExtAI)` 第 5 参显式标记，禁止用「表非 nil」推断（超时会传入 BuildDeterministic 表）。 |
+| 混乱互斥 | ExtAI **候选池**：同一种混乱卡（南蛮/闪电/仇水）全场至多进入 1 个 AI 的 options；**选定**：MCP 校验/修复同种混乱不可多 AI 同选。确定性/超时回退仍走 `Haikesi_EnforceChaosMutexInChoices`（每轮至多 1 类混乱落地）。`Haikesi_ApplyAIChoicesForRound(..., fromExtAI)` 第 5 参显式标记。 |
 | 外交基建宗教卡 | `SPY_BUREAU` / `ENVOY_FOOTHOLD` / `WONDER_WORKSHOP` / `WALL_ENGINEERING` / `MISSIONARY_WAVE`（见 SQL + Text） |
 | 洪水侦察 | ExtAI gather 输出 `FLOOD|` / `FLOOD_API|`；工具 `flood_targets` |
 

@@ -3087,7 +3087,21 @@ def validate_choices_against_options(
                     f"AI {pid}: {r} not in options "
                     f"[{', '.join(opts)}]"
                 )
-    # ExtAI / 大模型选卡：不再校验混乱互斥（多 AI 可同轮选混乱）
+    # 同一种混乱干扰全场至多 1 名 AI 选定（与候选池互斥对齐）
+    chaos_owners: dict[str, str] = {}
+    for pid, packed in choices.items():
+        if str(pid).startswith("_"):
+            continue
+        for r in _flatten_choice_relics(packed):
+            if not is_chaos_interference_relic(r):
+                continue
+            prev = chaos_owners.get(r)
+            if prev is not None and prev != str(pid):
+                errors.append(
+                    f"chaos {r} chosen by both AI {prev} and AI {pid}"
+                )
+            else:
+                chaos_owners[r] = str(pid)
     return errors
 
 
@@ -3105,7 +3119,7 @@ def is_chaos_interference_relic(relic_type: str) -> bool:
 
 
 def list_chaos_assignments(choices: dict[str, Any]) -> list[tuple[str, str]]:
-    """[(player_id, relic_type), ...] 本轮所有混乱干扰选定（审计用，不再互斥）。"""
+    """[(player_id, relic_type), ...] 本轮混乱干扰选定（审计用）。"""
     hits: list[tuple[str, str]] = []
     for pid, packed in choices.items():
         if str(pid).startswith("_"):
@@ -3120,8 +3134,56 @@ def enforce_chaos_mutex_choices(
     choices: dict[str, Any],
     payload: dict[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
-    """已废弃：大模型选卡不再互斥混乱。保留函数以免旧调用崩溃。"""
-    return choices, []
+    """同一种混乱干扰全场只保留一名 AI（pid 字典序最小）；其余改抽候选池非混乱卡。"""
+    opts_map = options_by_player(payload)
+    need_map = picks_needed_by_player(payload)
+    # relic -> [(pid, ...)] in pid order
+    holders: dict[str, list[str]] = {}
+    for pid in sorted(str(p) for p in choices.keys() if not str(p).startswith("_")):
+        for r in _flatten_choice_relics(choices.get(pid)):
+            if is_chaos_interference_relic(r):
+                holders.setdefault(r, []).append(pid)
+
+    changed: list[str] = []
+    out: dict[str, Any] = dict(choices)
+    for relic, pids in holders.items():
+        if len(pids) <= 1:
+            continue
+        keep = pids[0]
+        for pid in pids[1:]:
+            opts = list(opts_map.get(pid) or [])
+            need = need_map.get(pid, 1)
+            relics = _flatten_choice_relics(out.get(pid))
+            replaced = [
+                r for r in relics if r != relic
+            ]
+            seen = set(replaced)
+            for opt in opts:
+                if len(replaced) >= need:
+                    break
+                if opt in seen or is_chaos_interference_relic(opt):
+                    continue
+                seen.add(opt)
+                replaced.append(opt)
+            # 仍不足则允许非冲突混乱以外的任意候选
+            for opt in opts:
+                if len(replaced) >= need:
+                    break
+                if opt in seen:
+                    continue
+                if is_chaos_interference_relic(opt) and opt in holders and holders[opt][0] != pid:
+                    continue
+                seen.add(opt)
+                replaced.append(opt)
+            if not replaced and opts:
+                replaced = opts[:need]
+            out[pid] = (
+                replaced[0]
+                if need == 1 and len(replaced) == 1
+                else replaced[:need]
+            )
+            changed.append(f"AI {pid}: drop {relic} (kept by {keep})")
+    return out, changed
 
 
 def coerce_choices_to_options(
