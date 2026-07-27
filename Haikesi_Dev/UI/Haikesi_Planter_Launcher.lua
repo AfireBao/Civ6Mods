@@ -11,6 +11,42 @@ local m_whitelist:table = nil;
 local m_validTerrainsByResource:table = nil;
 local m_validFeaturesByResource:table = nil;
 local m_launcherAttached:boolean = false;
+local RelicsPropertyKey:string = "PROP_NW_HAIKESI_RELICS";
+local RelicsCountPropertyKey:string = "PROP_NW_HAIKESI_RELIC_COUNT";
+local RelicsSlotPropertyPrefix:string = "PROP_NW_HAIKESI_RELIC_";
+
+local function GetRelicTypeFromIndex(index:number)
+    if GameInfo.Haikesi_Relics == nil then return nil; end
+    for row in GameInfo.Haikesi_Relics() do
+        if row.Index == index then
+            return row.RelicType;
+        end
+    end
+    return nil;
+end
+
+local function PlayerHasRelic(player:table, relicType:string)
+    if player == nil or relicType == nil or relicType == "" then return false; end
+    local count:number = tonumber(player:GetProperty(RelicsCountPropertyKey) or 0) or 0;
+    if count > 0 then
+        for i = 1, count do
+            if player:GetProperty(RelicsSlotPropertyPrefix .. i) == relicType then
+                return true;
+            end
+        end
+    end
+
+    local prop:string = player:GetProperty(RelicsPropertyKey) or "";
+    if prop ~= "" then
+        for idxStr in string.gmatch(prop, "[^|]+") do
+            local idx:number = tonumber(idxStr);
+            if idx ~= nil and GetRelicTypeFromIndex(idx) == relicType then
+                return true;
+            end
+        end
+    end
+    return false;
+end
 
 local function BuildCaches()
     if m_whitelist ~= nil then
@@ -24,16 +60,28 @@ local function BuildCaches()
         for row in GameInfo.Haikesi_PlanterResources() do
             local info:table = GameInfo.Resources[row.ResourceType];
             if info ~= nil then
-                local filterKey:string = nil;
-                if info.ResourceClassType == "RESOURCECLASS_BONUS" then
+                local filterKey:string = row.FilterKey;
+                if filterKey == nil or filterKey == "" then
+                    if info.ResourceClassType == "RESOURCECLASS_BONUS" then
+                        filterKey = "BONUS";
+                    elseif info.ResourceClassType == "RESOURCECLASS_LUXURY" then
+                        filterKey = "LUXURY";
+                    elseif info.ResourceClassType == "RESOURCECLASS_LEY_LINE" then
+                        filterKey = "LEY_LINE";
+                    end
+                end
+                if filterKey == "BONUS" then
                     filterKey = "BONUS";
-                elseif info.ResourceClassType == "RESOURCECLASS_LUXURY" then
+                elseif filterKey == "LUXURY" then
                     filterKey = "LUXURY";
+                elseif filterKey == "LEY_LINE" then
+                    filterKey = "LEY_LINE";
                 end
                 if filterKey ~= nil then
                     table.insert(m_whitelist, {
                         Info = info,
                         FilterKey = filterKey,
+                        RequiredRelic = row.RequiredRelic,
                         Icon = "ICON_" .. info.ResourceType
                     });
                 end
@@ -138,7 +186,9 @@ local function CollectPlantableEntries(pUnit:table)
 
     for _, def in ipairs(m_whitelist) do
         local info:table = def.Info;
-        if HasUnlockedResource(info, player) and UICanHaveResource(plot, info.ResourceType) then
+        local requiredRelic:string = def.RequiredRelic;
+        local hasRequiredRelic:boolean = requiredRelic == nil or requiredRelic == "" or PlayerHasRelic(player, requiredRelic);
+        if hasRequiredRelic and HasUnlockedResource(info, player) and UICanHaveResource(plot, info.ResourceType) then
             table.insert(entries, {
                 ResourceIndex = info.Index,
                 ResourceType = info.ResourceType,

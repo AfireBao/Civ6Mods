@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1680" viewBox="0 0 1800 1680">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#58606a"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <style>
+    .bg { fill: #f7f8fa; }
+    .title { font: 700 34px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #17212b; }
+    .subtitle { font: 16px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #5d6875; }
+    .panel { fill: #ffffff; stroke: #d7dde5; stroke-width: 1.2; rx: 14; filter: url(#shadow); }
+    .panel-title { font: 700 18px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #202a36; }
+    .node { stroke-width: 1.4; rx: 8; }
+    .root { fill: #eaf5ff; stroke: #3174a8; }
+    .mid { fill: #fff5df; stroke: #b87516; }
+    .terminal { fill: #eaf8ee; stroke: #3c9150; }
+    .special { fill: #f3ebff; stroke: #7b4bb3; }
+    .lone { fill: #f5f6f8; stroke: #8a929b; }
+    .txt { font: 15px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #17212b; text-anchor: middle; dominant-baseline: middle; }
+    .small { font: 13px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #4b5563; text-anchor: middle; dominant-baseline: middle; }
+    .legend { font: 14px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #4b5563; }
+    .edge { stroke: #58606a; stroke-width: 1.7; fill: none; marker-end: url(#arrow); }
+    .edge-soft { stroke: #8a929b; stroke-width: 1.4; fill: none; marker-end: url(#arrow); }
+  </style>
+
+  <rect class="bg" width="1800" height="1680"/>
+  <text class="title" x="52" y="52">海克斯依赖树</text>
+  <text class="subtitle" x="52" y="82">排除文明 / 特色区域限定升级卡。蓝色为 1 级入口，黄色为中间层，绿色为终点层，灰色为当前无叠层卡。</text>
+
+  <!-- Legend -->
+  <rect class="root node" x="1210" y="32" width="96" height="30"/>
+  <text class="small" x="1258" y="48">入口</text>
+  <rect class="mid node" x="1320" y="32" width="96" height="30"/>
+  <text class="small" x="1368" y="48">中间层</text>
+  <rect class="terminal node" x="1430" y="32" width="96" height="30"/>
+  <text class="small" x="1478" y="48">终点</text>
+  <rect class="lone node" x="1540" y="32" width="126" height="30"/>
+  <text class="small" x="1603" y="48">无叠层</text>
+
+  <!-- Builder line -->
+  <rect class="panel" x="40" y="110" width="540" height="355"/>
+  <text class="panel-title" x="66" y="145">金铲铲 / 工人线</text>
+  <rect class="root node" x="75" y="200" width="135" height="40"/><text class="txt" x="142.5" y="221">金铲铲</text>
+  <rect class="root node" x="75" y="282" width="135" height="40"/><text class="txt" x="142.5" y="303">大地苏醒</text>
+  <rect class="mid node" x="265" y="160" width="135" height="40"/><text class="txt" x="332.5" y="181">种地仙人</text>
+  <rect class="terminal node" x="430" y="160" width="125" height="40"/><text class="txt" x="492.5" y="181">种地仙人+</text>
+  <rect class="terminal node" x="265" y="220" width="135" height="40"/><text class="txt" x="332.5" y="241">城邦工艺</text>
+  <rect class="terminal node" x="265" y="280" width="135" height="40"/><text class="txt" x="332.5" y="301">朽枝复花</text>
+  <rect class="mid node" x="265" y="342" width="135" height="40"/><text class="txt" x="332.5" y="363">共产主义</text>
+  <rect class="terminal node" x="430" y="342" width="125" height="40"/><text class="txt" x="492.5" y="363">共产主义+</text>
+  <path class="edge" d="M210 220 C232 220 238 180 265 180"/>
+  <path class="edge" d="M400 180 L430 180"/>
+  <path class="edge" d="M210 220 L265 240"/>
+  <path class="edge" d="M210 220 L265 300"/>
+  <path class="edge" d="M210 220 C236 220 236 362 265 362"/>
+  <path class="edge" d="M210 302 C236 302 236 362 265 362"/>
+  <path class="edge" d="M400 362 L430 362"/>
+  <text class="small" x="468" y="151">秘密结社</text>
+
+  <!-- Growth line -->
+  <rect class="panel" x="620" y="110" width="540" height="355"/>
+  <text class="panel-title" x="646" y="145">种田 / 人口线</text>
+  <rect class="root node" x="665" y="205" width="120" height="40"/><text class="txt" x="725" y="226">文火</text>
+  <rect class="root node" x="665" y="290" width="120" height="40"/><text class="txt" x="725" y="311">创世纪</text>
+  <rect class="mid node" x="850" y="247" width="120" height="40"/><text class="txt" x="910" y="268">滋长</text>
+  <rect class="mid node" x="1015" y="205" width="120" height="40"/><text class="txt" x="1075" y="226">太仓有粟</text>
+  <rect class="terminal node" x="1015" y="290" width="120" height="40"/><text class="txt" x="1075" y="311">无限循环往复</text>
+  <path class="edge" d="M785 225 C812 225 820 267 850 267"/>
+  <path class="edge" d="M785 310 C812 310 820 267 850 267"/>
+  <path class="edge" d="M785 225 C890 225 910 225 1015 225"/>
+  <path class="edge" d="M785 310 C890 310 910 225 1015 225"/>
+  <path class="edge" d="M970 267 C995 267 995 310 1015 310"/>
+  <path class="edge" d="M1075 245 L1075 290"/>
+
+  <!-- Trade line -->
+  <rect class="panel" x="1200" y="110" width="540" height="355"/>
+  <text class="panel-title" x="1226" y="145">贸易线</text>
+  <rect class="root node" x="1240" y="190" width="130" height="40"/><text class="txt" x="1305" y="211">鬻贾</text>
+  <rect class="root node" x="1240" y="255" width="130" height="40"/><text class="txt" x="1305" y="276">航海七分仪</text>
+  <rect class="root node" x="1240" y="320" width="130" height="40"/><text class="txt" x="1305" y="341">窖藏旧酎</text>
+  <rect class="mid node" x="1465" y="255" width="130" height="40"/><text class="txt" x="1530" y="276">三角贸易</text>
+  <rect class="terminal node" x="1630" y="255" width="88" height="40"/><text class="txt" x="1674" y="276">夺金</text>
+  <path class="edge" d="M1370 210 C1420 210 1420 275 1465 275"/>
+  <path class="edge" d="M1370 275 L1465 275"/>
+  <path class="edge" d="M1370 340 C1420 340 1420 275 1465 275"/>
+  <path class="edge" d="M1595 275 L1630 275"/>
+
+  <!-- Great person line -->
+  <rect class="panel" x="40" y="505" width="540" height="335"/>
+  <text class="panel-title" x="66" y="540">伟人线</text>
+  <rect class="root node" x="75" y="610" width="125" height="40"/><text class="txt" x="137.5" y="631">心胜于物</text>
+  <rect class="root node" x="75" y="695" width="125" height="40"/><text class="txt" x="137.5" y="716">科学狂人</text>
+  <rect class="mid node" x="260" y="590" width="120" height="40"/><text class="txt" x="320" y="611">相生</text>
+  <rect class="mid node" x="260" y="715" width="120" height="40"/><text class="txt" x="320" y="736">星光璀璨</text>
+  <rect class="terminal node" x="445" y="652" width="110" height="40"/><text class="txt" x="500" y="673">精英政治</text>
+  <path class="edge" d="M200 630 C225 630 230 610 260 610"/>
+  <path class="edge" d="M200 715 C225 715 230 610 260 610"/>
+  <path class="edge" d="M200 630 C225 630 230 735 260 735"/>
+  <path class="edge" d="M200 715 C225 715 230 735 260 735"/>
+  <path class="edge" d="M380 610 C420 610 420 672 445 672"/>
+  <path class="edge" d="M380 735 C420 735 420 672 445 672"/>
+
+  <!-- Combat lines -->
+  <rect class="panel" x="620" y="505" width="540" height="530"/>
+  <text class="panel-title" x="646" y="540">战斗 / 单位线</text>
+  <rect class="root node" x="650" y="590" width="150" height="40"/><text class="txt" x="725" y="611">最万用的瞄准镜</text>
+  <rect class="mid node" x="840" y="590" width="120" height="40"/><text class="txt" x="900" y="611">连拨击锤</text>
+  <rect class="terminal node" x="1000" y="590" width="120" height="40"/><text class="txt" x="1060" y="611">玻璃大炮</text>
+  <path class="edge" d="M800 610 L840 610"/><path class="edge" d="M960 610 L1000 610"/>
+
+  <rect class="root node" x="650" y="680" width="150" height="40"/><text class="txt" x="725" y="701">弑杀蜂群：增生</text>
+  <rect class="mid node" x="840" y="680" width="150" height="40"/><text class="txt" x="915" y="701">弑杀蜂群：进化</text>
+  <rect class="terminal node" x="1020" y="680" width="120" height="40"/><text class="txt" x="1080" y="701">至臻</text>
+  <path class="edge" d="M800 700 L840 700"/><path class="edge" d="M990 700 L1020 700"/>
+
+  <rect class="root node" x="650" y="770" width="120" height="40"/><text class="txt" x="710" y="791">秘术冲拳</text>
+  <rect class="mid node" x="840" y="770" width="120" height="40"/><text class="txt" x="900" y="791">佛功传承</text>
+  <rect class="terminal node" x="1000" y="770" width="120" height="40"/><text class="txt" x="1060" y="791">气功大师</text>
+  <path class="edge" d="M770 790 L840 790"/><path class="edge" d="M960 790 L1000 790"/>
+
+  <rect class="root node" x="650" y="860" width="120" height="40"/><text class="txt" x="710" y="881">三犬司门</text>
+  <rect class="terminal node" x="840" y="860" width="120" height="40"/><text class="txt" x="900" y="881">草丛插眼</text>
+  <path class="edge" d="M770 880 L840 880"/>
+
+  <!-- Terrain and short lines -->
+  <rect class="panel" x="1200" y="505" width="540" height="190"/>
+  <text class="panel-title" x="1226" y="540">魅力地块线</text>
+  <rect class="root node" x="1240" y="600" width="120" height="40"/><text class="txt" x="1300" y="621">世外桃源</text>
+  <rect class="mid node" x="1430" y="600" width="120" height="40"/><text class="txt" x="1490" y="621">世外桃源+</text>
+  <rect class="terminal node" x="1600" y="600" width="120" height="40"/><text class="txt" x="1660" y="621">世外桃源++</text>
+  <path class="edge" d="M1360 620 L1430 620"/><path class="edge" d="M1550 620 L1600 620"/>
+
+  <rect class="panel" x="1200" y="735" width="540" height="300"/>
+  <text class="panel-title" x="1226" y="770">二级短线</text>
+  <rect class="root node" x="1235" y="815" width="100" height="34"/><text class="txt" x="1285" y="833">返朴</text>
+  <rect class="terminal node" x="1375" y="815" width="120" height="34"/><text class="txt" x="1435" y="833">回归基本功</text>
+  <rect class="root node" x="1235" y="865" width="100" height="34"/><text class="txt" x="1285" y="883">急就章</text>
+  <rect class="terminal node" x="1375" y="865" width="120" height="34"/><text class="txt" x="1435" y="883">将军金印</text>
+  <rect class="root node" x="1235" y="915" width="100" height="34"/><text class="txt" x="1285" y="933">风驰</text>
+  <rect class="terminal node" x="1375" y="915" width="120" height="34"/><text class="txt" x="1435" y="933">利刃华尔兹</text>
+  <rect class="root node" x="1515" y="815" width="100" height="34"/><text class="txt" x="1565" y="833">巨像勇气</text>
+  <rect class="terminal node" x="1625" y="815" width="100" height="34"/><text class="txt" x="1675" y="833">误中副车</text>
+  <rect class="root node" x="1515" y="865" width="100" height="34"/><text class="txt" x="1565" y="883">小丑学院</text>
+  <rect class="terminal node" x="1625" y="865" width="100" height="34"/><text class="txt" x="1675" y="883">尤里卡</text>
+  <rect class="root node" x="1515" y="915" width="100" height="34"/><text class="txt" x="1565" y="933">坚壁清野</text>
+  <rect class="terminal node" x="1625" y="915" width="100" height="34"/><text class="txt" x="1675" y="933">高翔导航</text>
+  <path class="edge-soft" d="M1335 832 L1375 832"/><path class="edge-soft" d="M1335 882 L1375 882"/>
+  <path class="edge-soft" d="M1335 932 L1375 932"/><path class="edge-soft" d="M1615 832 L1625 832"/>
+  <path class="edge-soft" d="M1615 882 L1625 882"/><path class="edge-soft" d="M1615 932 L1625 932"/>
+
+  <!-- Standalone -->
+  <rect class="panel" x="40" y="1080" width="1700" height="520"/>
+  <text class="panel-title" x="66" y="1115">当前无叠层的非文明限定卡</text>
+
+  <rect class="lone node" x="75" y="1160" width="135" height="38"/><text class="txt" x="142.5" y="1180">代偿</text>
+  <rect class="lone node" x="230" y="1160" width="135" height="38"/><text class="txt" x="297.5" y="1180">超负荷</text>
+  <rect class="lone node" x="385" y="1160" width="135" height="38"/><text class="txt" x="452.5" y="1180">裂变</text>
+  <rect class="lone node" x="540" y="1160" width="135" height="38"/><text class="txt" x="607.5" y="1180">手快全选</text>
+  <rect class="lone node" x="695" y="1160" width="135" height="38"/><text class="txt" x="762.5" y="1180">掷骰狂人</text>
+  <rect class="lone node" x="850" y="1160" width="135" height="38"/><text class="txt" x="917.5" y="1180">蛋白粉奶昔</text>
+  <rect class="lone node" x="1005" y="1160" width="135" height="38"/><text class="txt" x="1072.5" y="1180">米凯尔的祝福</text>
+  <rect class="lone node" x="1160" y="1160" width="135" height="38"/><text class="txt" x="1227.5" y="1180">炼狱导管</text>
+  <rect class="lone node" x="1315" y="1160" width="135" height="38"/><text class="txt" x="1382.5" y="1180">死亡之环</text>
+  <rect class="lone node" x="1470" y="1160" width="135" height="38"/><text class="txt" x="1537.5" y="1180">行幄初张</text>
+
+  <rect class="lone node" x="75" y="1225" width="135" height="38"/><text class="txt" x="142.5" y="1245">尊我为王</text>
+  <rect class="lone node" x="230" y="1225" width="180" height="38"/><text class="txt" x="320" y="1245">COSPLAY / 仿生模仿</text>
+  <rect class="lone node" x="430" y="1225" width="135" height="38"/><text class="txt" x="497.5" y="1245">德古拉</text>
+  <rect class="lone node" x="585" y="1225" width="135" height="38"/><text class="txt" x="652.5" y="1245">狂野符文</text>
+  <rect class="lone node" x="740" y="1225" width="135" height="38"/><text class="txt" x="807.5" y="1245">掌上明猪</text>
+  <rect class="lone node" x="895" y="1225" width="135" height="38"/><text class="txt" x="962.5" y="1245">憨豆特工</text>
+  <rect class="lone node" x="1050" y="1225" width="135" height="38"/><text class="txt" x="1117.5" y="1245">铝翼坠毁</text>
+  <rect class="lone node" x="1205" y="1225" width="225" height="38"/><text class="txt" x="1317.5" y="1245">能陪我组一辈子的乐队吗？</text>
+  <rect class="lone node" x="1450" y="1225" width="170" height="38"/><text class="txt" x="1535" y="1245">鬼斧 / 奇点AI</text>
+
+  <text class="subtitle" x="75" y="1335">备注</text>
+  <text class="legend" x="75" y="1370">1. “共产主义”目前可由“大地苏醒”或“金铲铲”解锁。</text>
+  <text class="legend" x="75" y="1400">2. “种地仙人+”除前置“种地仙人”外，还需要秘密结社模式。</text>
+  <text class="legend" x="75" y="1430">3. 这张图反映当前 SQL 前置关系，不含文明专属区域升级海克斯。</text>
+</svg>

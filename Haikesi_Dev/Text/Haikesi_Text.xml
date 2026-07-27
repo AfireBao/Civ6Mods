@@ -5,14 +5,46 @@
             <Text>秘术冲拳</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>每相邻一个单位，武僧就+3 [ICON_Strength] 战斗力。购买武僧的费用-25%。</Text>
+            <Text>每相邻一个单位，武僧就+2 [ICON_Strength] 战斗力。购买武僧的费用-25%。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>咒经千卷收于一拳，未及念诵，敌已倾。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_ARCANE_PUNCH_COMBAT_PREVIEW" Language="zh_Hans_CN">
-            <Text>秘术冲拳：每相邻一个单位+3 [ICON_Strength] 战斗力</Text>
+            <Text>秘术冲拳：每相邻一个单位+2 [ICON_Strength] 战斗力</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_BUDDHISTINHERITANCERUNE_NAME" Language="zh_Hans_CN">
+            <Text>佛功传承</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BUDDHISTINHERITANCERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>武僧随市政成长：解锁政治哲学时 +5 [ICON_Strength] 战斗力，解锁王权神授时 +7 [ICON_Strength] 战斗力，解锁归正会时 +7 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BUDDHISTINHERITANCERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一脉相承，拳脚之外更有心法。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_BUDDHIST_INHERITANCE_POLITICAL_PHILOSOPHY_PREVIEW" Language="zh_Hans_CN">
+            <Text>佛功传承：政治哲学 +5 [ICON_Strength] 战斗力</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_BUDDHIST_INHERITANCE_DIVINE_RIGHT_PREVIEW" Language="zh_Hans_CN">
+            <Text>佛功传承：王权神授 +7 [ICON_Strength] 战斗力</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_BUDDHIST_INHERITANCE_REFORMED_CHURCH_PREVIEW" Language="zh_Hans_CN">
+            <Text>佛功传承：归正会 +7 [ICON_Strength] 战斗力</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_QIGONGMASTERRUNE_NAME" Language="zh_Hans_CN">
+            <Text>气功大师</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_QIGONGMASTERRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>武僧单位 +1 [ICON_Movement] 移动力；新招募的武僧初始自带 1 次可用晋升；防守时 +5 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_QIGONGMASTERRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>气行周天，静守如山，动则无距。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_QIGONG_DEFEND_PREVIEW" Language="zh_Hans_CN">
+            <Text>气功大师：防守时 +5 [ICON_Strength] 战斗力</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_BACKTOBASICSRUNE_NAME" Language="zh_Hans_CN">
@@ -53,7 +85,7 @@
             <Text>太仓有粟</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BREADSANDWICHRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市+1 [ICON_AMENITIES] 宜居度、+1 [ICON_Housing] 住房。</Text>
+            <Text>所有城市+2 [ICON_AMENITIES] 宜居度、+2 [ICON_Housing] 住房。拥有总督的城市额外+1 [ICON_AMENITIES] 宜居度。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BREADSANDWICHRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>仓廪既实，民乃知止；耳畔喧嚣，主上无言。</Text>
@@ -63,10 +95,32 @@
             <Text>三犬司门</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CERBERUSRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市获得3个侦察兵。</Text>
+            <Text>立即在[ICON_Capital]首都获得 3 个侦察兵。侦察兵 +1 [ICON_Movement] 移动力、+1 视野。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CERBERUSRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>三首同吠，关门内事；代价立于门外，未敢轻入。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_CERBERUS_SCOUT_NAME" Language="zh_Hans_CN">
+            <Text>三犬司门</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_CERBERUS_SCOUT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>侦察兵 +1 [ICON_Movement] 移动力、+1 视野。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_BUSHWARDRUNE_NAME" Language="zh_Hans_CN">
+            <Text>草丛插眼</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BUSHWARDRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>侦察兵 +2 视野，进攻时 -10 [ICON_Strength] 战斗力，防守时 +15 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_BUSHWARDRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>草叶无声，目光先至；若被照见，便只能守住这一步。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_BUSHWARD_SCOUT_SIGHT_NAME" Language="zh_Hans_CN">
+            <Text>草丛插眼</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_BUSHWARD_SCOUT_SIGHT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>侦察兵 +2 视野。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_CIRCLEOFDEATHRUNE_NAME" Language="zh_Hans_CN">
@@ -83,7 +137,7 @@
             <Text>小丑学院</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CLOWNCOLLEGERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>学院 +2 科技值、图书馆 +1 科技值。</Text>
+            <Text>学院 +2 科技值、图书馆 +1 科技值。持有后首次建成图书馆、大学、研究实验室时，各获得 1 个随机 [ICON_TechBoosted] 尤里卡。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_CLOWNCOLLEGERUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>笑声入册为典，戏言登堂作经。</Text>
@@ -241,7 +295,7 @@
             <Text>尤里卡</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EUREKARUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>未处于黄金时代时，尤里卡额外提供20%的 [ICON_Science] 科技进度。</Text>
+            <Text>尤里卡额外提供10%的 [ICON_Science] 科技进度。持有后每座城市建成图书馆时，获得 1 个随机 [ICON_TechBoosted] 尤里卡。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EUREKARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>神思不自天垂，乃自残瓦碎铁中起。</Text>
@@ -261,7 +315,7 @@
             <Text>风驰</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EXTREMESPEEDRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>未处于黑暗时代时，所有军事单位+1 [ICON_MOVEMENT] 移动力。</Text>
+            <Text>所有战斗单位+1 [ICON_MOVEMENT] 移动力、+3 [ICON_Strength] 战斗力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EXTREMESPEEDRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>心至马前，足追不及。</Text>
@@ -333,7 +387,7 @@
             <Text>创世纪</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GENESISRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市获得免费的[ICON_Housing] 粮仓（包含之后建立的城市）。</Text>
+            <Text>所有城市获得免费的[ICON_Housing] 粮仓（包含之后建立的城市）。粮仓额外+1 [ICON_Food] 食物、+1 [ICON_Housing] 住房。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GENESISRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>既归于虚，则万象皆可重纪。</Text>
@@ -373,7 +427,7 @@
             <Text>金铲铲</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GOLDENSPATULARUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>建造者+1 [ICON_MOVEMENT] 移动力，且+1使用次数。</Text>
+            <Text>建造者+2使用次数。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GOLDENSPATULARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>铲所至处，土皆生金，无所不能为。</Text>
@@ -383,7 +437,7 @@
             <Text>夺金</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GOLDRENDRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>国际 [ICON_TradeRoute] 贸易路线+50% [ICON_Gold] 金币。</Text>
+            <Text>国际 [ICON_TradeRoute] 贸易路线+100% [ICON_Gold] 金币。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GOLDRENDRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>商旅一往一返，皆当铿然有声。</Text>
@@ -433,7 +487,7 @@
             <Text>滋长</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GROWINGSTRONGERRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市的[ICON_Food] 食物增长率+30%，每[ICON_Citizen] 人口+0.3 [ICON_Production] 生产力。</Text>
+            <Text>所有城市的[ICON_Food] 食物增长率+30%，每[ICON_Citizen] 人口+0.5 [ICON_Production] 生产力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_GROWINGSTRONGERRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>民力既厚，仓廪自盈。</Text>
@@ -463,7 +517,7 @@
             <Text>误中副车</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_HAPPYACCIDENTRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>不处于黄金时代时，鼓舞额外提供20%的市政进度。</Text>
+            <Text>鼓舞额外提供10%的市政进度。完成奇观时，获得1个随机鼓舞。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_HAPPYACCIDENTRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>失之东隅，反成大业。</Text>
@@ -473,10 +527,10 @@
             <Text>急就章</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_HASTYSCRIBBLERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>立刻获得当前争夺的大将军，但清空当前所有 [ICON_Gold] 金币。</Text>
+            <Text>立刻获得当前争夺的大将军。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_HASTYSCRIBBLERUNE_FLAVOR" Language="zh_Hans_CN">
-            <Text>笔走匆匆，囊中尽空，将星已落帐前。</Text>
+            <Text>笔走匆匆，檄文未干，将星已落帐前。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_INFERNALCONDUITRUNE_NAME" Language="zh_Hans_CN">
@@ -493,7 +547,7 @@
             <Text>无限循环往复</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_INFINITELOOPRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市每[ICON_Citizen] 人口+1 [ICON_Gold] 金币；10人口以上的大型城市翻倍。</Text>
+            <Text>所有城市每[ICON_Citizen] 人口+1 [ICON_Gold] 金币；10人口以上的大型城市翻倍。金币购买花费-10%。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_INFINITELOOPRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>循而又循，奇迹遂化为常仪。</Text>
@@ -514,23 +568,40 @@
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_KILLERHUNTERRUNE_NAME" Language="zh_Hans_CN">
-            <Text>猎首</Text>
+            <Text>弑杀蜂群：进化</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_KILLERHUNTERRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>击杀敌军单位后，获得等同于其战斗力150%的 [ICON_Science] 科技值（标准速度下）。</Text>
+            <Text>击杀敌军单位后，获得等同于其战斗力 50% 的 [ICON_Science] 科技值（标准速度下）。城市每点人口额外提供 +0.5 [ICON_Science] 科技值。单位受到伤害后的战斗力减益降低 50%。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_KILLERHUNTERRUNE_FLAVOR" Language="zh_Hans_CN">
-            <Text>善猎者使其猎忘其爪，首级既悬，典籍乃生。</Text>
+            <Text>蜂群啃食骨骼，也啃食经验。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDRUNE_NAME" Language="zh_Hans_CN">
-            <Text>弑杀蜂群</Text>
+            <Text>弑杀蜂群：增生</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>击杀敌军单位后，最近的己方城市获得生物质：每回合 + 该单位战斗力 5% 的 [ICON_FOOD] 食物，持续 10 回合（多次击杀效果叠层，各自独立计时）。</Text>
+            <Text>击杀敌军单位后，最近的己方城市获得生物质：每回合 + 该单位战斗力 5% 的 [ICON_FOOD] 食物，持续 10 回合（多次击杀效果叠层，各自独立计时）。城市每点人口额外提供 +1 [ICON_Production] 生产力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>我们必须收集所有能收集到的生物质，实现进化，最终吞噬整片星海！</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDPRESTIGERUNE_NAME" Language="zh_Hans_CN">
+            <Text>弑杀蜂群：至臻</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDPRESTIGERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>击杀敌军单位后，获得等同于其战斗力 50% 的 [ICON_Culture] 文化值和 50% 的 [ICON_Faith] 信仰值（标准速度下）。城市每点人口额外提供 +1 [ICON_Culture] 文化值和 +1 [ICON_Faith] 信仰值。单位受到伤害后不再承受战斗力减益。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDPRESTIGERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>当蜂群终于学会歌唱，战场也成了圣坛。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_ABILITY_NW_WARFEED_PRESTIGE_NO_DAMAGE_REDUCTION_NAME" Language="zh_Hans_CN">
+            <Text>弑杀蜂群：至臻</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_WARFEED_PRESTIGE_NO_DAMAGE_REDUCTION_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>受到伤害后不再承受战斗力减益。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_MADSCIENTISTRUNE_NAME" Language="zh_Hans_CN">
@@ -751,10 +822,20 @@
             <Text>共产主义</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>每个存活的陆地平民单位为你的[ICON_Capital]首都提供 +1 [ICON_FOOD] 食物与 +1 [ICON_PRODUCTION] 生产力。开拓者建城、工人耗尽最后一锤、商人被俘、伟人激活消耗后，对应加成随之消失。</Text>
+            <Text>每个存活的工人单位为你的[ICON_Capital]首都提供 +1 [ICON_FOOD] 食物与 +1 [ICON_PRODUCTION] 生产力。工人耗尽最后一锤后，对应加成随之消失。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>世界由劳动共同创造——请珍惜仍在你帐下的每一位人民。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMPLUSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>共产主义+</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMPLUSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>共产主义的首都加成翻倍。首都6环内的非首都城市获得首都50%的共产主义加成：每个存活的工人单位为这些城市提供 +1 [ICON_FOOD] 食物与 +1 [ICON_PRODUCTION] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COMMUNISMPLUSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>火从首都燃起，沿道路和田埂铺开。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_CAPITALLEGENDRUNE_NAME" Language="zh_Hans_CN">
@@ -785,6 +866,26 @@
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>桃林深处无车马喧，唯听风过水田。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILAPLUSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>世外桃源+</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILAPLUSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市的所有地块 +1 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Food] 食物。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILAPLUSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>旧径又深一寸，桃花也更近人间。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILAPLUSPLUSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>世外桃源++</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILAPLUSPLUSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>所有城市的所有地块 +1 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Science] 科技、+1 [ICON_Culture] 文化。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILAPLUSPLUSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>山中岁月自成书，清泉一页，云影一章。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_BEANAGENTRUNE_NAME" Language="zh_Hans_CN">
@@ -987,7 +1088,7 @@
             <Text>文火</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SLOWCOOKRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有农场+1 [ICON_Food] 食物；粮仓建造速度+100%。</Text>
+            <Text>所有农场和种植园+1 [ICON_Food] 食物；种植园额外提供+0.5 [ICON_Housing] 住房（总计1 [ICON_Housing] 住房）。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SLOWCOOKRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>文火不疾，鼎中之物，已无他途。</Text>
@@ -1097,7 +1198,7 @@
             <Text>三角贸易</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_TRIANGULARTRADERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>通往同盟或你为宗主的城邦的 [ICON_TradeRoute] 商路：出发城 +2 [ICON_Production]，到达城 +4 [ICON_Gold]。你的出发城每完成一条国际海洋商路，从到达城转移若干 [ICON_Citizen] 人口至出发城（标准速度为 1，随游戏速度缩放）。到达城人口低于 4 时不触发；单次转移后到达城至少保留 4 人口。若到达方为城邦、或其科技总值不足你的 50%、或你为美国，则转移人口翻倍；上述条件不叠加，最多翻倍一次。完成后有 33% 概率因疾病路途使出发城再失去 1 人口。</Text>
+            <Text>通往同盟或你为宗主的城邦的 [ICON_TradeRoute] 商路：出发城 +2 [ICON_Production] 生产力、+2 [ICON_Gold] 金币，到达城 +6 [ICON_Gold] 金币。你的出发城每完成一条国际海洋商路，从到达城转移若干 [ICON_Citizen] 人口至出发城（标准速度为 1，随游戏速度缩放）。到达城人口低于 4 时不触发；单次转移后到达城至少保留 4 人口。若到达方为城邦、或其科技总值不足你的 50%、或你为美国，则转移人口翻倍；上述条件不叠加，最多翻倍一次。完成后有 33% 概率因疾病路途使出发城再失去 1 人口。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_TRIANGULARTRADERUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>洋面三角，货去人随，彼城空而此城盈。</Text>
@@ -1231,6 +1332,16 @@
             <Text>一锄落处，五谷自生。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_FARMIMMORTALPLUSRUNE_NAME" Language="zh_Hans_CN">
+            <Text>种地仙人+</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FARMIMMORTALPLUSRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立即在[ICON_Capital]首都获得 1 名「种地仙人」。种地仙人可以在合法地块种植地脉，并获得地脉可见性。若你已加入黄金黎明结社，地脉单元格额外 +1 [ICON_Food] 食物、+1 [ICON_Production] 生产力、+1 [ICON_Science] 科技。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_FARMIMMORTALPLUSRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>这一锄下去，连大地的暗线都发芽了。</Text>
+        </Replace>
+
         <Replace Tag="LOC_UNIT_NW_FARM_IMMORTAL_NAME" Language="zh_Hans_CN">
             <Text>种地仙人</Text>
         </Replace>
@@ -1259,8 +1370,11 @@
         <Replace Tag="LOC_HAIKESI_PLANTER_FILTER_LUXURY" Language="zh_Hans_CN">
             <Text>奢侈</Text>
         </Replace>
+        <Replace Tag="LOC_HAIKESI_PLANTER_FILTER_LEY_LINE" Language="zh_Hans_CN">
+            <Text>地脉</Text>
+        </Replace>
         <Replace Tag="LOC_HAIKESI_PLANTER_ACTION_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>种植资源：在当前地块种植加成或奢侈资源。</Text>
+            <Text>种植资源：在当前地块种植已解锁的资源。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_PLANTER_AVAILABLE" Language="zh_Hans_CN">
             <Text>可种植：</Text>
@@ -1333,7 +1447,7 @@
             <Text>开发者模式</Text>
         </Row>
         <Row Tag="LOC_NW_HAIKESI_MODE_DEV_DESC" Language="zh_Hans_CN">
-            <Text>每回合解锁一次海克斯选择；人类玩家开局获得全图实时视野（调试用）</Text>
+            <Text>每回合解锁一次海克斯选择；人类玩家开局金币补至 1000000（调试用）</Text>
         </Row>
 
         <Row Tag="LOC_NW_HAIKESI_MODE_MP_NAME" Language="zh_Hans_CN">

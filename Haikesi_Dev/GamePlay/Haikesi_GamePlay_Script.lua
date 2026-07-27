@@ -9,7 +9,10 @@
 --||======================= Debug ========================||--
 
 -- 人类全图实时视野：仅高级选项「海克斯模式 = 开发者模式」(NW_HAIKESI_MODE == 3) 时开启
+-- 2026-07-27: 暂停自动解锁，保留实现以便调试期需要时恢复。
 local DEV_FULL_MAP_VISION_PROP = 'PROP_NW_HAIKESI_DEV_FULL_MAP_VISION'
+local DEV_INITIAL_GOLD_PROP = 'PROP_NW_HAIKESI_DEV_INITIAL_GOLD'
+local DEV_INITIAL_GOLD_AMOUNT = 1000000
 
 -- 内存 Map：RelicType → ModifierId[]（在 Initialize 中构建）
 local g_RelicModifierMap = nil
@@ -163,6 +166,7 @@ end
 local function AreRelicPrerequisitesMet(pPlayer, relicType, selectedTypes)
     local tableAvailable = GameInfo.Haikesi_Relic_Prerequisites ~= nil
     local matchedRows = 0
+    local anyRelicPrereqs = {}
 
     if tableAvailable then
         for req in GameInfo.Haikesi_Relic_Prerequisites() do
@@ -172,6 +176,8 @@ local function AreRelicPrerequisitesMet(pPlayer, relicType, selectedTypes)
                     if not selectedTypes[req.PrerequisiteType] then
                         return false
                     end
+                elseif req.PrerequisiteKind == 'RELIC_ANY' then
+                    table.insert(anyRelicPrereqs, req.PrerequisiteType)
                 elseif req.PrerequisiteKind == 'TECHNOLOGY' then
                     if not IsTechnologyPrerequisiteMet(pPlayer, req.PrerequisiteType, req.AllowInProgress) then
                         return false
@@ -212,6 +218,19 @@ local function AreRelicPrerequisitesMet(pPlayer, relicType, selectedTypes)
         end
     end
 
+    if #anyRelicPrereqs > 0 then
+        local matched = false
+        for _, prerequisiteType in ipairs(anyRelicPrereqs) do
+            if selectedTypes[prerequisiteType] then
+                matched = true
+                break
+            end
+        end
+        if not matched then
+            return false
+        end
+    end
+
     DebugPrereqOnce('rows:' .. relicType,
         '[Haikesi GamePlay DEBUG] Prereq rows for relic=' .. tostring(relicType)
         .. ' tableAvailable=' .. tostring(tableAvailable)
@@ -223,7 +242,6 @@ local function CanGrantRelicFromBonus(pPlayer, relicType, selectedTypes)
     if relicDef == nil or relicDef.IsActive ~= 1 then return false end
     if relicDef.SelectionOnly == 1 then return false end
     if selectedTypes[relicType] and relicDef.IsRepeatable ~= 1 then return false end
-    if pPlayer:GetProperty('PROP_NW_HAIKESI_LOCKED_' .. relicType) == 1 then return false end
 
     -- 回合限制检查（以标准速度为准）
     if relicDef.MinTurn ~= nil or relicDef.MaxTurn ~= nil then
@@ -2326,26 +2344,21 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
 
     -- 共产主义：诊断叠层主体数量（效果本身由 SQL ATTACH 处理）
     if relicType == 'COMMUNISMRUNE' then
-        local civilianCount = 0
+        local builderCount = 0
         local units = pPlayer:GetUnits()
         if units ~= nil then
             for _, unit in units:Members() do
                 if unit ~= nil then
                     local info = GameInfo.Units[unit:GetType()]
-                    if info ~= nil then
-                        for row in GameInfo.TypeTags() do
-                            if row.Type == info.UnitType and row.Tag == 'CLASS_LANDCIVILIAN' then
-                                civilianCount = civilianCount + 1
-                                break
-                            end
-                        end
+                    if info ~= nil and (info.UnitType == 'UNIT_BUILDER' or info.UnitType == 'UNIT_NW_FARM_IMMORTAL') then
+                        builderCount = builderCount + 1
                     end
                 end
             end
         end
         print(string.format(
-            "[Haikesi GamePlay] COMMUNISM diagnose P%d land_civilians=%d (expect +%d food/+%d prod to capital)",
-            iPlayer, civilianCount, civilianCount, civilianCount))
+            "[Haikesi GamePlay] COMMUNISM diagnose P%d builder_units=%d (expect +%d food/+%d prod to capital)",
+            iPlayer, builderCount, builderCount, builderCount))
     end
 
     -- ==============================
@@ -2546,6 +2559,27 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     -- DICEMANIAC 掷骰狂人
     -- 后续选择海克斯时，所有海克斯可额外刷新一次（UI 读取 PROP 实现）
     -- ==============================
+    -- FARMIMMORTALPLUSRUNE: same-turn Hermetic Ley Line yield hook; SQL handles grant/reveal.
+    if relicType == 'FARMIMMORTALPLUSRUNE' then
+        local applyFarmImmortalPlus = nil
+        if ExposedMembers ~= nil then
+            applyFarmImmortalPlus = ExposedMembers.Haikesi_ApplyFarmImmortalPlusRelic
+        end
+        if type(applyFarmImmortalPlus) ~= "function" then
+            applyFarmImmortalPlus = rawget(_G, "Haikesi_ApplyFarmImmortalPlusRelic")
+        end
+        if type(applyFarmImmortalPlus) == "function" then
+            local okPlus, errPlus = pcall(applyFarmImmortalPlus, iPlayer)
+            if not okPlus then
+                print("[Haikesi GamePlay] FARMIMMORTALPLUS apply error: " .. tostring(errPlus))
+            end
+        else
+            print("[Haikesi GamePlay] FARMIMMORTALPLUS delayed: planter script not ready")
+        end
+        return
+    end
+
+    -- DICEMANIAC branch begins here.
     if relicType == 'DICEMANIACRUNE' then
         pPlayer:SetProperty(DICEMANIAC_PROP_KEY, 1)
         -- The same-turn bonus relic is selected once in UI and passed through
@@ -2558,36 +2592,13 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     -- ==============================
     -- DOUBLEEXISTENCERUNE 手快全拿
     -- "另外两个海克斯"由 UI 侧通过 ExtraRelicTypes 一并下发，服务端循环 ApplyRelicToPlayer 处理。
-    -- 副作用：刷新点数 -1（UI 读取 REROLL_PENALTY）；同队人类不再刷出手快全选。
+    -- 副作用：刷新点数 -1（UI 读取 REROLL_PENALTY）。
     -- ==============================
     if relicType == 'DOUBLEEXISTENCERUNE' then
         local curPen = tonumber(pPlayer:GetProperty(REROLL_PENALTY_PROP_KEY) or 0) or 0
         pPlayer:SetProperty(REROLL_PENALTY_PROP_KEY, curPen + 1)
-        -- 全队锁定：同队所有人类玩家不再能刷出手快全选
-        local myTeam = pPlayer:GetTeam()
-        for i = 0, 63 do
-            local pOther = Players[i]
-            if pOther and pOther:IsHuman() and pOther:GetTeam() == myTeam then
-                pOther:SetProperty('PROP_NW_HAIKESI_LOCKED_DOUBLEEXISTENCERUNE', 1)
-            end
-        end
         print("[Haikesi GamePlay] DOUBLEEXISTENCE — reroll penalty+1 now="
             .. tostring(curPen + 1) .. " (Player" .. iPlayer .. ")")
-        return
-    end
-
-    -- ==============================
-    -- HASTYSCRIBBLERUNE 潦草急就：清空当前所有金币（送大将军由 SQL GRANT 实现）
-    -- 无原生"清零金币"Modifier，必须 Lua。GetTreasury():SetGoldBalance(0) 置零。
-    -- ==============================
-    if relicType == 'HASTYSCRIBBLERUNE' then
-        local pTreasury = pPlayer:GetTreasury()
-        if pTreasury and pTreasury.SetGoldBalance then
-            pTreasury:SetGoldBalance(0)
-            print("[Haikesi GamePlay] HASTYSCRIBBLE — 清空玩家" .. iPlayer .. " 金币")
-        else
-            print("[Haikesi GamePlay] 警告: GetTreasury().SetGoldBalance 不可用（HASTYSCRIBBLE）")
-        end
         return
     end
 
@@ -2674,12 +2685,40 @@ local function Haikesi_DevGrantFullMapVisionForHumans()
     end
 end
 
+local function Haikesi_DevGrantInitialGoldForHumans()
+    if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) ~= 3 then return end
+    for _, pPlayer in ipairs(PlayerManager.GetAliveMajors()) do
+        if pPlayer:IsHuman() and pPlayer:GetProperty(DEV_INITIAL_GOLD_PROP) ~= 1 then
+            local pTreasury = pPlayer:GetTreasury()
+            if pTreasury ~= nil then
+                local currentGold = 0
+                local ok, balance = pcall(function() return pTreasury:GetGoldBalance() end)
+                if ok and balance ~= nil then
+                    currentGold = tonumber(balance) or 0
+                end
+                local delta = DEV_INITIAL_GOLD_AMOUNT - currentGold
+                if delta > 0 then
+                    pTreasury:ChangeGoldBalance(delta)
+                end
+                pPlayer:SetProperty(DEV_INITIAL_GOLD_PROP, 1)
+                print("[Haikesi Dev] Granted initial gold floor to human Player"
+                    .. tostring(pPlayer:GetID()) .. ": " .. tostring(DEV_INITIAL_GOLD_AMOUNT))
+            end
+        end
+    end
+end
+
 -- 种地仙人种植逻辑已拆至 GamePlay/Haikesi_Planter_GamePlay.lua
 -- （主脚本文件级 local 已近 Firaxis Lua 5.1 寄存器上限，再塞会整文件加载失败）
 
 local function OnDevVisionPlayerTurnActivated(_, bIsFirstTime)
     if not bIsFirstTime then return end
     Haikesi_DevGrantFullMapVisionForHumans()
+end
+
+local function OnDevInitialGoldPlayerTurnActivated(_, bIsFirstTime)
+    if not bIsFirstTime then return end
+    Haikesi_DevGrantInitialGoldForHumans()
 end
 
 --||======================= INIT ========================||--
@@ -2719,8 +2758,10 @@ function Initialize()
     GameEvents.CityBuilt.Add(OnHaikesiCityBuilt)
 
     if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) == 3 then
-        Haikesi_DevGrantFullMapVisionForHumans()
-        Events.PlayerTurnActivated.Add(OnDevVisionPlayerTurnActivated)
+        -- Haikesi_DevGrantFullMapVisionForHumans()
+        -- Events.PlayerTurnActivated.Add(OnDevVisionPlayerTurnActivated)
+        Haikesi_DevGrantInitialGoldForHumans()
+        Events.PlayerTurnActivated.Add(OnDevInitialGoldPlayerTurnActivated)
     end
 
     Events.PlayerTurnActivated.Add(OnExternalAICheck)

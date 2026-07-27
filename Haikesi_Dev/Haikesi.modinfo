@@ -172,6 +172,12 @@
       </Properties>
       <File>GamePlay/Haikesi_LandLottery_GamePlay.lua</File>
     </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_EurekaGamePlay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_Eureka_GamePlay.lua</File>
+    </AddGameplayScripts>
     <AddGameplayScripts id="Haikesi_WarFeedGamePlay">
       <Properties>
         <LoadOrder>16796</LoadOrder>
@@ -230,6 +236,7 @@
     <File>GamePlay/Haikesi_LightningStorm_GamePlay.lua</File>
     <File>GamePlay/Haikesi_RiverFlood_GamePlay.lua</File>
     <File>GamePlay/Haikesi_LandLottery_GamePlay.lua</File>
+    <File>GamePlay/Haikesi_Eureka_GamePlay.lua</File>
     <File>GamePlay/Haikesi_WarFeed_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Trigger.lua</File>
     <File>Haikesi.dep</File>

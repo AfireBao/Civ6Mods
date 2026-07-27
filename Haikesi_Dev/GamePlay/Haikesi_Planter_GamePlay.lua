@@ -5,8 +5,125 @@
 -- ===========================================================================
 
 local NW_FARM_IMMORTAL_UNIT = 'UNIT_NW_FARM_IMMORTAL'
+local FARM_IMMORTAL_PLUS_RELIC = 'FARMIMMORTALPLUSRUNE'
+local HERMETIC_SECRET_SOCIETY = 'SECRETSOCIETY_HERMETIC_ORDER'
+local LEY_LINE_YIELDS_APPLIED_PROP = 'PROP_NW_FARM_IMMORTAL_PLUS_LEY_LINE_YIELDS_APPLIED'
+local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
+local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
+local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
+
+local FARM_IMMORTAL_PLUS_LEY_LINE_YIELD_MODIFIERS = {
+    'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_FOOD',
+    'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_PRODUCTION',
+    'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_SCIENCE'
+}
 
 local g_PlanterResourceValidImprovements = nil
+
+local function Haikesi_GetRelicTypeFromIndex(index)
+    if GameInfo.Haikesi_Relics == nil then
+        return nil
+    end
+    for row in GameInfo.Haikesi_Relics() do
+        if row.Index == index then
+            return row.RelicType
+        end
+    end
+    return nil
+end
+
+local function Haikesi_PlanterPlayerHasRelic(pPlayer, relicType)
+    if pPlayer == nil or relicType == nil or relicType == '' then
+        return false
+    end
+    local count = tonumber(pPlayer:GetProperty(RelicsCountPropertyKey) or 0) or 0
+    if count > 0 then
+        for i = 1, count do
+            if pPlayer:GetProperty(RelicsSlotPropertyPrefix .. i) == relicType then
+                return true
+            end
+        end
+    end
+
+    local prop = pPlayer:GetProperty(RelicsPropertyKey) or ''
+    if prop ~= '' then
+        for idxStr in string.gmatch(prop, '[^|]+') do
+            local idx = tonumber(idxStr)
+            if idx ~= nil and Haikesi_GetRelicTypeFromIndex(idx) == relicType then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function Haikesi_GetPlayerSecretSocietyType(pPlayer)
+    if pPlayer == nil or pPlayer.GetGovernors == nil or GameInfo.SecretSocieties == nil then
+        return nil, nil
+    end
+    local governors = pPlayer:GetGovernors()
+    if governors == nil or governors.GetSecretSociety == nil then
+        return nil, nil
+    end
+    local rawSociety = governors:GetSecretSociety()
+    if rawSociety == nil then
+        return nil, nil
+    end
+
+    if type(rawSociety) == 'string' then
+        local societyInfo = GameInfo.SecretSocieties[rawSociety]
+        if societyInfo ~= nil then
+            return societyInfo.SecretSocietyType or rawSociety, rawSociety
+        end
+        return rawSociety, rawSociety
+    end
+
+    local societyInfo = GameInfo.SecretSocieties[rawSociety]
+    if societyInfo ~= nil then
+        return societyInfo.SecretSocietyType, rawSociety
+    end
+
+    if type(rawSociety) == 'number' then
+        for row in GameInfo.SecretSocieties() do
+            if row.Index == rawSociety or row.Hash == rawSociety or row.SecretSocietyHash == rawSociety then
+                return row.SecretSocietyType, rawSociety
+            end
+        end
+    end
+    return nil, rawSociety
+end
+
+local function Haikesi_PlayerIsHermeticOrder(pPlayer)
+    local societyType = Haikesi_GetPlayerSecretSocietyType(pPlayer)
+    return societyType == HERMETIC_SECRET_SOCIETY
+end
+
+function Haikesi_ApplyFarmImmortalPlusRelic(playerID)
+    local pPlayer = Players[playerID]
+    if pPlayer == nil then
+        return false
+    end
+    if not Haikesi_PlanterPlayerHasRelic(pPlayer, FARM_IMMORTAL_PLUS_RELIC) then
+        return false
+    end
+    if pPlayer:GetProperty(LEY_LINE_YIELDS_APPLIED_PROP) == 1 then
+        return true
+    end
+    if not Haikesi_PlayerIsHermeticOrder(pPlayer) then
+        local societyType, rawSociety = Haikesi_GetPlayerSecretSocietyType(pPlayer)
+        print(string.format(
+            '[Haikesi Planter] FARMIMMORTALPLUS skipped Player%s: secret society raw=%s resolved=%s',
+            tostring(playerID), tostring(rawSociety), tostring(societyType)
+        ))
+        return false
+    end
+    for _, modId in ipairs(FARM_IMMORTAL_PLUS_LEY_LINE_YIELD_MODIFIERS) do
+        pPlayer:AttachModifierByID(modId)
+    end
+    pPlayer:SetProperty(LEY_LINE_YIELDS_APPLIED_PROP, 1)
+    print('[Haikesi Planter] FARMIMMORTALPLUS ley line yields attached for Player' .. tostring(playerID))
+    return true
+end
 
 local function Haikesi_PlanterBuildValidImprovementCache()
     g_PlanterResourceValidImprovements = {}
@@ -93,7 +210,7 @@ local function Haikesi_IsFarmImmortalUnit(unit)
     return unitInfo ~= nil and unitInfo.UnitType == NW_FARM_IMMORTAL_UNIT
 end
 
-local function Haikesi_IsPlanterWhitelistResource(resourceIndex)
+local function Haikesi_IsPlanterWhitelistResource(resourceIndex, pPlayer)
     if resourceIndex == nil or resourceIndex < 0 or GameInfo.Haikesi_PlanterResources == nil then
         return false
     end
@@ -103,7 +220,10 @@ local function Haikesi_IsPlanterWhitelistResource(resourceIndex)
     end
     for row in GameInfo.Haikesi_PlanterResources() do
         if row.ResourceType == resourceInfo.ResourceType then
-            return true
+            local requiredRelic = row.RequiredRelic
+            return requiredRelic == nil
+                or requiredRelic == ''
+                or Haikesi_PlanterPlayerHasRelic(pPlayer, requiredRelic)
         end
     end
     return false
@@ -168,7 +288,7 @@ function HaikesiPlantResource(playerID, params)
         print('[Haikesi Planter] canceled: invalid farm immortal state')
         return
     end
-    if not Haikesi_IsPlanterWhitelistResource(resourceIndex) then
+    if not Haikesi_IsPlanterWhitelistResource(resourceIndex, player) then
         print('[Haikesi Planter] canceled: resource not in whitelist')
         return
     end
@@ -194,6 +314,7 @@ function HaikesiPlantResource(playerID, params)
     end
 
     Haikesi_ConsumePlanterCharge(unit, chargeAbility)
+    Haikesi_ApplyFarmImmortalPlusRelic(playerID)
     local resInfo = GameInfo.Resources[resourceIndex]
     print(string.format(
         '[Haikesi Planter] planted %s at (%d,%d) charge=%s',
@@ -205,7 +326,15 @@ end
 local function InitializePlanter()
     Haikesi_PlanterBuildValidImprovementCache()
     GameEvents.HaikesiPlantResource.Add(HaikesiPlantResource)
+    if ExposedMembers ~= nil then
+        ExposedMembers.Haikesi_ApplyFarmImmortalPlusRelic = Haikesi_ApplyFarmImmortalPlusRelic
+    end
     print('[Haikesi Planter] GamePlay ready (split from main script)')
 end
 
 Events.LoadScreenClose.Add(InitializePlanter)
+Events.PlayerTurnActivated.Add(function(playerID, isFirstTime)
+    if isFirstTime then
+        Haikesi_ApplyFarmImmortalPlusRelic(playerID)
+    end
+end)

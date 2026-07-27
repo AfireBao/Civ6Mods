@@ -4,6 +4,7 @@
 --
 -- PrerequisiteKind:
 --   RELIC      PrerequisiteType = 另一个 Haikesi_Relics.RelicType
+--   RELIC_ANY  同一 RelicType 下的 RELIC_ANY 前置满足任意一个即可
 --   TECHNOLOGY PrerequisiteType = Technologies.TechnologyType
 --   TRAIT      PrerequisiteType = Traits.TraitType（玩家文明须拥有该特色区域 Trait，海克斯才进刷新池）
 --   EXCLUDE_TRAIT PrerequisiteType = Traits.TraitType(玩家文明拥有该 Trait 时,海克斯【不】进刷新池,即负关联)
@@ -12,7 +13,7 @@
 -- AllowInProgress:
 --   0 = 必须已完成
 --   1 = 已完成或当前正在研究
--- 多条前置条件按 AND 处理。
+-- 普通前置条件按 AND 处理；同一 RelicType 下的 RELIC_ANY 前置组内按 OR 处理。
 -- ===========================================================================
 
 DROP TABLE IF EXISTS Haikesi_Relic_Prerequisites;
@@ -23,12 +24,12 @@ CREATE TABLE Haikesi_Relic_Prerequisites (
     AllowInProgress INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (RelicType, PrerequisiteKind, PrerequisiteType),
     FOREIGN KEY (RelicType) REFERENCES Haikesi_Relics(RelicType) ON DELETE CASCADE ON UPDATE CASCADE,
-    CHECK (PrerequisiteKind IN ('RELIC', 'TECHNOLOGY', 'TRAIT', 'EXCLUDE_TRAIT', 'CAPABILITY')),
+    CHECK (PrerequisiteKind IN ('RELIC', 'RELIC_ANY', 'TECHNOLOGY', 'TRAIT', 'EXCLUDE_TRAIT', 'CAPABILITY')),
     CHECK (AllowInProgress IN (0, 1))
 );
 
 -- 信仰值 / 圣地相关海克斯：已研究占星术，或当前正在研究占星术，才进入刷新池。
--- BACKTOBASICSRUNE / PRIMITIVEMADNESSRUNE 已应需求取消占星术前置，改为无前置常驻刷新池。
+-- PRIMITIVEMADNESSRUNE 已应需求取消占星术前置；BACKTOBASICSRUNE 改走返朴前置线。
 INSERT INTO Haikesi_Relic_Prerequisites
     (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
     ('MIKAELSBLESSINGRUNE',   'TECHNOLOGY', 'TECH_ASTROLOGY', 1);
@@ -64,3 +65,58 @@ INSERT INTO Haikesi_Relic_Prerequisites
 INSERT INTO Haikesi_Relic_Prerequisites
     (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
     ('DRACULARUNE', 'CAPABILITY', 'CAPABILITY_SECRETSOCIETIES', 0);
+
+-- 伟人线叠层：相生 / 星光璀璨需先拥有心胜于物或科学狂人；精英政治需先拥有相生或星光璀璨。
+INSERT INTO Haikesi_Relic_Prerequisites
+    (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
+    ('ORBSYMBIOSISRUNE',       'RELIC_ANY', 'MINDOVERMATTERRUNE',   0),
+    ('ORBSYMBIOSISRUNE',       'RELIC_ANY', 'MADSCIENTISTRUNE',     0),
+    ('STARLIGHTSPLENDORRUNE',  'RELIC_ANY', 'MINDOVERMATTERRUNE',   0),
+    ('STARLIGHTSPLENDORRUNE',  'RELIC_ANY', 'MADSCIENTISTRUNE',     0),
+    ('CAPITALLEGENDRUNE',      'RELIC_ANY', 'ORBSYMBIOSISRUNE',     0),
+    ('CAPITALLEGENDRUNE',      'RELIC_ANY', 'STARLIGHTSPLENDORRUNE', 0);
+
+-- 世外桃源叠层：后续层级必须先拥有上一层海克斯才进入刷新池。
+INSERT INTO Haikesi_Relic_Prerequisites
+    (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
+    ('SHANGRILAPLUSRUNE',     'RELIC', 'SHANGRILARUNE',     0),
+    ('SHANGRILAPLUSPLUSRUNE', 'RELIC', 'SHANGRILAPLUSRUNE', 0);
+
+-- 武僧线叠层：秘术冲拳 -> 佛功传承 -> 气功大师。
+INSERT INTO Haikesi_Relic_Prerequisites
+    (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
+    ('BUDDHISTINHERITANCERUNE', 'RELIC', 'ARCANEPUNCHRUNE',             0),
+    ('QIGONGMASTERRUNE',        'RELIC', 'BUDDHISTINHERITANCERUNE',     0);
+
+-- 叠层/条件型玩家海克斯前置。
+INSERT INTO Haikesi_Relic_Prerequisites
+    (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
+    ('FARMIMMORTALRUNE', 'RELIC', 'GOLDENSPATULARUNE', 0),
+    ('FARMIMMORTALPLUSRUNE', 'RELIC', 'FARMIMMORTALRUNE', 0),
+    ('FARMIMMORTALPLUSRUNE', 'CAPABILITY', 'CAPABILITY_SECRETSOCIETIES', 0),
+    ('BACKTOBASICSRUNE', 'RELIC', 'PRIMITIVEMADNESSRUNE', 0),
+    ('HAPPYACCIDENTRUNE', 'RELIC', 'COURAGEOFCOLOSSUSRUNE', 0),
+    ('CITYSTATECRAFTSRUNE', 'RELIC', 'GOLDENSPATULARUNE', 0),
+    ('CORRUPTEDBRANCHRUNE', 'RELIC', 'GOLDENSPATULARUNE', 0),
+    ('COMMUNISMRUNE', 'RELIC_ANY', 'EARTHAWAKENSRUNE', 0),
+    ('COMMUNISMRUNE', 'RELIC_ANY', 'GOLDENSPATULARUNE', 0),
+    ('COMMUNISMPLUSRUNE', 'RELIC', 'COMMUNISMRUNE', 0),
+    ('BIGKNIFERUNE', 'RELIC', 'HASTYSCRIBBLERUNE', 0),
+    ('FANTHEHAMMERRUNE', 'RELIC', 'MOSTUNIVERSALSCOPERUNE', 0),
+    ('GLASSCANNONRUNE', 'RELIC', 'FANTHEHAMMERRUNE', 0),
+    ('KILLERHUNTERRUNE', 'RELIC', 'WARFEEDRUNE', 0),
+    ('WARFEEDPRESTIGERUNE', 'RELIC', 'KILLERHUNTERRUNE', 0),
+    ('TRIANGULARTRADERUNE', 'RELIC_ANY', 'SELLOFFRUNE', 0),
+    ('TRIANGULARTRADERUNE', 'RELIC_ANY', 'EIGHTPENNYGATERUNE', 0),
+    ('TRIANGULARTRADERUNE', 'RELIC_ANY', 'DUFFSVINTAGERUNE', 0),
+    ('GOLDRENDRUNE', 'RELIC', 'TRIANGULARTRADERUNE', 0),
+    ('BLADEWALTZRUNE', 'RELIC', 'EXTREMESPEEDRUNE', 0),
+    ('EUREKARUNE', 'RELIC', 'CLOWNCOLLEGERUNE', 0),
+    ('HIGHFLIGHTNAVRUNE', 'RELIC', 'GROUNDEDRUNE', 0),
+    ('GROWINGSTRONGERRUNE', 'RELIC_ANY', 'SLOWCOOKRUNE', 0),
+    ('GROWINGSTRONGERRUNE', 'RELIC_ANY', 'GENESISRUNE', 0),
+    ('BREADSANDWICHRUNE', 'RELIC_ANY', 'SLOWCOOKRUNE', 0),
+    ('BREADSANDWICHRUNE', 'RELIC_ANY', 'GENESISRUNE', 0),
+    ('INFINITELOOPRUNE', 'RELIC_ANY', 'BREADSANDWICHRUNE', 0),
+    ('INFINITELOOPRUNE', 'RELIC_ANY', 'GROWINGSTRONGERRUNE', 0),
+    ('BUSHWARDRUNE', 'RELIC', 'CERBERUSRUNE', 0);

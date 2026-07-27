@@ -3,16 +3,28 @@
 -- 策略 B：白名单定范围；落点合法性由 Lua 的 ResourceBuilder.CanHaveResource 判定
 -- ===========================================================================
 
-CREATE TABLE IF NOT EXISTS Haikesi_PlanterResources (
-    ResourceType TEXT NOT NULL PRIMARY KEY
+DROP TABLE IF EXISTS Haikesi_PlanterResources;
+CREATE TABLE Haikesi_PlanterResources (
+    ResourceType TEXT NOT NULL PRIMARY KEY,
+    RequiredRelic TEXT DEFAULT NULL,
+    FilterKey TEXT DEFAULT NULL
 );
 
 -- 加成 + 奢侈；须地图可自然生成（排除垄断奢侈等 Frequency=SeaFrequency=0）
-INSERT OR IGNORE INTO Haikesi_PlanterResources (ResourceType)
-SELECT R.ResourceType
+INSERT OR IGNORE INTO Haikesi_PlanterResources (ResourceType, FilterKey)
+SELECT R.ResourceType,
+       CASE
+           WHEN R.ResourceClassType = 'RESOURCECLASS_BONUS' THEN 'BONUS'
+           WHEN R.ResourceClassType = 'RESOURCECLASS_LUXURY' THEN 'LUXURY'
+       END
 FROM Resources R
 WHERE R.ResourceClassType IN ('RESOURCECLASS_BONUS', 'RESOURCECLASS_LUXURY')
   AND (R.Frequency > 0 OR R.SeaFrequency > 0);
+
+-- FARMIMMORTALPLUSRUNE unlocks Ley Line planting; placement legality is still checked in Lua.
+INSERT OR IGNORE INTO Haikesi_PlanterResources (ResourceType, RequiredRelic, FilterKey)
+SELECT 'RESOURCE_LEY_LINE', 'FARMIMMORTALPLUSRUNE', 'LEY_LINE'
+WHERE EXISTS (SELECT 1 FROM Resources WHERE ResourceType = 'RESOURCE_LEY_LINE');
 
 -- 扣充能：每次种植启用一个 Inactive Ability（Amount=-1）
 -- 槽数覆盖基础 BuildCharges + 金字塔/农奴制等加成余量

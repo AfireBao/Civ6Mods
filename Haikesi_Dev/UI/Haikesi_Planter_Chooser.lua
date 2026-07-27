@@ -8,6 +8,7 @@ local DATA_FIELD_SELECTION:string = "Selection";
 local FILTER_ALL:string = "ALL";
 local FILTER_BONUS:string = "BONUS";
 local FILTER_LUXURY:string = "LUXURY";
+local FILTER_LEY_LINE:string = "LEY_LINE";
 
 local m_resourceEntryIM:table = nil;
 local m_tabIM:table = nil;
@@ -156,6 +157,7 @@ local function OnInit()
     AddFilterTab("LOC_HAIKESI_PLANTER_FILTER_ALL", FILTER_ALL);
     AddFilterTab("LOC_HAIKESI_PLANTER_FILTER_BONUS", FILTER_BONUS);
     AddFilterTab("LOC_HAIKESI_PLANTER_FILTER_LUXURY", FILTER_LUXURY);
+    AddFilterTab("LOC_HAIKESI_PLANTER_FILTER_LEY_LINE", FILTER_LEY_LINE);
     m_kTabs.SameSizedTabs(20);
     m_kTabs.CenterAlignTabs(0);
     if m_kTabs.tabControls ~= nil and m_kTabs.tabControls[1] ~= nil then

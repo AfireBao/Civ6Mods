@@ -127,7 +127,9 @@ INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) 
 -- 标记已有效果描述的海克斯为活跃（共 13 个）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'ARCANEPUNCHRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'BACKTOBASICSRUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'BACKTOBASICSRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'BIGKNIFERUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'BIGKNIFERUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'BLADEWALTZRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'BREADSANDWICHRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'CERBERUSRUNE';
@@ -149,7 +151,9 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'GOLDENSPATULARUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'MIKAELSBLESSINGRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DUFFSVINTAGERUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'STARLIGHTSPLENDORRUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'STARLIGHTSPLENDORRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'INFERNALCONDUITRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 60 WHERE RelicType = 'INFERNALCONDUITRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'EIGHTPENNYGATERUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'GROWINGSTRONGERRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'GENESISRUNE';
@@ -159,6 +163,7 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'HAPPYACCIDENTRUNE';
 -- 参考 CityStateExpand 城邦效果新增（贸易/伟人/地块/击杀/建筑）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'SELLOFFRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'GOLDRENDRUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'GOLDRENDRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'TRIANGULARTRADERUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'MADSCIENTISTRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'SINGULARITYAIRUNE';
@@ -174,6 +179,7 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'MINDOVERMATTERRUNE';  
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'HAILTOTHEKINGRUNE';   -- 尊我为王（千政之心）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'INFINITELOOPRUNE';    -- 无限循环往复（税收改革）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'ORBSYMBIOSISRUNE';    -- 充能球相生（文化传承）
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'ORBSYMBIOSISRUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'MOSTUNIVERSALSCOPERUNE';  -- 最万用的瞄准镜（丘陵远程+1射程）
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'MOSTUNIVERSALSCOPERUNE';
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'LAVRAUPGRADERUNE';      -- 升级：拉夫拉修道院
@@ -187,11 +193,11 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'COSPLAYRUNE';         
 -- ===========================================================================
 -- 不可重复选择（IsRepeatable = 0）：除少数小数值线性堆叠型外，已实装均设为不可重复
 -- 玩家选中后该海克斯不再出现在后续卡池中
--- 保留可重复（IsRepeatable=1）：BREADSANDWICHRUNE / CLOWNCOLLEGERUNE / EARTHAWAKENSRUNE
+-- 保留可重复（IsRepeatable=1）：CLOWNCOLLEGERUNE / EARTHAWAKENSRUNE
 -- ===========================================================================
 -- 战斗 / 一次性触发 / 独特机制
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'ARCANEPUNCHRUNE';     -- 秘术冲拳
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'BIGKNIFERUNE';         -- 大号匕首
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'BIGKNIFERUNE';         -- 将军金印
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'BLADEWALTZRUNE';       -- 利刃华尔兹
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'CERBERUSRUNE';         -- 地狱三头犬
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'CIRCLEOFDEATHRUNE';    -- 死亡之环
@@ -199,24 +205,25 @@ UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'EXTREMESPEEDRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'FANTHEHAMMERRUNE';     -- 连拨击锤
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'GENESISRUNE';          -- 创世纪
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'GLASSCANNONRUNE';      -- 玻璃大炮
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'HASTYSCRIBBLERUNE';    -- 潦草急就（夺大将军）
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'KILLERHUNTERRUNE';     -- 杀手猎人
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'HASTYSCRIBBLERUNE';    -- 急就章（夺大将军）
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'KILLERHUNTERRUNE';     -- 弑杀蜂群：进化
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'PROTEINSHAKERUNE';     -- 蛋白粉奶昔
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'MIKAELSBLESSINGRUNE';  -- 米凯尔的祝福
 
 -- 大范围百分比 / 堆叠失衡型
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'BACKTOBASICSRUNE';     -- 回归基本功
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'BREADSANDWICHRUNE';    -- 太仓有粟
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'CORRUPTEDBRANCHRUNE';  -- 腐化树枝
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'COURAGEOFCOLOSSUSRUNE';-- 巨像的勇气
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'EIGHTPENNYGATERUNE';   -- 扉八分钱
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'EUREKARUNE';           -- 尤里卡
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'GOLDRENDRUNE';         -- 夺金
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'GROWINGSTRONGERRUNE';  -- 愈战愈勇
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'GROWINGSTRONGERRUNE';  -- 滋长
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'HAPPYACCIDENTRUNE';    -- 歪打正着
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'INFERNALCONDUITRUNE';  -- 炼狱导管
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'PRIMITIVEMADNESSRUNE'; -- 疯狂原始人
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SELLOFFRUNE';          -- 变卖
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'GOLDENSPATULARUNE';    -- 金铲铲金铲铲
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'GOLDENSPATULARUNE';    -- 金铲铲
 
 -- 一次性效果 / 元机制
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'COMPENSATIONRUNE';     -- 代偿（一次性结算）
@@ -236,15 +243,20 @@ UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'MIMICRUNE';     --
 UPDATE Haikesi_Relics SET SelectionOnly = 0 WHERE RelicType = 'MIMICRUNE';    -- 可作附赠（须同步开能力窗）
 
 -- Turn2Dedication 移植批次：全部不可重复
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SLOWCOOKRUNE';        -- 慢炖（农场+粮仓速度）
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SLOWCOOKRUNE';        -- 文火（农场/种植园+食物、农场住房）
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'MOBILEHOMERUNE';      -- 移动房车（首个特色区域+120%）
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'MINDOVERMATTERRUNE';  -- 心胜于物（7类伟人点数+3）
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'HAILTOTHEKINGRUNE';   -- 尊我为王（3个总督头衔）
-UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'INFINITELOOPRUNE';    -- 无限循环往复（金币/人口+阈值）
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'INFINITELOOPRUNE';    -- 无限循环往复（金币/人口+阈值+购买折扣）
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'ORBSYMBIOSISRUNE';    -- 充能球相生（伟人点返还20%）
 
 -- 仿生战士批次
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'COSPLAYRUNE';         -- COSPLAY（赠送独立单位）
+
+-- 种田/人口叠层权重
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'GROWINGSTRONGERRUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'BREADSANDWICHRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'INFINITELOOPRUNE';
 
 -- Dev 新增卡：只借占位图标，不改写占位 RelicType / LOC / IsActive
 -- 永生乐队：暂借战争交响乐 SYMPHONYOFWARRUNE 图标
@@ -271,6 +283,14 @@ UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'FARMIMMORTALRUNE';
 UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'FARMIMMORTALRUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'FARMIMMORTALRUNE';
 
+-- FARMIMMORTALPLUSRUNE: secret-society follow-up to Farm Immortal.
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('FARMIMMORTALPLUSRUNE', 'LOC_HAIKESI_RELIC_FARMIMMORTALPLUSRUNE_NAME', 'LOC_HAIKESI_RELIC_FARMIMMORTALPLUSRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_FARMIMMORTALPLUSRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_FARMIMMORTALPLUSRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'FARMIMMORTALPLUSRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'FARMIMMORTALPLUSRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'FARMIMMORTALPLUSRUNE';
+UPDATE Haikesi_Relics SET Weight = 50 WHERE RelicType = 'FARMIMMORTALPLUSRUNE';
+
 -- 掌上明猪：暂借未实装「群獭献礼」OTTERANDFRIENDSRUNE 图标（占位 RelicType/LOC 不动）
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
 ('PEARLPIGRUNE', 'LOC_HAIKESI_RELIC_PEARLPIGRUNE_NAME', 'LOC_HAIKESI_RELIC_PEARLPIGRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_PEARLPIGRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_PEARLPIGRUNE', 'PRISMATIC');
@@ -278,6 +298,14 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'PEARLPIGRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'PEARLPIGRUNE';
 UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'PEARLPIGRUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'PEARLPIGRUNE';
+
+-- 草丛插眼：暂借「最万用的瞄准镜」MOSTUNIVERSALSCOPERUNE 图标（占位不动）
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('BUSHWARDRUNE', 'LOC_HAIKESI_RELIC_BUSHWARDRUNE_NAME', 'LOC_HAIKESI_RELIC_BUSHWARDRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_BUSHWARDRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_BUSHWARDRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'BUSHWARDRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'BUSHWARDRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'BUSHWARDRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'BUSHWARDRUNE';
 
 -- 狂野符文：暂借未实装「混沌转化」TRANSMUTECHAOSRUNE 图标（占位不动）
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
@@ -311,6 +339,35 @@ UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SHANGRILARUNE';
 UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'SHANGRILARUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'SHANGRILARUNE';
 
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('SHANGRILAPLUSRUNE', 'LOC_HAIKESI_RELIC_SHANGRILAPLUSRUNE_NAME', 'LOC_HAIKESI_RELIC_SHANGRILAPLUSRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_SHANGRILAPLUSRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_SHANGRILAPLUSRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'SHANGRILAPLUSRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SHANGRILAPLUSRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'SHANGRILAPLUSRUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'SHANGRILAPLUSRUNE';
+
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('SHANGRILAPLUSPLUSRUNE', 'LOC_HAIKESI_RELIC_SHANGRILAPLUSPLUSRUNE_NAME', 'LOC_HAIKESI_RELIC_SHANGRILAPLUSPLUSRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_SHANGRILAPLUSPLUSRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_SHANGRILAPLUSPLUSRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'SHANGRILAPLUSPLUSRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SHANGRILAPLUSPLUSRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'SHANGRILAPLUSPLUSRUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'SHANGRILAPLUSPLUSRUNE';
+
+-- 武僧线叠层：佛功传承 / 气功大师，暂复用秘术冲拳图标
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('BUDDHISTINHERITANCERUNE', 'LOC_HAIKESI_RELIC_BUDDHISTINHERITANCERUNE_NAME', 'LOC_HAIKESI_RELIC_BUDDHISTINHERITANCERUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_BUDDHISTINHERITANCERUNE_FLAVOR', 'ICON_HAIKESI_RELIC_BUDDHISTINHERITANCERUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'BUDDHISTINHERITANCERUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'BUDDHISTINHERITANCERUNE';
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'BUDDHISTINHERITANCERUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'BUDDHISTINHERITANCERUNE';
+
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('QIGONGMASTERRUNE', 'LOC_HAIKESI_RELIC_QIGONGMASTERRUNE_NAME', 'LOC_HAIKESI_RELIC_QIGONGMASTERRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_QIGONGMASTERRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_QIGONGMASTERRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'QIGONGMASTERRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'QIGONGMASTERRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'QIGONGMASTERRUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'QIGONGMASTERRUNE';
+
 -- 憨豆特工：暂借未实装「踢踏舞」TAPDANCERUNE 图标（占位不动）
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
 ('BEANAGENTRUNE', 'LOC_HAIKESI_RELIC_BEANAGENTRUNE_NAME', 'LOC_HAIKESI_RELIC_BEANAGENTRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_BEANAGENTRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_BEANAGENTRUNE', 'PRISMATIC');
@@ -333,7 +390,15 @@ INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'COMMUNISMRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'COMMUNISMRUNE';
 UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'COMMUNISMRUNE';
-UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'COMMUNISMRUNE';
+UPDATE Haikesi_Relics SET Weight = 50 WHERE RelicType = 'COMMUNISMRUNE';
+
+-- 共产主义+：复用共产主义图标，作为纵向叠层。
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('COMMUNISMPLUSRUNE', 'LOC_HAIKESI_RELIC_COMMUNISMPLUSRUNE_NAME', 'LOC_HAIKESI_RELIC_COMMUNISMPLUSRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_COMMUNISMPLUSRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_COMMUNISMPLUSRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'COMMUNISMPLUSRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'COMMUNISMPLUSRUNE';
+UPDATE Haikesi_Relics SET MinTurn = 120 WHERE RelicType = 'COMMUNISMPLUSRUNE';
+UPDATE Haikesi_Relics SET Weight = 50 WHERE RelicType = 'COMMUNISMPLUSRUNE';
 
 -- 精英政治：暂借未实装「神秘」MYSTERYRUNE 图标（占位不动）
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
@@ -341,15 +406,25 @@ INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'CAPITALLEGENDRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'CAPITALLEGENDRUNE';
 UPDATE Haikesi_Relics SET MinTurn = 40 WHERE RelicType = 'CAPITALLEGENDRUNE';
-UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'CAPITALLEGENDRUNE';
+UPDATE Haikesi_Relics SET Weight = 50 WHERE RelicType = 'CAPITALLEGENDRUNE';
 
--- 弑杀蜂群：暂借未实装「悔意」REGRETRUNE 图标（占位不动）
+-- 弑杀蜂群：增生，暂借未实装「悔意」REGRETRUNE 图标（占位不动）
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
 ('WARFEEDRUNE', 'LOC_HAIKESI_RELIC_WARFEEDRUNE_NAME', 'LOC_HAIKESI_RELIC_WARFEEDRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_WARFEEDRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_WARFEEDRUNE', 'PRISMATIC');
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'WARFEEDRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'WARFEEDRUNE';
 UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'WARFEEDRUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'WARFEEDRUNE';
+
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'KILLERHUNTERRUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'KILLERHUNTERRUNE';
+
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('WARFEEDPRESTIGERUNE', 'LOC_HAIKESI_RELIC_WARFEEDPRESTIGERUNE_NAME', 'LOC_HAIKESI_RELIC_WARFEEDPRESTIGERUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_WARFEEDPRESTIGERUNE_FLAVOR', 'ICON_HAIKESI_RELIC_WARFEEDPRESTIGERUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'WARFEEDPRESTIGERUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'WARFEEDPRESTIGERUNE';
+UPDATE Haikesi_Relics SET MinTurn = 0 WHERE RelicType = 'WARFEEDPRESTIGERUNE';
+UPDATE Haikesi_Relics SET Weight = 50 WHERE RelicType = 'WARFEEDPRESTIGERUNE';
 
 -- District 升级套（7 个，复用未实装海克斯 RelicType 以共享预导入图标，均不可重复）
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DRAWYOURSWORDRUNE';       -- 礁石船坞（英国）
@@ -411,7 +486,7 @@ UPDATE Haikesi_Relics SET MaxTurn = 25 WHERE RelicType = 'JEWELEDGAUNTLETRUNE'; 
 UPDATE Haikesi_Relics SET MaxTurn = 25 WHERE RelicType = 'EXPLOSIONARTRUNE';      -- 升级：商业同业公会（德国）
 
 UPDATE Haikesi_Relics SET MinTurn = 60 WHERE RelicType = 'TRIANGULARTRADERUNE';   -- 三角贸易（需出海/国际商路）
-UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'TRIANGULARTRADERUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'TRIANGULARTRADERUNE';
 
 -- ===========================================================================
 -- 全局不可重复：所有海克斯选中一次后永久移出刷新池

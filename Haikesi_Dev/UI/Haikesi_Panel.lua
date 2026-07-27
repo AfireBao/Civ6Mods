@@ -373,12 +373,6 @@ local function ScaleTurnForGameSpeed(standardTurn)
 end
 
 local function IsRelicRefreshEligible(aug, selectedTypes)
-    -- 全队锁定检查（手快全选等）：同队有人选过后，其他人不再刷出
-    local pLocal = Players[Game.GetLocalPlayer()]
-    if pLocal and pLocal:GetProperty('PROP_NW_HAIKESI_LOCKED_' .. aug.Type) == 1 then
-        return false
-    end
-
     -- 回合限制检查（以标准速度为准，经游戏速度缩放）
     if aug.MinTurn ~= nil or aug.MaxTurn ~= nil then
         local currentTurn = Game.GetCurrentGameTurn()
@@ -397,11 +391,14 @@ local function IsRelicRefreshEligible(aug, selectedTypes)
 
     local localPlayerID = Game.GetLocalPlayer()
     local pLocal = Players[localPlayerID]
+    local anyRelicPrereqs = {}
     for _, req in ipairs(prereqs) do
         if req.Kind == 'RELIC' then
             if not selectedTypes[req.Type] then
                 return false
             end
+        elseif req.Kind == 'RELIC_ANY' then
+            table.insert(anyRelicPrereqs, req.Type)
         elseif req.Kind == 'TECHNOLOGY' then
             if not IsTechnologyPrerequisiteMet(pLocal, req.Type, req.AllowInProgress) then
                 return false
@@ -429,6 +426,18 @@ local function IsRelicRefreshEligible(aug, selectedTypes)
                 return false
             end
         else
+            return false
+        end
+    end
+    if #anyRelicPrereqs > 0 then
+        local matched = false
+        for _, relicType in ipairs(anyRelicPrereqs) do
+            if selectedTypes[relicType] then
+                matched = true
+                break
+            end
+        end
+        if not matched then
             return false
         end
     end
