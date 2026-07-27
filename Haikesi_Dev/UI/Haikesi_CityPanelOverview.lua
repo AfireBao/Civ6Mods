@@ -18,6 +18,58 @@ for _, file in ipairs(files) do
 end
 
 local BIOMASS_CITY_PROP = 'PROP_NW_WARFEED_BIOMASS'
+local GENESIS_RELIC = 'GENESISRUNE'
+local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
+local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
+local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
+
+local function GetRelicTypeFromIndex(index)
+    if GameInfo.Haikesi_Relics == nil then return nil end
+    for row in GameInfo.Haikesi_Relics() do
+        if row.Index == index then
+            return row.RelicType
+        end
+    end
+    return nil
+end
+
+local function PlayerHasRelic(playerId, relicType)
+    if playerId == nil or playerId < 0 or relicType == nil then return false end
+    local player = Players[playerId]
+    if player == nil then return false end
+
+    local count = tonumber(player:GetProperty(RelicsCountPropertyKey) or 0) or 0
+    for i = 1, count do
+        if player:GetProperty(RelicsSlotPropertyPrefix .. i) == relicType then
+            return true
+        end
+    end
+
+    local prop = player:GetProperty(RelicsPropertyKey) or ''
+    for idxStr in string.gmatch(tostring(prop), '[^|]+') do
+        local idx = tonumber(idxStr)
+        if idx ~= nil and GetRelicTypeFromIndex(idx) == relicType then
+            return true
+        end
+    end
+    return false
+end
+
+local function AppendExtraLines(baseTip, lines)
+    if lines == nil or #lines == 0 then return baseTip end
+    local parts = {}
+    if baseTip ~= nil and baseTip ~= '' then
+        parts[#parts + 1] = baseTip
+    end
+    parts[#parts + 1] = '[NEWLINE]'
+    for i = 1, #lines do
+        if i > 1 then
+            parts[#parts + 1] = '[NEWLINE]'
+        end
+        parts[#parts + 1] = lines[i]
+    end
+    return table.concat(parts, '')
+end
 
 local function ParseBiomassPin(buildingType)
     if buildingType == nil then return nil end
@@ -110,18 +162,28 @@ local function AppendBiomassToolTip(baseTip, buildingHash, playerId, city)
     local extra = FormatDurationLines(pin, byPin)
     if #extra == 0 then return baseTip end
 
-    local parts = {}
-    if baseTip ~= nil and baseTip ~= '' then
-        parts[#parts + 1] = baseTip
+    return AppendExtraLines(baseTip, extra)
+end
+
+local function AppendGenesisGranaryToolTip(baseTip, buildingHash, playerId, city)
+    local building = GameInfo.Buildings[buildingHash]
+    if building == nil or building.BuildingType ~= 'BUILDING_GRANARY' then
+        return baseTip
     end
-    parts[#parts + 1] = '[NEWLINE]'
-    for i = 1, #extra do
-        if i > 1 then
-            parts[#parts + 1] = '[NEWLINE]'
-        end
-        parts[#parts + 1] = extra[i]
+
+    local ownerId = playerId
+    if (ownerId == nil or ownerId < 0) and city ~= nil then
+        ownerId = city:GetOwner()
     end
-    return table.concat(parts, '')
+    if not PlayerHasRelic(ownerId, GENESIS_RELIC) then
+        return baseTip
+    end
+
+    local line = Locale.Lookup('LOC_HAIKESI_GENESIS_GRANARY_HOUSING_TOOLTIP')
+    if line == nil or line == '' or line == 'LOC_HAIKESI_GENESIS_GRANARY_HOUSING_TOOLTIP' then
+        line = '创世纪：粮仓额外 +1 [ICON_Housing] 住房（总计 +3 [ICON_Housing] 住房）。'
+    end
+    return AppendExtraLines(baseTip, { line })
 end
 
 local function GetRemainSuffix(buildingType, city)
@@ -146,10 +208,17 @@ if ToolTipHelper ~= nil and ToolTipHelper.GetBuildingToolTip ~= nil
         local tip = original(buildingHash, playerId, city)
         local ok, patched = pcall(AppendBiomassToolTip, tip, buildingHash, playerId, city)
         if ok and patched ~= nil then
-            return patched
+            tip = patched
         end
         if not ok then
             print('[Haikesi WarFeed Tip] Append error: ' .. tostring(patched))
+        end
+        ok, patched = pcall(AppendGenesisGranaryToolTip, tip, buildingHash, playerId, city)
+        if ok and patched ~= nil then
+            tip = patched
+        end
+        if not ok then
+            print('[Haikesi Building Tip] Genesis append error: ' .. tostring(patched))
         end
         return tip
     end

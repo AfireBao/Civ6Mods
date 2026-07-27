@@ -6,11 +6,14 @@
 
 local NW_FARM_IMMORTAL_UNIT:string = "UNIT_NW_FARM_IMMORTAL";
 local NW_LAUNCHER_ICON:string = "ICON_UNITOPERATION_PLANT_FOREST";
+local HERMETIC_SECRET_SOCIETY:string = "SECRETSOCIETY_HERMETIC_ORDER";
 
 local m_whitelist:table = nil;
 local m_validTerrainsByResource:table = nil;
 local m_validFeaturesByResource:table = nil;
 local m_launcherAttached:boolean = false;
+local m_lastSecretSocietySync:string = nil;
+local m_lastSecretSocietySyncTurn:number = -1;
 local RelicsPropertyKey:string = "PROP_NW_HAIKESI_RELICS";
 local RelicsCountPropertyKey:string = "PROP_NW_HAIKESI_RELIC_COUNT";
 local RelicsSlotPropertyPrefix:string = "PROP_NW_HAIKESI_RELIC_";
@@ -46,6 +49,67 @@ local function PlayerHasRelic(player:table, relicType:string)
         end
     end
     return false;
+end
+
+local function GetLocalSecretSocietyType()
+    local localPlayerID:number = Game.GetLocalPlayer();
+    if localPlayerID < 0 then
+        return nil, nil;
+    end
+    local player:table = Players[localPlayerID];
+    if player == nil or player.GetGovernors == nil or GameInfo.SecretSocieties == nil then
+        return nil, nil;
+    end
+    local governors:table = player:GetGovernors();
+    if governors == nil or governors.GetSecretSociety == nil then
+        return nil, nil;
+    end
+
+    local rawSociety = governors:GetSecretSociety();
+    if rawSociety == nil then
+        return nil, nil;
+    end
+    if type(rawSociety) == "string" then
+        local societyInfo:table = GameInfo.SecretSocieties[rawSociety];
+        if societyInfo ~= nil then
+            return societyInfo.SecretSocietyType or rawSociety, rawSociety;
+        end
+        return rawSociety, rawSociety;
+    end
+
+    local societyInfo:table = GameInfo.SecretSocieties[rawSociety];
+    if societyInfo ~= nil then
+        return societyInfo.SecretSocietyType, rawSociety;
+    end
+    for row in GameInfo.SecretSocieties() do
+        if row.Index == rawSociety or row.Hash == rawSociety or row.SecretSocietyHash == rawSociety then
+            return row.SecretSocietyType, rawSociety;
+        end
+    end
+    return nil, rawSociety;
+end
+
+local function SyncLocalSecretSocietyToGameplay(force:boolean)
+    local localPlayerID:number = Game.GetLocalPlayer();
+    if localPlayerID < 0 then
+        return;
+    end
+
+    local societyType, rawSociety = GetLocalSecretSocietyType();
+    local syncValue:string = tostring(societyType);
+    local turn:number = Game.GetCurrentGameTurn();
+    if not force and syncValue == m_lastSecretSocietySync and turn == m_lastSecretSocietySyncTurn then
+        return;
+    end
+    m_lastSecretSocietySync = syncValue;
+    m_lastSecretSocietySyncTurn = turn;
+
+    UI.RequestPlayerOperation(localPlayerID, PlayerOperations.EXECUTE_SCRIPT, {
+        OnStart = "HaikesiSyncSecretSociety",
+        IsHermetic = societyType == HERMETIC_SECRET_SOCIETY and 1 or 0,
+        SocietyType = societyType or "",
+        RawSociety = tostring(rawSociety)
+    });
 end
 
 local function BuildCaches()
@@ -211,6 +275,7 @@ end
 local function RequestPlant(resourceIndex:number)
     local pSelectedUnit:table = UI.GetHeadSelectedUnit();
     if pSelectedUnit == nil then return; end
+    SyncLocalSecretSocietyToGameplay(false);
     UI.RequestPlayerOperation(pSelectedUnit:GetOwner(), PlayerOperations.EXECUTE_SCRIPT, {
         OnStart = "HaikesiPlantResource",
         UnitID = pSelectedUnit:GetID(),
@@ -244,6 +309,7 @@ end
 
 local function RefreshLauncher()
     AttachLauncher();
+    SyncLocalSecretSocietyToGameplay(false);
     local selectedUnit:table = UI.GetHeadSelectedUnit();
     local localPlayerID:number = Game.GetLocalPlayer();
     local isOurs:boolean = localPlayerID >= 0
@@ -295,6 +361,7 @@ local function OnInit()
     Controls.LauncherButton:RegisterCallback(Mouse.eMouseEnter, function() UI.PlaySound("Main_Menu_Mouse_Over"); end);
     Controls.LauncherGrid:SetHide(true);
     AttachLauncher();
+    SyncLocalSecretSocietyToGameplay(true);
 end
 
 ContextPtr:SetInitHandler(OnInit);

@@ -114,6 +114,9 @@ function ReadCustomUnitStats( pUnit:table, kSubjectData:table )
 	if unitTypeName == "UNIT_NW_BEAN" then
 		kSubjectData.Name = "LOC_UNIT_NW_BEAN_INSTANCE_NAME";
 	end
+	if unitTypeName == "UNIT_NW_VAMPIRE_DUKE" and kSubjectData.Combat ~= nil then
+		kSubjectData.RangedCombat = math.max(0, kSubjectData.Combat - 10);
+	end
 
 	return kSubjectData;
 end

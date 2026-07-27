@@ -392,6 +392,9 @@
         <Replace Tag="LOC_HAIKESI_RELIC_GENESISRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>既归于虚，则万象皆可重纪。</Text>
         </Replace>
+        <Replace Tag="LOC_HAIKESI_GENESIS_GRANARY_HOUSING_TOOLTIP" Language="zh_Hans_CN">
+            <Text>创世纪：粮仓额外+1 [ICON_Housing] 住房（总计+3 [ICON_Housing] 住房）。</Text>
+        </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_GHOSTFORMRUNE_NAME" Language="zh_Hans_CN">
             <Text>升级：街头狂欢节</Text>
@@ -739,13 +742,33 @@
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_DRACULARUNE_NAME" Language="zh_Hans_CN">
-            <Text>德古拉</Text>
+            <Text>血色契约：血裔</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_DRACULARUNE_DESCRIPTION" Language="zh_Hans_CN">
             <Text>立即在[ICON_Capital]首都获得 3 个吸血鬼单位。[NEWLINE]（仅秘密结社模式可选）</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_DRACULARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>夜色一启，三影叩宫门。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SANGUINECOUNTRUNE_NAME" Language="zh_Hans_CN">
+            <Text>血色契约：伯爵</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SANGUINECOUNTRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>吸血鬼单位 +1 [ICON_Movement] 移动力。吸血鬼击杀敌人时恢复 5 生命值。吸血鬼现在可以建造吸血鬼城堡。[NEWLINE]（前置：血色契约：血裔）</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SANGUINECOUNTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>血不再只是饥渴，也是封地与姓氏。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_SANGUINEDUKERUNE_NAME" Language="zh_Hans_CN">
+            <Text>血色契约：大公</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SANGUINEDUKERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>单位现在可以通过吸血鬼城堡快速移动。立即在[ICON_Capital]首都获得 1 个吸血鬼大公单位。[NEWLINE]（前置：血色契约：伯爵）</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SANGUINEDUKERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>王座并不等待日出。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_OMNIDRAGONSOULRUNE_NAME" Language="zh_Hans_CN">
@@ -862,7 +885,7 @@
             <Text>世外桃源</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市的所有地块 +2 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Production] 生产力。</Text>
+            <Text>所有城市的所有地块 +1 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Production] 生产力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>桃林深处无车马喧，唯听风过水田。</Text>
@@ -1847,6 +1870,63 @@
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_WARFEED_MORSEL_DESCRIPTION" Language="zh_Hans_CN">
             <Text>（已废弃）生物质改为城市限时食物修正。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_UNIT_NW_VAMPIRE_DUKE_NAME" Language="zh_Hans_CN">
+            <Text>吸血鬼大公</Text>
+        </Replace>
+        <Replace Tag="LOC_UNIT_NW_VAMPIRE_DUKE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>血色契约：大公提供的特殊吸血鬼单位。基础近战能力与吸血鬼一致，拥有 [ICON_Range] 2 射程远程攻击，远程攻击力为近战战斗力 -10。击杀单位有 5% 概率在目标位置转化出 1 个满血吸血鬼。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_ABILITY_NW_SANGUINE_COUNT_MOVEMENT_NAME" Language="zh_Hans_CN">
+            <Text>血色契约：伯爵</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_SANGUINE_COUNT_MOVEMENT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>+1 [ICON_Movement] 移动力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_VAMPIRE_DUKE_BLOODLINE_NAME" Language="zh_Hans_CN">
+            <Text>血裔转化</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_VAMPIRE_DUKE_BLOODLINE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>击杀单位有 5% 概率在目标位置转化出 1 个满血吸血鬼。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_VAMPIRE_DUKE_TITLE_AURA_EFFECT_NAME" Language="zh_Hans_CN">
+            <Text>爵位</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_VAMPIRE_DUKE_TITLE_AURA_EFFECT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>位于拥有“爵位”晋升的吸血鬼大公 2 格内时，+5 [ICON_Strength] 战斗力，+1 [ICON_Movement] 移动力。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_STAFF_NAME" Language="zh_Hans_CN">
+            <Text>法杖</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_STAFF_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>贴近目标进行远程攻击时 +10 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_CLOAK_NAME" Language="zh_Hans_CN">
+            <Text>斗篷</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_CLOAK_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>防御时 +7 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_TITLE_NAME" Language="zh_Hans_CN">
+            <Text>爵位</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_TITLE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>2 格内的友方吸血鬼单位 +5 [ICON_Strength] 战斗力，+1 [ICON_Movement] 移动力。</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_TYRANNY_NAME" Language="zh_Hans_CN">
+            <Text>暴政</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_TYRANNY_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>在敌人城市边界内击杀单位时，该城市失去 20 忠诚度。</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_KHORNE_NAME" Language="zh_Hans_CN">
+            <Text>恐虐</Text>
+        </Replace>
+        <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_KHORNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>如果 [ICON_Movement] 移动力允许，则一回合能够攻击两次。</Text>
         </Replace>
 
         <!-- 利刃华尔兹海克斯：敌方境内战斗力 Ability 文本（战斗预览面板会读 Description） -->

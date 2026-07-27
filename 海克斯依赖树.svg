@@ -126,6 +126,11 @@
   <rect class="terminal node" x="840" y="860" width="120" height="40"/><text class="txt" x="900" y="881">草丛插眼</text>
   <path class="edge" d="M770 880 L840 880"/>
 
+  <rect class="root node" x="650" y="950" width="150" height="40"/><text class="txt" x="725" y="971">血色契约：血裔</text>
+  <rect class="mid node" x="840" y="950" width="150" height="40"/><text class="txt" x="915" y="971">血色契约：伯爵</text>
+  <rect class="terminal node" x="1020" y="950" width="120" height="40"/><text class="txt" x="1080" y="971">大公</text>
+  <path class="edge" d="M800 970 L840 970"/><path class="edge" d="M990 970 L1020 970"/>
+
   <!-- Terrain and short lines -->
   <rect class="panel" x="1200" y="505" width="540" height="190"/>
   <text class="panel-title" x="1226" y="540">魅力地块线</text>
@@ -169,7 +174,6 @@
 
   <rect class="lone node" x="75" y="1225" width="135" height="38"/><text class="txt" x="142.5" y="1245">尊我为王</text>
   <rect class="lone node" x="230" y="1225" width="180" height="38"/><text class="txt" x="320" y="1245">COSPLAY / 仿生模仿</text>
-  <rect class="lone node" x="430" y="1225" width="135" height="38"/><text class="txt" x="497.5" y="1245">德古拉</text>
   <rect class="lone node" x="585" y="1225" width="135" height="38"/><text class="txt" x="652.5" y="1245">狂野符文</text>
   <rect class="lone node" x="740" y="1225" width="135" height="38"/><text class="txt" x="807.5" y="1245">掌上明猪</text>
   <rect class="lone node" x="895" y="1225" width="135" height="38"/><text class="txt" x="962.5" y="1245">憨豆特工</text>

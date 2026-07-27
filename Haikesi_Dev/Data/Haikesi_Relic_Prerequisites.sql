@@ -66,6 +66,13 @@ INSERT INTO Haikesi_Relic_Prerequisites
     (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
     ('DRACULARUNE', 'CAPABILITY', 'CAPABILITY_SECRETSOCIETIES', 0);
 
+INSERT INTO Haikesi_Relic_Prerequisites
+    (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
+    ('SANGUINECOUNTRUNE', 'RELIC', 'DRACULARUNE', 0),
+    ('SANGUINECOUNTRUNE', 'CAPABILITY', 'CAPABILITY_SECRETSOCIETIES', 0),
+    ('SANGUINEDUKERUNE', 'RELIC', 'SANGUINECOUNTRUNE', 0),
+    ('SANGUINEDUKERUNE', 'CAPABILITY', 'CAPABILITY_SECRETSOCIETIES', 0);
+
 -- 伟人线叠层：相生 / 星光璀璨需先拥有心胜于物或科学狂人；精英政治需先拥有相生或星光璀璨。
 INSERT INTO Haikesi_Relic_Prerequisites
     (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES

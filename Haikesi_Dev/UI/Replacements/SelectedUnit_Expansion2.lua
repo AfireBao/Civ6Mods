@@ -2,7 +2,7 @@
 --[[
 -- Copyright (c) Firaxis Games 2018
 -- Haikesi: recognize all PROMOTION_CLASS_ROCK_BAND units (not only UNIT_ROCK_BAND);
---          show Juan (UNIT_NW_JUAN) / Xiang (UNIT_NW_XIANG) AOE range like Great Generals.
+--          show Juan / Xiang / Vampire Duke AOE range like Great Generals.
 --]]
 
 -- ===========================================================================
@@ -13,11 +13,25 @@ include("SelectedUnit");
 -- Must match Haikesi_Modifier.sql NW_REQUIRES_JUAN_WITHIN_3 / NW_REQUIRES_XIANG_AT_WAR_AOE MaxDistance
 local JUAN_AOE_RADIUS = 3;
 local XIANG_AOE_RADIUS = 4;
+local VAMPIRE_DUKE_TITLE_AOE_RADIUS = 2;
+local VAMPIRE_DUKE_TITLE_PROMOTION = "PROMOTION_NW_VAMPIRE_DUKE_TITLE";
 
 -- ===========================================================================
 local function IsRockBandPromotionUnit(unitTypeIndex)
 	local unitInfo = GameInfo.Units[unitTypeIndex];
 	return unitInfo ~= nil and unitInfo.PromotionClass == "PROMOTION_CLASS_ROCK_BAND";
+end
+
+local function UnitHasPromotion(kUnit, promotionType)
+	if kUnit == nil or promotionType == nil then
+		return false;
+	end
+	local promotionInfo = GameInfo.UnitPromotions[promotionType];
+	if promotionInfo == nil then
+		return false;
+	end
+	local experience = kUnit:GetExperience();
+	return experience ~= nil and experience:HasPromotion(promotionInfo.Index);
 end
 
 -- Collect plot indices within radius (including the unit tile) for Great People lens
@@ -82,6 +96,10 @@ function RealizeGreatPersonLens(kUnit)
 				UILens.ToggleLayerOn(m_HexColoringGreatPeople);
 			elseif sUnitType == "UNIT_NW_XIANG" then
 				local areaHighlightPlots = CollectAreaHighlightPlots(kUnit, XIANG_AOE_RADIUS);
+				UILens.SetLayerHexesArea(m_HexColoringGreatPeople, playerID, areaHighlightPlots, {});
+				UILens.ToggleLayerOn(m_HexColoringGreatPeople);
+			elseif sUnitType == "UNIT_NW_VAMPIRE_DUKE" and UnitHasPromotion(kUnit, VAMPIRE_DUKE_TITLE_PROMOTION) then
+				local areaHighlightPlots = CollectAreaHighlightPlots(kUnit, VAMPIRE_DUKE_TITLE_AOE_RADIUS);
 				UILens.SetLayerHexesArea(m_HexColoringGreatPeople, playerID, areaHighlightPlots, {});
 				UILens.ToggleLayerOn(m_HexColoringGreatPeople);
 			elseif (kUnitArchaeology ~= nil and unitInfo ~= nil and unitInfo.ExtractsArtifacts == true) then

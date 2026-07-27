@@ -7,6 +7,10 @@
 local NW_FARM_IMMORTAL_UNIT = 'UNIT_NW_FARM_IMMORTAL'
 local FARM_IMMORTAL_PLUS_RELIC = 'FARMIMMORTALPLUSRUNE'
 local HERMETIC_SECRET_SOCIETY = 'SECRETSOCIETY_HERMETIC_ORDER'
+local HERMETIC_GOVERNOR = 'GOVERNOR_HERMETIC_ORDER'
+local HERMETIC_PROMOTION_1 = 'GOVERNOR_PROMOTION_HERMETIC_ORDER_1'
+local HERMETIC_SYNC_PROP = 'PROP_NW_HAIKESI_IS_HERMETIC_ORDER'
+local FARM_IMMORTAL_PLUS_GRANT_PROP = 'PROP_NW_FARM_IMMORTAL_PLUS_UNIT_GRANTED'
 local LEY_LINE_YIELDS_APPLIED_PROP = 'PROP_NW_FARM_IMMORTAL_PLUS_LEY_LINE_YIELDS_APPLIED'
 local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
@@ -94,8 +98,154 @@ local function Haikesi_GetPlayerSecretSocietyType(pPlayer)
 end
 
 local function Haikesi_PlayerIsHermeticOrder(pPlayer)
+    if pPlayer ~= nil and pPlayer:GetProperty(HERMETIC_SYNC_PROP) == 1 then
+        return true, 'ui-sync'
+    end
+
     local societyType = Haikesi_GetPlayerSecretSocietyType(pPlayer)
-    return societyType == HERMETIC_SECRET_SOCIETY
+    if societyType == HERMETIC_SECRET_SOCIETY then
+        return true, 'secret-society'
+    end
+
+    if pPlayer == nil or pPlayer.GetGovernors == nil then
+        return false, 'no-governor-api'
+    end
+    local governors = pPlayer:GetGovernors()
+    local governorInfo = GameInfo.Governors and GameInfo.Governors[HERMETIC_GOVERNOR] or nil
+    if governors == nil or governorInfo == nil then
+        return false, 'no-hermetic-governor'
+    end
+
+    local hasGovernor = false
+    if governors.HasGovernor ~= nil then
+        local ok, result = pcall(governors.HasGovernor, governors, governorInfo.Hash)
+        hasGovernor = ok and result == true
+    end
+
+    local promotionInfo = GameInfo.GovernorPromotions and GameInfo.GovernorPromotions[HERMETIC_PROMOTION_1] or nil
+    if governors.GetGovernorList ~= nil then
+        local okList, _, governorList = pcall(governors.GetGovernorList, governors)
+        if okList and governorList ~= nil then
+            for _, governor in ipairs(governorList) do
+                if governor ~= nil and governor.GetType ~= nil and governor:GetType() == governorInfo.Index then
+                    if hasGovernor then
+                        return true, 'governor'
+                    end
+                    if promotionInfo ~= nil and governor.HasPromotion ~= nil
+                        and governor:HasPromotion(promotionInfo.Index) then
+                        return true, 'governor-promotion'
+                    end
+                end
+            end
+        end
+    end
+
+    if hasGovernor then
+        return true, 'governor-hash'
+    end
+    return false, 'none'
+end
+
+local function Haikesi_CountFarmImmortals(pPlayer)
+    if pPlayer == nil or pPlayer.GetUnits == nil then
+        return 0
+    end
+    local units = pPlayer:GetUnits()
+    if units == nil then
+        return 0
+    end
+    local count = 0
+    for _, unit in units:Members() do
+        local unitInfo = unit ~= nil and GameInfo.Units[unit:GetType()] or nil
+        if unitInfo ~= nil and unitInfo.UnitType == NW_FARM_IMMORTAL_UNIT then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+local function Haikesi_PlotBlocksFarmImmortal(playerID, x, y)
+    for checkPlayerID = 0, 63 do
+        local pPlayer = Players[checkPlayerID]
+        if pPlayer ~= nil and pPlayer.GetUnits ~= nil then
+            local units = pPlayer:GetUnits()
+            if units ~= nil then
+                for _, unit in units:Members() do
+                    if unit ~= nil and unit:GetX() == x and unit:GetY() == y then
+                        local unitInfo = GameInfo.Units[unit:GetType()]
+                        if checkPlayerID ~= playerID
+                            or (unitInfo ~= nil and unitInfo.FormationClass == 'FORMATION_CLASS_CIVILIAN') then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function Haikesi_CanPlaceFarmImmortalAtPlot(playerID, pPlot)
+    if pPlot == nil or pPlot:IsWater() or pPlot:IsImpassable() then
+        return false
+    end
+    return not Haikesi_PlotBlocksFarmImmortal(playerID, pPlot:GetX(), pPlot:GetY())
+end
+
+local function Haikesi_FindFarmImmortalSpawnPlot(playerID, pCity)
+    if pCity == nil then
+        return nil
+    end
+    local centerX, centerY = pCity:GetX(), pCity:GetY()
+    local cityPlot = Map.GetPlot(centerX, centerY)
+    if Haikesi_CanPlaceFarmImmortalAtPlot(playerID, cityPlot) then
+        return cityPlot
+    end
+    for radius = 1, 2 do
+        for dx = -radius, radius do
+            for dy = -radius, radius do
+                local pPlot = Map.GetPlotXY(centerX, centerY, dx, dy)
+                if pPlot ~= nil
+                    and Map.GetPlotDistance(centerX, centerY, pPlot:GetX(), pPlot:GetY()) == radius
+                    and Haikesi_CanPlaceFarmImmortalAtPlot(playerID, pPlot) then
+                    return pPlot
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function Haikesi_GrantFarmImmortalPlusUnit(playerID, pPlayer)
+    if pPlayer == nil then
+        return false
+    end
+    if pPlayer:GetProperty(FARM_IMMORTAL_PLUS_GRANT_PROP) == 1 then
+        return true
+    end
+    if Haikesi_CountFarmImmortals(pPlayer) >= 2 then
+        pPlayer:SetProperty(FARM_IMMORTAL_PLUS_GRANT_PROP, 1)
+        return true
+    end
+
+    local cities = pPlayer:GetCities()
+    local capital = cities ~= nil and cities:GetCapitalCity() or nil
+    local plot = Haikesi_FindFarmImmortalSpawnPlot(playerID, capital)
+    if plot == nil then
+        print('[Haikesi Planter] FARMIMMORTALPLUS grant failed: no spawn plot for Player' .. tostring(playerID))
+        return false
+    end
+
+    local ok, newUnit = pcall(UnitManager.InitUnit, playerID, NW_FARM_IMMORTAL_UNIT, plot:GetX(), plot:GetY())
+    if ok and newUnit ~= nil then
+        pPlayer:SetProperty(FARM_IMMORTAL_PLUS_GRANT_PROP, 1)
+        print(string.format(
+            '[Haikesi Planter] FARMIMMORTALPLUS granted unit at (%d,%d) for Player%s',
+            plot:GetX(), plot:GetY(), tostring(playerID)))
+        return true
+    end
+    print('[Haikesi Planter] FARMIMMORTALPLUS grant error: ' .. tostring(newUnit))
+    return false
 end
 
 function Haikesi_ApplyFarmImmortalPlusRelic(playerID)
@@ -106,14 +256,16 @@ function Haikesi_ApplyFarmImmortalPlusRelic(playerID)
     if not Haikesi_PlanterPlayerHasRelic(pPlayer, FARM_IMMORTAL_PLUS_RELIC) then
         return false
     end
+    Haikesi_GrantFarmImmortalPlusUnit(playerID, pPlayer)
     if pPlayer:GetProperty(LEY_LINE_YIELDS_APPLIED_PROP) == 1 then
         return true
     end
-    if not Haikesi_PlayerIsHermeticOrder(pPlayer) then
+    local isHermetic, hermeticReason = Haikesi_PlayerIsHermeticOrder(pPlayer)
+    if not isHermetic then
         local societyType, rawSociety = Haikesi_GetPlayerSecretSocietyType(pPlayer)
         print(string.format(
-            '[Haikesi Planter] FARMIMMORTALPLUS skipped Player%s: secret society raw=%s resolved=%s',
-            tostring(playerID), tostring(rawSociety), tostring(societyType)
+            '[Haikesi Planter] FARMIMMORTALPLUS skipped Player%s: secret society raw=%s resolved=%s hermetic=%s',
+            tostring(playerID), tostring(rawSociety), tostring(societyType), tostring(hermeticReason)
         ))
         return false
     end
@@ -121,8 +273,28 @@ function Haikesi_ApplyFarmImmortalPlusRelic(playerID)
         pPlayer:AttachModifierByID(modId)
     end
     pPlayer:SetProperty(LEY_LINE_YIELDS_APPLIED_PROP, 1)
-    print('[Haikesi Planter] FARMIMMORTALPLUS ley line yields attached for Player' .. tostring(playerID))
+    print('[Haikesi Planter] FARMIMMORTALPLUS ley line yields attached for Player' .. tostring(playerID)
+        .. ' via ' .. tostring(hermeticReason))
     return true
+end
+
+function HaikesiSyncSecretSociety(playerID, params)
+    local pPlayer = Players[playerID]
+    if pPlayer == nil then
+        return
+    end
+    local isHermetic = params ~= nil and tonumber(params.IsHermetic or 0) == 1
+    pPlayer:SetProperty(HERMETIC_SYNC_PROP, isHermetic and 1 or 0)
+    print(string.format(
+        '[Haikesi Planter] secret society sync Player%s hermetic=%s society=%s raw=%s',
+        tostring(playerID),
+        tostring(isHermetic),
+        tostring(params and params.SocietyType or nil),
+        tostring(params and params.RawSociety or nil)
+    ))
+    if isHermetic then
+        Haikesi_ApplyFarmImmortalPlusRelic(playerID)
+    end
 end
 
 local function Haikesi_PlanterBuildValidImprovementCache()
@@ -326,6 +498,7 @@ end
 local function InitializePlanter()
     Haikesi_PlanterBuildValidImprovementCache()
     GameEvents.HaikesiPlantResource.Add(HaikesiPlantResource)
+    GameEvents.HaikesiSyncSecretSociety.Add(HaikesiSyncSecretSociety)
     if ExposedMembers ~= nil then
         ExposedMembers.Haikesi_ApplyFarmImmortalPlusRelic = Haikesi_ApplyFarmImmortalPlusRelic
     end

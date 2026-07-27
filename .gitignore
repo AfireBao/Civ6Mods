@@ -16,5 +16,6 @@ web/.next/
 # 本地与缓存
 .cursor/
 logs/
+tmp/
 *.log
 .pytest_cache/

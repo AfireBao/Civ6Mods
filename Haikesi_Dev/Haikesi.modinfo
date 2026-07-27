@@ -184,6 +184,12 @@
       </Properties>
       <File>GamePlay/Haikesi_WarFeed_GamePlay.lua</File>
     </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_VampireGamePlay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_Vampire_GamePlay.lua</File>
+    </AddGameplayScripts>
     <AddGameplayScripts id="Haikesi_Trigger">
       <Properties>
         <LoadOrder>16797</LoadOrder>
@@ -238,12 +244,14 @@
     <File>GamePlay/Haikesi_LandLottery_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Eureka_GamePlay.lua</File>
     <File>GamePlay/Haikesi_WarFeed_GamePlay.lua</File>
+    <File>GamePlay/Haikesi_Vampire_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Trigger.lua</File>
     <File>Haikesi.dep</File>
     <File>Platforms/Windows/BLPs/UI/Icons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiExtraIcons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiXiangIcons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiBiomassIcons.blp</File>
+    <File>Platforms/Windows/BLPs/UI/HaikesiVampireDukeIcons.blp</File>
     <File>Text/Haikesi_Text.xml</File>
     <File>UI/Haikesi_Ability_Panel.lua</File>
     <File>UI/Haikesi_Ability_Panel.xml</File>
