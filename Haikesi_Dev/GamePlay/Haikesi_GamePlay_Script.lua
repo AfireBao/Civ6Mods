@@ -2758,8 +2758,8 @@ function Initialize()
     GameEvents.CityBuilt.Add(OnHaikesiCityBuilt)
 
     if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) == 3 then
-        -- Haikesi_DevGrantFullMapVisionForHumans()
-        -- Events.PlayerTurnActivated.Add(OnDevVisionPlayerTurnActivated)
+        Haikesi_DevGrantFullMapVisionForHumans()
+        Events.PlayerTurnActivated.Add(OnDevVisionPlayerTurnActivated)
         Haikesi_DevGrantInitialGoldForHumans()
         Events.PlayerTurnActivated.Add(OnDevInitialGoldPlayerTurnActivated)
     end

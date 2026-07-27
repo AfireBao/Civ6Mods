@@ -114,8 +114,24 @@ function ReadCustomUnitStats( pUnit:table, kSubjectData:table )
 	if unitTypeName == "UNIT_NW_BEAN" then
 		kSubjectData.Name = "LOC_UNIT_NW_BEAN_INSTANCE_NAME";
 	end
-	if unitTypeName == "UNIT_NW_VAMPIRE_DUKE" and kSubjectData.Combat ~= nil then
-		kSubjectData.RangedCombat = math.max(0, kSubjectData.Combat - 10);
+	if unitTypeName == "UNIT_NW_VAMPIRE_DUKE" then
+		local rangedCombat:number = 5;
+		local pPlayer:table = Players[pUnit:GetOwner()];
+		local pPlayerTechs:table = pPlayer ~= nil and pPlayer:GetTechs() or nil;
+		local function HasDukeRangedTech(techType:string)
+			local techInfo:table = GameInfo.Technologies[techType];
+			return pPlayerTechs ~= nil and techInfo ~= nil and pPlayerTechs:HasTech(techInfo.Index);
+		end
+		if HasDukeRangedTech("TECH_ADVANCED_BALLISTICS") then
+			rangedCombat = 40;
+		elseif HasDukeRangedTech("TECH_BALLISTICS") then
+			rangedCombat = 30;
+		elseif HasDukeRangedTech("TECH_MACHINERY") then
+			rangedCombat = 20;
+		elseif HasDukeRangedTech("TECH_ARCHERY") then
+			rangedCombat = 10;
+		end
+		kSubjectData.RangedCombat = rangedCombat;
 	end
 
 	return kSubjectData;

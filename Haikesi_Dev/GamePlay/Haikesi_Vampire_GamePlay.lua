@@ -7,7 +7,6 @@ local SANGUINE_DUKE_RELIC = 'SANGUINEDUKERUNE'
 local VAMPIRE_UNIT = 'UNIT_VAMPIRE'
 local VAMPIRE_DUKE_UNIT = 'UNIT_NW_VAMPIRE_DUKE'
 local TYRANNY_PROMOTION = 'PROMOTION_NW_VAMPIRE_DUKE_TYRANNY'
-local DUKE_RANGED_SCALING_KEY = 'RANGED_COMBAT_STRENGTH_FOR_NW_VAMPIRE_DUKE'
 
 local CONVERSION_DENOM = 100
 local CONVERSION_CHANCE = 5
@@ -21,6 +20,7 @@ local LegacyRelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_SLOT_'
 
 local g_UnitCache = {}
 local g_KillHandled = {}
+local g_HasUnitKilledInCombatEvent = false
 
 local function HV_Log(msg)
     print('[Haikesi Vampire] ' .. tostring(msg))
@@ -89,30 +89,6 @@ local function HV_IsDuke(unit)
     return HV_GetUnitType(unit) == VAMPIRE_DUKE_UNIT
 end
 
-local function HV_SyncDukeRangedScaling(unit)
-    if unit == nil or not HV_IsDuke(unit) then return end
-    if unit.GetCombat == nil or unit.GetProperty == nil or unit.SetProperty == nil then return end
-
-    local unitInfo = GameInfo.Units[VAMPIRE_DUKE_UNIT]
-    local baseCombat = unitInfo and tonumber(unitInfo.Combat or 20) or 20
-    local currentCombat = tonumber(unit:GetCombat() or baseCombat) or baseCombat
-    local amount = math.max(0, currentCombat - baseCombat)
-    local oldAmount = tonumber(unit:GetProperty(DUKE_RANGED_SCALING_KEY) or -1) or -1
-    if oldAmount ~= amount then
-        unit:SetProperty(DUKE_RANGED_SCALING_KEY, amount)
-        HV_Log(string.format('duke ranged scaling P%d U%d combat=%d delta=%d',
-            unit:GetOwner(), unit:GetID(), currentCombat, amount))
-    end
-end
-
-local function HV_SyncPlayerDukes(playerID)
-    local pPlayer = Players[playerID]
-    if pPlayer == nil or pPlayer.GetUnits == nil then return end
-    for _, unit in pPlayer:GetUnits():Members() do
-        HV_SyncDukeRangedScaling(unit)
-    end
-end
-
 local function HV_UnitHasPromotion(unit, promotionType)
     if unit == nil or promotionType == nil then return false end
     local promotionInfo = GameInfo.UnitPromotions[promotionType]
@@ -149,15 +125,50 @@ local function HV_Rand(maxCount, reason)
     return math.random(0, maxCount - 1)
 end
 
+local function HV_IsValidMapLocation(x, y)
+    return x ~= nil and y ~= nil and x >= 0 and y >= 0 and Map.GetPlot(x, y) ~= nil
+end
+
+local function HV_PlotHasBlockingUnit(playerID, x, y)
+    for checkPlayerID = 0, 63 do
+        local pPlayer = Players[checkPlayerID]
+        if pPlayer ~= nil and pPlayer.GetUnits ~= nil then
+            local units = pPlayer:GetUnits()
+            if units ~= nil then
+                for _, unit in units:Members() do
+                    if unit ~= nil and unit:GetX() == x and unit:GetY() == y then
+                        local unitInfo = GameInfo.Units[unit:GetType()]
+                        if checkPlayerID ~= playerID
+                            or (unitInfo ~= nil and unitInfo.FormationClass == 'FORMATION_CLASS_LAND_COMBAT') then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function HV_PlotCanSpawnVampire(playerID, pPlot)
+    if pPlot == nil or pPlot:IsWater() or pPlot:IsImpassable() then
+        return false
+    end
+    return not HV_PlotHasBlockingUnit(playerID, pPlot:GetX(), pPlot:GetY())
+end
+
 local function HV_FindSpawnPlot(playerID, x, y)
+    if not HV_IsValidMapLocation(x, y) then
+        return nil
+    end
     local pPlot = Map.GetPlot(x, y)
-    if pPlot ~= nil and not pPlot:IsWater() and not pPlot:IsImpassable() then
+    if HV_PlotCanSpawnVampire(playerID, pPlot) then
         return pPlot
     end
 
     for dir = 0, 5 do
         local adj = Map.GetAdjacentPlot(x, y, dir)
-        if adj ~= nil and not adj:IsWater() and not adj:IsImpassable() then
+        if HV_PlotCanSpawnVampire(playerID, adj) then
             return adj
         end
     end
@@ -227,22 +238,32 @@ local function HV_ApplyKillEffects(killerPlayerID, killedPlayerID, killedUnitID,
         return
     end
 
-    local key = tostring(Game.GetCurrentGameTurn()) .. ':' .. tostring(killedPlayerID) .. ':' .. tostring(killedUnitID)
-    if g_KillHandled[key] then return end
-    g_KillHandled[key] = true
-
-    if x == nil or y == nil then
+    if not HV_IsValidMapLocation(x, y) then
         local cached = HV_TakeCachedPlot(killedPlayerID, killedUnitID)
         if cached ~= nil then
             x, y = cached.x, cached.y
         end
     end
-    if x == nil or y == nil then
+    if not HV_IsValidMapLocation(x, y) then
         x, y = killerUnit:GetX(), killerUnit:GetY()
     end
+    if not HV_IsValidMapLocation(x, y) then
+        HV_Log(string.format('%s skipped vampire kill effects: invalid spawn source killed=P%s:%s killer=P%s:%s',
+            tostring(source), tostring(killedPlayerID), tostring(killedUnitID),
+            tostring(killerPlayerID), tostring(killerUnitID)))
+        return
+    end
+
+    local key = tostring(Game.GetCurrentGameTurn()) .. ':' .. tostring(killedPlayerID) .. ':' .. tostring(killedUnitID)
+    if g_KillHandled[key] then return end
+    g_KillHandled[key] = true
 
     if HV_Rand(CONVERSION_DENOM, 'HaikesiVampireConversion') < CONVERSION_CHANCE then
-        HV_SpawnVampire(killerPlayerID, x, y)
+        local spawned = HV_SpawnVampire(killerPlayerID, x, y)
+        if not spawned then
+            HV_Log(string.format('%s vampire conversion failed near %s,%s',
+                tostring(source), tostring(x), tostring(y)))
+        end
     end
     if HV_UnitHasPromotion(killerUnit, TYRANNY_PROMOTION) then
         HV_ApplyTyranny(killerPlayerID, killedPlayerID, x, y)
@@ -271,33 +292,53 @@ function Haikesi_OnVampireCombatOccurred(attackerPlayerID, attackerUnitID, defen
     end
 
     if dying(def) then
-        HV_ApplyKillEffects(attackerPlayerID, defenderPlayerID, defenderUnitID, attackerUnitID,
-            def:GetX(), def:GetY(), 'OnCombatOccurred')
+        HV_CacheUnit(defenderPlayerID, defenderUnitID)
+        if not g_HasUnitKilledInCombatEvent then
+            HV_ApplyKillEffects(attackerPlayerID, defenderPlayerID, defenderUnitID, attackerUnitID,
+                def:GetX(), def:GetY(), 'OnCombatOccurred')
+        end
     end
     if dying(atk) then
-        HV_ApplyKillEffects(defenderPlayerID, attackerPlayerID, attackerUnitID, defenderUnitID,
-            atk:GetX(), atk:GetY(), 'OnCombatOccurred')
+        HV_CacheUnit(attackerPlayerID, attackerUnitID)
+        if not g_HasUnitKilledInCombatEvent then
+            HV_ApplyKillEffects(defenderPlayerID, attackerPlayerID, attackerUnitID, defenderUnitID,
+                atk:GetX(), atk:GetY(), 'OnCombatOccurred')
+        end
     end
 end
 
 local function HV_OnUnitAddedToMap(playerID, unitID)
     HV_CacheUnit(playerID, unitID)
-    HV_SyncDukeRangedScaling(HV_GetUnit(playerID, unitID))
 end
 
 local function HV_OnUnitMoved(playerID, unitID)
     HV_CacheUnit(playerID, unitID)
-    HV_SyncDukeRangedScaling(HV_GetUnit(playerID, unitID))
 end
 
 local function HV_OnPlayerTurnActivated(playerID)
     g_KillHandled = {}
-    HV_SyncPlayerDukes(playerID)
+end
+
+local function HV_CacheAllUnits()
+    for playerID = 0, 63 do
+        local pPlayer = Players[playerID]
+        if pPlayer ~= nil and pPlayer.GetUnits ~= nil then
+            local units = pPlayer:GetUnits()
+            if units ~= nil then
+                for _, unit in units:Members() do
+                    if unit ~= nil then
+                        HV_CacheUnit(playerID, unit:GetID())
+                    end
+                end
+            end
+        end
+    end
 end
 
 local function InitializeHaikesiVampire()
     if Events.UnitKilledInCombat ~= nil then
         Events.UnitKilledInCombat.Add(Haikesi_OnVampireUnitKilledInCombat)
+        g_HasUnitKilledInCombatEvent = true
     end
     if GameEvents ~= nil and GameEvents.OnCombatOccurred ~= nil then
         GameEvents.OnCombatOccurred.Add(Haikesi_OnVampireCombatOccurred)
@@ -311,10 +352,7 @@ local function InitializeHaikesiVampire()
     if Events.PlayerTurnActivated ~= nil then
         Events.PlayerTurnActivated.Add(HV_OnPlayerTurnActivated)
     end
-    local maxMajorCivs = GameDefines and GameDefines.MAX_MAJOR_CIVS or 64
-    for playerID = 0, maxMajorCivs - 1 do
-        HV_SyncPlayerDukes(playerID)
-    end
+    HV_CacheAllUnits()
     HV_Log('initialized')
 end
 

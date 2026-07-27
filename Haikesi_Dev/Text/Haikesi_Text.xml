@@ -111,7 +111,7 @@
             <Text>草丛插眼</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BUSHWARDRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>侦察兵 +2 视野，进攻时 -10 [ICON_Strength] 战斗力，防守时 +15 [ICON_Strength] 战斗力。</Text>
+            <Text>侦察兵 +2 视野，进攻时 -10 [ICON_Strength] 战斗力，防守时 +5 [ICON_Strength] 战斗力。研究城堡、膛线、塑料后，防守时各额外 +5 [ICON_Strength] 战斗力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_BUSHWARDRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>草叶无声，目光先至；若被照见，便只能守住这一步。</Text>
@@ -1470,7 +1470,7 @@
             <Text>开发者模式</Text>
         </Row>
         <Row Tag="LOC_NW_HAIKESI_MODE_DEV_DESC" Language="zh_Hans_CN">
-            <Text>每回合解锁一次海克斯选择；人类玩家开局金币补至 1000000（调试用）</Text>
+            <Text>每回合解锁一次海克斯选择；人类玩家开局金币补至 1000000，并获得全图实时视野（调试用）</Text>
         </Row>
 
         <Row Tag="LOC_NW_HAIKESI_MODE_MP_NAME" Language="zh_Hans_CN">
@@ -1876,7 +1876,7 @@
             <Text>吸血鬼大公</Text>
         </Replace>
         <Replace Tag="LOC_UNIT_NW_VAMPIRE_DUKE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>血色契约：大公提供的特殊吸血鬼单位。基础近战能力与吸血鬼一致，拥有 [ICON_Range] 2 射程远程攻击，远程攻击力为近战战斗力 -10。击杀单位有 5% 概率在目标位置转化出 1 个满血吸血鬼。</Text>
+            <Text>血色契约：大公提供的特殊吸血鬼单位。基础近战能力与吸血鬼一致，拥有 [ICON_Range] 2 射程远程攻击，基础远程攻击力为 5；研究箭术后变为 10，研究机械后变为 20，研究弹道学后变为 30，研究高级弹道学后变为 40。击杀单位有 5% 概率在目标位置转化出 1 个满血吸血鬼。</Text>
         </Replace>
 
         <Replace Tag="LOC_ABILITY_NW_SANGUINE_COUNT_MOVEMENT_NAME" Language="zh_Hans_CN">
@@ -1891,18 +1891,33 @@
         <Replace Tag="LOC_ABILITY_NW_VAMPIRE_DUKE_BLOODLINE_DESCRIPTION" Language="zh_Hans_CN">
             <Text>击杀单位有 5% 概率在目标位置转化出 1 个满血吸血鬼。</Text>
         </Replace>
+        <Replace Tag="LOC_HAIKESI_VAMPIRE_DUKE_RANGED_ARCHERY_PREVIEW" Language="zh_Hans_CN">
+            <Text>吸血鬼大公远程力：箭术后变为 10 [ICON_Strength] 战斗力</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_VAMPIRE_DUKE_RANGED_MACHINERY_PREVIEW" Language="zh_Hans_CN">
+            <Text>吸血鬼大公远程力：机械后变为 20 [ICON_Strength] 战斗力</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_VAMPIRE_DUKE_RANGED_BALLISTICS_PREVIEW" Language="zh_Hans_CN">
+            <Text>吸血鬼大公远程力：弹道学后变为 30 [ICON_Strength] 战斗力</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_VAMPIRE_DUKE_RANGED_ADVANCED_BALLISTICS_PREVIEW" Language="zh_Hans_CN">
+            <Text>吸血鬼大公远程力：高级弹道学后变为 40 [ICON_Strength] 战斗力</Text>
+        </Replace>
         <Replace Tag="LOC_ABILITY_NW_VAMPIRE_DUKE_TITLE_AURA_EFFECT_NAME" Language="zh_Hans_CN">
             <Text>爵位</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_VAMPIRE_DUKE_TITLE_AURA_EFFECT_DESCRIPTION" Language="zh_Hans_CN">
             <Text>位于拥有“爵位”晋升的吸血鬼大公 2 格内时，+5 [ICON_Strength] 战斗力，+1 [ICON_Movement] 移动力。</Text>
         </Replace>
+        <Replace Tag="LOC_HAIKESI_VAMPIRE_DUKE_TITLE_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>吸血鬼大公爵位光环：+5 [ICON_Strength] 战斗力</Text>
+        </Replace>
 
         <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_STAFF_NAME" Language="zh_Hans_CN">
             <Text>法杖</Text>
         </Replace>
         <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_STAFF_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>贴近目标进行远程攻击时 +10 [ICON_Strength] 战斗力。</Text>
+            <Text>贴近目标进行远程攻击时 +7 [ICON_Strength] 战斗力。</Text>
         </Replace>
         <Replace Tag="LOC_PROMOTION_NW_VAMPIRE_DUKE_CLOAK_NAME" Language="zh_Hans_CN">
             <Text>斗篷</Text>

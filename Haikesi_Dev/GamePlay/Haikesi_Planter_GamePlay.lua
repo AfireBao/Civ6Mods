@@ -11,15 +11,17 @@ local HERMETIC_GOVERNOR = 'GOVERNOR_HERMETIC_ORDER'
 local HERMETIC_PROMOTION_1 = 'GOVERNOR_PROMOTION_HERMETIC_ORDER_1'
 local HERMETIC_SYNC_PROP = 'PROP_NW_HAIKESI_IS_HERMETIC_ORDER'
 local FARM_IMMORTAL_PLUS_GRANT_PROP = 'PROP_NW_FARM_IMMORTAL_PLUS_UNIT_GRANTED'
-local LEY_LINE_YIELDS_APPLIED_PROP = 'PROP_NW_FARM_IMMORTAL_PLUS_LEY_LINE_YIELDS_APPLIED'
+local LEY_LINE_YIELDS_APPLIED_PROP = 'PROP_NW_FARM_IMMORTAL_PLUS_LEY_LINE_BONUS_MODS_APPLIED'
+local LEY_LINE_RESOURCE_TYPE = 'RESOURCE_LEY_LINE'
+local LEY_LINE_BONUS_PLOT_PROP = 'NW_FARM_IMMORTAL_PLUS_LEY_LINE_BONUS'
 local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
 
 local FARM_IMMORTAL_PLUS_LEY_LINE_YIELD_MODIFIERS = {
-    'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_FOOD',
-    'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_PRODUCTION',
-    'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_SCIENCE'
+    'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_BONUS_FOOD',
+    'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_BONUS_PRODUCTION',
+    'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_BONUS_SCIENCE'
 }
 
 local g_PlanterResourceValidImprovements = nil
@@ -146,6 +148,28 @@ local function Haikesi_PlayerIsHermeticOrder(pPlayer)
     return false, 'none'
 end
 
+local function Haikesi_MarkFarmImmortalPlusLeyLinePlots()
+    if GameInfo.Resources == nil or Map == nil or Map.GetPlotCount == nil then
+        return 0
+    end
+    local leyLineInfo = GameInfo.Resources[LEY_LINE_RESOURCE_TYPE]
+    if leyLineInfo == nil then
+        return 0
+    end
+
+    local marked = 0
+    for plotIndex = 0, Map.GetPlotCount() - 1 do
+        local pPlot = Map.GetPlotByIndex(plotIndex)
+        if pPlot ~= nil
+            and pPlot:GetResourceType() == leyLineInfo.Index
+            and pPlot:GetProperty(LEY_LINE_BONUS_PLOT_PROP) ~= 1 then
+            pPlot:SetProperty(LEY_LINE_BONUS_PLOT_PROP, 1)
+            marked = marked + 1
+        end
+    end
+    return marked
+end
+
 local function Haikesi_CountFarmImmortals(pPlayer)
     if pPlayer == nil or pPlayer.GetUnits == nil then
         return 0
@@ -257,9 +281,6 @@ function Haikesi_ApplyFarmImmortalPlusRelic(playerID)
         return false
     end
     Haikesi_GrantFarmImmortalPlusUnit(playerID, pPlayer)
-    if pPlayer:GetProperty(LEY_LINE_YIELDS_APPLIED_PROP) == 1 then
-        return true
-    end
     local isHermetic, hermeticReason = Haikesi_PlayerIsHermeticOrder(pPlayer)
     if not isHermetic then
         local societyType, rawSociety = Haikesi_GetPlayerSecretSocietyType(pPlayer)
@@ -269,12 +290,20 @@ function Haikesi_ApplyFarmImmortalPlusRelic(playerID)
         ))
         return false
     end
+    local marked = Haikesi_MarkFarmImmortalPlusLeyLinePlots()
+    if pPlayer:GetProperty(LEY_LINE_YIELDS_APPLIED_PROP) == 1 then
+        if marked > 0 then
+            print('[Haikesi Planter] FARMIMMORTALPLUS marked ley line plots: ' .. tostring(marked))
+        end
+        return true
+    end
     for _, modId in ipairs(FARM_IMMORTAL_PLUS_LEY_LINE_YIELD_MODIFIERS) do
         pPlayer:AttachModifierByID(modId)
     end
     pPlayer:SetProperty(LEY_LINE_YIELDS_APPLIED_PROP, 1)
     print('[Haikesi Planter] FARMIMMORTALPLUS ley line yields attached for Player' .. tostring(playerID)
-        .. ' via ' .. tostring(hermeticReason))
+        .. ' via ' .. tostring(hermeticReason)
+        .. ', marked=' .. tostring(marked))
     return true
 end
 
@@ -485,9 +514,12 @@ function HaikesiPlantResource(playerID, params)
         return
     end
 
+    local resInfo = GameInfo.Resources[resourceIndex]
+    if resInfo ~= nil and resInfo.ResourceType == LEY_LINE_RESOURCE_TYPE then
+        plot:SetProperty(LEY_LINE_BONUS_PLOT_PROP, 1)
+    end
     Haikesi_ConsumePlanterCharge(unit, chargeAbility)
     Haikesi_ApplyFarmImmortalPlusRelic(playerID)
-    local resInfo = GameInfo.Resources[resourceIndex]
     print(string.format(
         '[Haikesi Planter] planted %s at (%d,%d) charge=%s',
         resInfo and resInfo.ResourceType or tostring(resourceIndex),
