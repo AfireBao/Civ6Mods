@@ -8,13 +8,13 @@
 
         <Stack ID="SlotStack" Anchor="C,C" Offset="0,-22" StackGrowth="Right" StackPadding="24">
             <Grid Size="132,132" Texture="Controls_ItemContainer" SliceCorner="8,8" SliceTextureSize="16,16">
-                <Image ID="Slot1" Anchor="C,C" Size="96,96" Icon="ICON_UNIT_NW_JUAN" IconSize="96"/>
+                <Image ID="Slot1" Anchor="C,C" Size="96,96" Icon="ICON_HAIKESI_SLOT_JUAN" IconSize="96"/>
             </Grid>
             <Grid Size="132,132" Texture="Controls_ItemContainer" SliceCorner="8,8" SliceTextureSize="16,16">
-                <Image ID="Slot2" Anchor="C,C" Size="96,96" Icon="ICON_UNIT_NW_XIANG" IconSize="96"/>
+                <Image ID="Slot2" Anchor="C,C" Size="96,96" Icon="ICON_HAIKESI_SLOT_XIANG" IconSize="96"/>
             </Grid>
             <Grid Size="132,132" Texture="Controls_ItemContainer" SliceCorner="8,8" SliceTextureSize="16,16">
-                <Image ID="Slot3" Anchor="C,C" Size="96,96" Icon="ICON_UNIT_NW_LAOYE" IconSize="96"/>
+                <Image ID="Slot3" Anchor="C,C" Size="96,96" Icon="ICON_HAIKESI_SLOT_LEAF" IconSize="96"/>
             </Grid>
         </Stack>
 

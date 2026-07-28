@@ -260,6 +260,9 @@
     <File>Platforms/Windows/BLPs/UI/HaikesiXiangIcons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiBiomassIcons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiVampireDukeIcons.blp</File>
+    <File>Platforms/Windows/BLPs/UI/HaikesiSlotJuanIcons.blp</File>
+    <File>Platforms/Windows/BLPs/UI/HaikesiSlotXiangIcons.blp</File>
+    <File>Platforms/Windows/BLPs/UI/HaikesiSlotLeafIcons.blp</File>
     <File>Text/Haikesi_Text.xml</File>
     <File>UI/Haikesi_Ability_Panel.lua</File>
     <File>UI/Haikesi_Ability_Panel.xml</File>

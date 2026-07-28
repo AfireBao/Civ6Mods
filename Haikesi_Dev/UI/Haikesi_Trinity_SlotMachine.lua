@@ -4,9 +4,9 @@
 -- ===========================================================================
 
 local SYMBOL_ICONS = {
-    JUAN = "ICON_UNIT_NW_JUAN",
-    XIANG = "ICON_UNIT_NW_XIANG",
-    LEAF = "ICON_UNIT_NW_LAOYE",
+    JUAN = "ICON_HAIKESI_SLOT_JUAN",
+    XIANG = "ICON_HAIKESI_SLOT_XIANG",
+    LEAF = "ICON_HAIKESI_SLOT_LEAF",
 }
 local SYMBOL_ORDER = { "JUAN", "XIANG", "LEAF" }
 local REWARD_TEXT = {
