@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Context Name="HaikesiTrinitySlotMachine" Hidden="1">
+    <Container Style="FullScreenVignetteConsumer"/>
+
+    <Container ID="PopupContainer" Anchor="C,C" Size="640,360">
+        <Container ID="ModalFrame" Style="ModalScreenWide"/>
+        <Label ID="Title" Anchor="C,T" Offset="0,22" Style="FontFlair20" String="LOC_HAIKESI_SLOT_MACHINE_TITLE"/>
+
+        <Stack ID="SlotStack" Anchor="C,C" Offset="0,-22" StackGrowth="Right" StackPadding="24">
+            <Grid Size="132,132" Texture="Controls_ItemContainer" SliceCorner="8,8" SliceTextureSize="16,16">
+                <Image ID="Slot1" Anchor="C,C" Size="96,96" Icon="ICON_UNIT_NW_JUAN" IconSize="96"/>
+            </Grid>
+            <Grid Size="132,132" Texture="Controls_ItemContainer" SliceCorner="8,8" SliceTextureSize="16,16">
+                <Image ID="Slot2" Anchor="C,C" Size="96,96" Icon="ICON_UNIT_NW_XIANG" IconSize="96"/>
+            </Grid>
+            <Grid Size="132,132" Texture="Controls_ItemContainer" SliceCorner="8,8" SliceTextureSize="16,16">
+                <Image ID="Slot3" Anchor="C,C" Size="96,96" Icon="ICON_UNIT_NW_LAOYE" IconSize="96"/>
+            </Grid>
+        </Stack>
+
+        <Label ID="ResultText" Anchor="C,B" Offset="0,76" Size="560,36" Style="FontNormal16" Alignment="Center" WrapWidth="540"/>
+        <GridButton ID="CloseButton" Anchor="C,B" Offset="0,22" Size="180,41" Style="MainButton" String="LOC_CLOSE"/>
+    </Container>
+</Context>

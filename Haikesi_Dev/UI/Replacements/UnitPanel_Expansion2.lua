@@ -75,6 +75,7 @@ end
 local BASE_InitSubjectData = InitSubjectData;
 local BASE_GetBuildImprovementParameters = GetBuildImprovementParameters;
 local BASE_ReadCustomUnitStats = ReadCustomUnitStats;
+local BASE_GetUnitActionsTable = GetUnitActionsTable;
 local Base_RealizeSpecializedViews = RealizeSpecializedViews;
 local BASE_FilterUnitStatsFromUnitData = FilterUnitStatsFromUnitData;
 local BASE_LateCheckOperationBeforeAdd = LateCheckOperationBeforeAdd;
@@ -95,6 +96,48 @@ function InitSubjectData()
 	kSubjectData.AlbumSales		= 0;	
 	kSubjectData.IsRockbandUnit	= false;
 	return kSubjectData;	
+end
+
+function GetUnitActionsTable(pUnit)
+	local actionsTable = BASE_GetUnitActionsTable(pUnit);
+	if pUnit == nil or actionsTable == nil or pUnit:GetMovesRemaining() <= 0 then
+		return actionsTable;
+	end
+
+	local unitInfo = GameInfo.Units[pUnit:GetUnitType()];
+	local unitType = unitInfo and unitInfo.UnitType or nil;
+	local trinityRetireTarget = nil;
+	local trinityRetireName = nil;
+	if unitType == "UNIT_NW_JUAN" then
+		trinityRetireTarget = "UNIT_NW_XIANG";
+		trinityRetireName = "LOC_HAIKESI_TRINITY_RETIRE_TO_XIANG_NAME";
+	elseif unitType == "UNIT_NW_XIANG" then
+		trinityRetireTarget = "UNIT_NW_LAOYE";
+		trinityRetireName = "LOC_HAIKESI_TRINITY_RETIRE_TO_LAOYE_NAME";
+	elseif unitType == "UNIT_NW_LAOYE" then
+		trinityRetireTarget = "UNIT_NW_JUAN";
+		trinityRetireName = "LOC_HAIKESI_TRINITY_RETIRE_TO_JUAN_NAME";
+	end
+	if trinityRetireTarget ~= nil then
+		local retireAction = {
+			CategoryInUI = "INPLACE",
+			Icon = (GameInfo.Units[trinityRetireTarget] ~= nil and "ICON_" .. trinityRetireTarget) or "ICON_UNITOPERATION_SLEEP",
+			Sound = "Confirm_Dedication"
+		};
+		local toolTipString = Locale.Lookup(trinityRetireName)
+			.. "[NEWLINE]" .. Locale.Lookup("LOC_HAIKESI_TRINITY_RETIRE_DESCRIPTION");
+		local callback = function()
+			local param = {};
+			param["OnStart"] = "HaikesiSelectRelic";
+			param["TrinityRetire"] = "1";
+			param["UnitID"] = pUnit:GetID();
+			param["FromUnitType"] = unitType;
+			param["ToUnitType"] = trinityRetireTarget;
+			UI.RequestPlayerOperation(pUnit:GetOwner(), PlayerOperations.EXECUTE_SCRIPT, param);
+		end
+		AddActionToTable(actionsTable, retireAction, false, toolTipString, 991731, callback, nil, nil, retireAction.Icon);
+	end
+	return actionsTable;
 end
 
 

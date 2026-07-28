@@ -1857,6 +1857,20 @@ local function OnExternalAICheck(_, bIsFirstTime)
 end
 
 function HaikesiSelectRelic(iPlayer, param)
+    if param ~= nil and param.TrinityRetire ~= nil and tostring(param.TrinityRetire) ~= "" then
+        print("[Haikesi Trinity] HaikesiSelectRelic retire path caller=P" .. tostring(iPlayer))
+        local fn = ExposedMembers and ExposedMembers.HaikesiTrinityRetire
+        if type(fn) == "function" then
+            local ok, err = pcall(fn, iPlayer, param)
+            if not ok then
+                print("[Haikesi Trinity] retire failed: " .. tostring(err))
+            end
+        else
+            print("[Haikesi Trinity] HaikesiTrinityRetire missing")
+        end
+        return
+    end
+
     -- 三角贸易完成结算（不选海克斯；借用本事件：自定义 OnStart / ExposedMembers 不可靠）
     if param ~= nil and param.TriTradeQueue ~= nil and tostring(param.TriTradeQueue) ~= "" then
         print("[Haikesi TRI] HaikesiSelectRelic TriTradeQueue path caller=P" .. tostring(iPlayer))

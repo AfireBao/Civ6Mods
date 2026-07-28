@@ -2471,28 +2471,37 @@ INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementI
     ('UNIT_IS_BUILDER', 'NW_REQUIRES_UNIT_IS_FARM_IMMORTAL');
 
 -- ===========================================================================
--- 掌上明猪 (PEARLPIGRUNE): 首都赠送 1 名「娟」
+-- 三位一体 (TRINITYRUNE): 首都赠送 1 名「娟」
 -- 娟：民用支援单位（猪鼻单位图标 / 3D 复用大将军）；光环抄大将军 AOE——周围 3 格己方单位 +1 移动力
--- 卡面图标暂借未实装 OTTERANDFRIENDSRUNE，不改写占位
+-- 捞叶：复用自然学家模型，作为三位一体老虎机入口单位
 -- ===========================================================================
 INSERT OR IGNORE INTO Types (Type, Kind) VALUES
     ('UNIT_NW_JUAN',              'KIND_UNIT'),
+    ('UNIT_NW_LAOYE',             'KIND_UNIT'),
     ('ABILITY_NW_JUAN',           'KIND_ABILITY'),
     ('ABILITY_NW_JUAN_MOVEMENT',  'KIND_ABILITY'),
-    ('TRAIT_NW_JUAN_LOCK',        'KIND_TRAIT');
+    ('TRAIT_NW_JUAN_LOCK',        'KIND_TRAIT'),
+    ('TRAIT_NW_LAOYE_LOCK',       'KIND_TRAIT');
 
 INSERT OR IGNORE INTO Traits (TraitType, Name, Description, InternalOnly) VALUES
     ('TRAIT_NW_JUAN_LOCK',
      'LOC_UNIT_NW_JUAN_NAME',
      'LOC_UNIT_NW_JUAN_DESCRIPTION',
+     1),
+    ('TRAIT_NW_LAOYE_LOCK',
+     'LOC_UNIT_NW_LAOYE_NAME',
+     'LOC_UNIT_NW_LAOYE_DESCRIPTION',
      1);
 
 INSERT OR IGNORE INTO Tags (Tag, Vocabulary) VALUES
-    ('CLASS_NW_JUAN', 'ABILITY_CLASS');
+    ('CLASS_NW_JUAN', 'ABILITY_CLASS'),
+    ('CLASS_NW_LAOYE', 'ABILITY_CLASS');
 
 INSERT OR IGNORE INTO TypeTags (Type, Tag) VALUES
     ('UNIT_NW_JUAN',             'CLASS_LANDCIVILIAN'),
     ('UNIT_NW_JUAN',             'CLASS_NW_JUAN'),
+    ('UNIT_NW_LAOYE',            'CLASS_LANDCIVILIAN'),
+    ('UNIT_NW_LAOYE',            'CLASS_NW_LAOYE'),
     ('ABILITY_NW_JUAN',          'CLASS_NW_JUAN'),
     ('ABILITY_NW_JUAN_MOVEMENT', 'CLASS_ALL_UNITS');
 
@@ -2519,6 +2528,25 @@ INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactiv
     ('ABILITY_NW_JUAN_MOVEMENT',
      'LOC_ABILITY_NW_JUAN_MOVEMENT_NAME',
      'LOC_ABILITY_NW_JUAN_MOVEMENT_DESCRIPTION', 1);
+
+INSERT OR IGNORE INTO Units (
+    UnitType, Name, Description,
+    Cost, Maintenance, BaseMoves, BaseSightRange, ZoneOfControl,
+    Domain, FormationClass, AdvisorType,
+    PurchaseYield, MustPurchase, TraitType,
+    CanCapture, CanRetreatWhenCaptured
+) VALUES (
+    'UNIT_NW_LAOYE',
+    'LOC_UNIT_NW_LAOYE_NAME',
+    'LOC_UNIT_NW_LAOYE_DESCRIPTION',
+    0, 0, 4, 3, 0,
+    'DOMAIN_LAND', 'FORMATION_CLASS_CIVILIAN', 'ADVISOR_GENERIC',
+    'YIELD_GOLD', 1, 'TRAIT_NW_LAOYE_LOCK',
+    0, 1
+);
+
+INSERT OR IGNORE INTO UnitAiInfos (UnitType, AiType) VALUES
+    ('UNIT_NW_LAOYE', 'UNITTYPE_CIVILIAN');
 
 -- 光环：己方单位在娟周围 0–3 格时获得移动力 Ability（大将军 AOE 范式）
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
@@ -2564,11 +2592,11 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
     ('MODIFIER_NW_JUAN_GRANT', 'ModifierId', 'MODIFIER_NW_JUAN_GRANT_EFFECT');
 
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
-    ('PEARLPIGRUNE', 'MODIFIER_NW_JUAN_GRANT');
+    ('TRINITYRUNE', 'MODIFIER_NW_JUAN_GRANT');
 
 -- ===========================================================================
--- 高翔导航 (HIGHFLIGHTNAVRUNE): 首都赠送 1 名「翔」
--- 翔：可捕获民用支援单位（3D 复用补给车队/医疗兵线）；4 环内交战非友军 -1 移动力
+-- 翔
+-- 翔：不可捕获民用支援单位（3D 复用补给车队/医疗兵线）；4 环内交战非友军 -1 移动力
 -- 机制: Varu 同款 ALL_UNITS_ATTACH_MODIFIER + MODIFIER_PLAYER_UNIT_ADJUST_MOVEMENT
 -- 卡面图标暂借 PANDORASBOXRUNE，不改写占位
 -- ===========================================================================
@@ -2605,14 +2633,13 @@ INSERT OR IGNORE INTO Units (
     0, 0, 4, 2, 0,
     'DOMAIN_LAND', 'FORMATION_CLASS_CIVILIAN', 'ADVISOR_CONQUEST',
     'YIELD_GOLD', 1, 'TRAIT_NW_XIANG_LOCK',
-    0, 0
+    0, 1
 );
--- 旧存档/误配：翔应可被捕获（非娟式回城）；CanCapture=0 表示不能占城
-UPDATE Units SET CanCapture = 0, CanRetreatWhenCaptured = 0
+-- 翔不可捕获；被敌方单位踩中时与自然学家同款回城。
+UPDATE Units SET CanCapture = 0, CanRetreatWhenCaptured = 1
     WHERE UnitType = 'UNIT_NW_XIANG';
 
-INSERT OR IGNORE INTO UnitCaptures (CapturedUnitType, BecomesUnitType) VALUES
-    ('UNIT_NW_XIANG', 'UNIT_NW_XIANG');
+DELETE FROM UnitCaptures WHERE CapturedUnitType = 'UNIT_NW_XIANG';
 
 INSERT OR IGNORE INTO UnitAiInfos (UnitType, AiType) VALUES
     ('UNIT_NW_XIANG', 'UNITTYPE_CIVILIAN');
@@ -2691,8 +2718,8 @@ INSERT OR IGNORE INTO Modifiers
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
     ('MODIFIER_NW_XIANG_GRANT', 'ModifierId', 'MODIFIER_NW_XIANG_GRANT_EFFECT');
 
-INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
-    ('HIGHFLIGHTNAVRUNE', 'MODIFIER_NW_XIANG_GRANT');
+DELETE FROM Haikesi_Relic_Modifiers
+    WHERE RelicType = 'HIGHFLIGHTNAVRUNE' AND ModifierId = 'MODIFIER_NW_XIANG_GRANT';
 
 -- ===========================================================================
 -- 世外桃源 (SHANGRILARUNE): 全城地块 +1 魅力；惊艳（魅力≥4）地块 +1 生产力

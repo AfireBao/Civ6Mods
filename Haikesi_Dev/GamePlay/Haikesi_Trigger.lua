@@ -5,6 +5,9 @@
 
 --||======================= 选择后递增计数 ========================||--
 function OnRelicSelected(playerID, param)
+    if param ~= nil and param.TrinityRetire ~= nil and tostring(param.TrinityRetire) ~= "" then
+        return
+    end
     -- 三角贸易结算借用 HaikesiSelectRelic 通道，不计入选择次数
     if param ~= nil and param.TriTradeQueue ~= nil and tostring(param.TriTradeQueue) ~= "" then
         return

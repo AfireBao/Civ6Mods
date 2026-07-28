@@ -821,6 +821,16 @@
             <Text>工头喊了一嗓子</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_TRINITYRUNE_NAME" Language="zh_Hans_CN">
+            <Text>三位一体</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TRINITYRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>获得一只娟。娟、翔、捞叶可以依次隐退转换；捞叶隐退后会进入老虎机游戏。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_TRINITYRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一声招呼，三张脸轮流探出头来。</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_RELIC_LANDLOTTERYRUNE_NAME" Language="zh_Hans_CN">
             <Text>狂野符文</Text>
         </Replace>
@@ -949,7 +959,7 @@
             <Text>娟</Text>
         </Replace>
         <Replace Tag="LOC_UNIT_NW_JUAN_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>特殊支援单位。周围 3 个单元格内的己方单位 +1 [ICON_Movement] 移动力。</Text>
+            <Text>特殊支援单位。周围 3 个单元格内的己方单位 +1 [ICON_Movement] 移动力。可以隐退为翔。</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_JUAN_DESCRIPTION" Language="zh_Hans_CN">
             <Text>周围 3 个单元格内的己方单位 +1 [ICON_Movement] 移动力。</Text>
@@ -965,7 +975,7 @@
             <Text>翔</Text>
         </Replace>
         <Replace Tag="LOC_UNIT_NW_XIANG_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>特殊支援单位，可被敌方捕获。周围 4 个单元格内与己方交战的非友军单位 -1 [ICON_Movement] 移动力。</Text>
+            <Text>特殊支援单位，被敌方单位踩中时回到最近城市。周围 4 个单元格内与己方交战的非友军单位 -1 [ICON_Movement] 移动力。可以隐退为捞叶。</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_XIANG_DESCRIPTION" Language="zh_Hans_CN">
             <Text>周围 4 个单元格内与己方交战的非友军单位 -1 [ICON_Movement] 移动力。</Text>
@@ -975,6 +985,49 @@
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_XIANG_ENEMY_SLOW_DESCRIPTION" Language="zh_Hans_CN">
             <Text>-1 [ICON_Movement] 移动力（来自附近交战中的翔）。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_UNIT_NW_LAOYE_NAME" Language="zh_Hans_CN">
+            <Text>捞叶</Text>
+        </Replace>
+        <Replace Tag="LOC_UNIT_NW_LAOYE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>特殊支援单位，被敌方单位踩中时回到最近城市。只能隐退；隐退后获得一只娟并进入老虎机游戏。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_TRINITY_RETIRE_TO_XIANG_NAME" Language="zh_Hans_CN">
+            <Text>隐退：化翔</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_TRINITY_RETIRE_TO_LAOYE_NAME" Language="zh_Hans_CN">
+            <Text>隐退：化叶</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_TRINITY_RETIRE_TO_JUAN_NAME" Language="zh_Hans_CN">
+            <Text>隐退：归娟</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_TRINITY_RETIRE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>消耗该单位并生成下一个形态。需要剩余移动力大于 0；新单位行动力为 0。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_TITLE" Language="zh_Hans_CN">
+            <Text>三位一体</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_RESULT_NONE" Language="zh_Hans_CN">
+            <Text>无事发生</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_RESULT_JUAN2" Language="zh_Hans_CN">
+            <Text>获得一个本时代或上一时代科技的随机单位</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_RESULT_JUAN3" Language="zh_Hans_CN">
+            <Text>获得一个下一时代科技的随机单位；若已无下一时代，则改为本时代</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_RESULT_LEAF2" Language="zh_Hans_CN">
+            <Text>获得当前回合收入的 1/5：科技、文化、金币、信仰</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_RESULT_LEAF3" Language="zh_Hans_CN">
+            <Text>获得当前回合收入：科技、文化、金币、信仰</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_RESULT_XIANG2" Language="zh_Hans_CN">
+            <Text>最新城市附近出现 2 个当前时代蛮族战士</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_RESULT_XIANG3" Language="zh_Hans_CN">
+            <Text>最新城市触发一次南蛮入侵</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_PANDORASBOXRUNE_NAME" Language="zh_Hans_CN">
