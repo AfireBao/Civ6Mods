@@ -19,6 +19,7 @@ end
 
 local BIOMASS_CITY_PROP = 'PROP_NW_WARFEED_BIOMASS'
 local GENESIS_RELIC = 'GENESISRUNE'
+local DEATH_CULT_RELIC = 'DEATHCULTRUNE'
 local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
@@ -71,10 +72,45 @@ local function AppendExtraLines(baseTip, lines)
     return table.concat(parts, '')
 end
 
+local function LookupOrFallback(tag, fallback)
+    local s = Locale.Lookup(tag)
+    if s == nil or s == '' or s == tag then
+        return fallback
+    end
+    return s
+end
+
+local function SetToolTipIfPossible(control, tip)
+    if control ~= nil and control.SetToolTipString ~= nil then
+        control:SetToolTipString(tip or '')
+    end
+end
+
+local function FormatPlusMinusPercent(value)
+    local rounded = value
+    if Round ~= nil then
+        rounded = Round(value, 0)
+    else
+        rounded = math.floor(value + 0.5)
+    end
+
+    if toPlusMinusString ~= nil then
+        return toPlusMinusString(rounded) .. '%'
+    end
+    if rounded > 0 then
+        return '+' .. tostring(rounded) .. '%'
+    end
+    return tostring(rounded) .. '%'
+end
+
 local function ParseBiomassPin(buildingType)
     if buildingType == nil then return nil end
     local pinStr = string.match(buildingType, '^BUILDING_NW_WARFEED_BIOMASS_P(%d+)$')
     return tonumber(pinStr)
+end
+
+local function IsHaikesiHiddenBuilding(buildingType)
+    return buildingType == 'BUILDING_NW_DEATH_CULT_PROJECT_UNLOCK'
 end
 
 local function ParseCityBiomassProp(raw)
@@ -186,6 +222,33 @@ local function AppendGenesisGranaryToolTip(baseTip, buildingHash, playerId, city
     return AppendExtraLines(baseTip, { line })
 end
 
+local function RefreshDeathCultGrowthRow(data)
+    if Controls == nil or Controls.OtherGrowthBonuses == nil then
+        return
+    end
+
+    local tip = ''
+    local city = UI.GetHeadSelectedCity()
+    if city ~= nil
+        and (data == nil or data.TurnsUntilGrowth == nil or data.TurnsUntilGrowth > -1)
+        and PlayerHasRelic(city:GetOwner(), DEATH_CULT_RELIC) then
+        tip = LookupOrFallback(
+            'LOC_HAIKESI_DEATH_CULT_GROWTH_TOOLTIP',
+            '死亡崇拜：城市增长速度 +50%。')
+
+        if data ~= nil and data.OtherGrowthModifiers ~= nil and Controls.OtherGrowthBonuses.SetText ~= nil then
+            local percentText = FormatPlusMinusPercent((tonumber(data.OtherGrowthModifiers) or 0) * 100)
+            local rowText = Locale.Lookup('LOC_HAIKESI_DEATH_CULT_GROWTH_ROW', percentText)
+            if rowText == nil or rowText == '' or rowText == 'LOC_HAIKESI_DEATH_CULT_GROWTH_ROW' then
+                rowText = percentText
+            end
+            Controls.OtherGrowthBonuses:SetText(rowText)
+        end
+    end
+
+    SetToolTipIfPossible(Controls.OtherGrowthBonuses, tip)
+end
+
 local function GetRemainSuffix(buildingType, city)
     local pin = ParseBiomassPin(buildingType)
     if pin == nil or city == nil then return nil end
@@ -231,6 +294,20 @@ else
     print('[Haikesi WarFeed Tip] WARN: ToolTipHelper.GetBuildingToolTip unavailable after base include')
 end
 
+if ViewPanelCitizensGrowth ~= nil then
+    local BASE_ViewPanelCitizensGrowth_HaikesiDeathCult = ViewPanelCitizensGrowth
+    function ViewPanelCitizensGrowth(data)
+        BASE_ViewPanelCitizensGrowth_HaikesiDeathCult(data)
+        local ok, err = pcall(RefreshDeathCultGrowthRow, data)
+        if not ok then
+            print('[Haikesi City Growth Tip] Death Cult growth row error: ' .. tostring(err))
+        end
+    end
+    print('[Haikesi City Growth Tip] wrapped ViewPanelCitizensGrowth for Death Cult growth source')
+else
+    print('[Haikesi City Growth Tip] WARN: ViewPanelCitizensGrowth missing')
+end
+
 if ViewPanelBreakdown ~= nil then
     local BASE_ViewPanelBreakdown = ViewPanelBreakdown
     function ViewPanelBreakdown(data)
@@ -238,6 +315,12 @@ if ViewPanelBreakdown ~= nil then
         if data ~= nil and data.BuildingsAndDistricts ~= nil and city ~= nil then
             for _, district in ipairs(data.BuildingsAndDistricts) do
                 if district.Buildings ~= nil then
+                    for i = #district.Buildings, 1, -1 do
+                        local building = district.Buildings[i]
+                        if building ~= nil and IsHaikesiHiddenBuilding(building.Type) then
+                            table.remove(district.Buildings, i)
+                        end
+                    end
                     for _, building in ipairs(district.Buildings) do
                         local suffix = GetRemainSuffix(building.Type, city)
                         if suffix ~= nil and building.Name ~= nil then

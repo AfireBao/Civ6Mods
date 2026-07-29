@@ -17,6 +17,51 @@ local CREATE_PANTHEON_MOD_IDS = {
 	"b85e61c0-26b7-4098-81ba-8566b8537dcb", -- Workshop Create Your Pantheon
 };
 
+local HAIKESI_RELICS_PROPERTY_KEY = "PROP_NW_HAIKESI_RELICS";
+local HAIKESI_RELICS_COUNT_PROPERTY_KEY = "PROP_NW_HAIKESI_RELIC_COUNT";
+local HAIKESI_RELICS_SLOT_PROPERTY_PREFIX = "PROP_NW_HAIKESI_RELIC_";
+local HAIKESI_LEGACY_RELICS_COUNT_PROPERTY_KEY = "PROP_NW_HAIKESI_RELICS_COUNT";
+local HAIKESI_LEGACY_RELICS_SLOT_PROPERTY_PREFIX = "PROP_NW_HAIKESI_RELIC_SLOT_";
+
+InterfaceModeTypes.DEATH_CULT_DEVOUR = InterfaceModeTypes.DEATH_CULT_DEVOUR or DB.MakeHash("INTERFACEMODE_DEATH_CULT_DEVOUR");
+
+local function HaikesiGetRelicTypeFromIndex(index:number)
+	if GameInfo.Haikesi_Relics == nil then return nil; end
+	for row in GameInfo.Haikesi_Relics() do
+		if row.Index == index then
+			return row.RelicType;
+		end
+	end
+	return nil;
+end
+
+local function HaikesiPlayerHasRelic(playerID:number, relicType:string)
+	local pPlayer = Players[playerID];
+	if pPlayer == nil or relicType == nil then return false; end
+
+	local function checkSlots(countKey:string, prefix:string)
+		local count:number = tonumber(pPlayer:GetProperty(countKey) or 0) or 0;
+		for i:number = 1, count do
+			if pPlayer:GetProperty(prefix .. i) == relicType then
+				return true;
+			end
+		end
+		return false;
+	end
+
+	if checkSlots(HAIKESI_RELICS_COUNT_PROPERTY_KEY, HAIKESI_RELICS_SLOT_PROPERTY_PREFIX) then return true; end
+	if checkSlots(HAIKESI_LEGACY_RELICS_COUNT_PROPERTY_KEY, HAIKESI_LEGACY_RELICS_SLOT_PROPERTY_PREFIX) then return true; end
+
+	local prop:string = tostring(pPlayer:GetProperty(HAIKESI_RELICS_PROPERTY_KEY) or "");
+	for idxStr:string in string.gmatch(prop, "[^|]+") do
+		local idx:number = tonumber(idxStr);
+		if idx ~= nil and HaikesiGetRelicTypeFromIndex(idx) == relicType then
+			return true;
+		end
+	end
+	return false;
+end
+
 local function IsCreatePantheonActive()
 	if Modding ~= nil then
 		if type(Modding.IsModActive) == "function" then
@@ -136,6 +181,24 @@ function GetUnitActionsTable(pUnit)
 			UI.RequestPlayerOperation(pUnit:GetOwner(), PlayerOperations.EXECUTE_SCRIPT, param);
 		end
 		AddActionToTable(actionsTable, retireAction, false, toolTipString, 991731, callback, nil, nil, retireAction.Icon);
+	end
+	if unitType == "UNIT_NW_ZOMBIE" and pUnit:GetMovesRemaining() > 0 and HaikesiPlayerHasRelic(pUnit:GetOwner(), "NECROMILITARISMRUNE") then
+		local devourAction = {
+			CategoryInUI = "INPLACE",
+			Icon = "ICON_HAIKESI_UNITOPERATION_DEVOUR",
+			Sound = "Confirm_Dedication"
+		};
+		local toolTipString = Locale.Lookup("LOC_HAIKESI_ZOMBIE_DEVOUR_NAME")
+			.. "[NEWLINE]" .. Locale.Lookup("LOC_HAIKESI_ZOMBIE_DEVOUR_DESCRIPTION");
+		local callback = function()
+			if UI.GetInterfaceMode() == InterfaceModeTypes.DEATH_CULT_DEVOUR then
+				UI.SetInterfaceMode(InterfaceModeTypes.SELECTION);
+			else
+				UI.SetInterfaceMode(InterfaceModeTypes.DEATH_CULT_DEVOUR);
+			end
+			ContextPtr:RequestRefresh();
+		end
+		AddActionToTable(actionsTable, devourAction, false, toolTipString, 991732, callback, nil, nil, devourAction.Icon);
 	end
 	return actionsTable;
 end

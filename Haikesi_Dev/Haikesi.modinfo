@@ -185,6 +185,12 @@
       </Properties>
       <File>GamePlay/Haikesi_WarFeed_GamePlay.lua</File>
     </AddGameplayScripts>
+    <AddGameplayScripts id="Haikesi_DeathCultGamePlay">
+      <Properties>
+        <LoadOrder>16796</LoadOrder>
+      </Properties>
+      <File>GamePlay/Haikesi_DeathCult_GamePlay.lua</File>
+    </AddGameplayScripts>
     <AddGameplayScripts id="Haikesi_VampireGamePlay">
       <Properties>
         <LoadOrder>16796</LoadOrder>
@@ -209,6 +215,7 @@
       </Properties>
       <File>UI/Replacements/SelectedUnit_Expansion2.lua</File>
       <File>UI/Replacements/UnitPanel_Expansion2.lua</File>
+      <File>UI/Replacements/WorldInput_Expansion2.lua</File>
       <File>UI/Replacements/Haikesi_GetUnitActionsTable_BuilderLag.lua</File>
     </ImportFiles>
     <ImportFiles id="Haikesi_WarFeedCityPanel">
@@ -251,6 +258,7 @@
     <File>GamePlay/Haikesi_LandLottery_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Eureka_GamePlay.lua</File>
     <File>GamePlay/Haikesi_WarFeed_GamePlay.lua</File>
+    <File>GamePlay/Haikesi_DeathCult_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Vampire_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Trinity_GamePlay.lua</File>
     <File>GamePlay/Haikesi_Trigger.lua</File>
@@ -260,9 +268,11 @@
     <File>Platforms/Windows/BLPs/UI/HaikesiXiangIcons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiBiomassIcons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiVampireDukeIcons.blp</File>
+    <File>Platforms/Windows/BLPs/UI/HaikesiVampireDukePortraits.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiSlotJuanIcons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiSlotXiangIcons.blp</File>
     <File>Platforms/Windows/BLPs/UI/HaikesiSlotLeafIcons.blp</File>
+    <File>Platforms/Windows/BLPs/UI/HaikesiDeathCultIcons.blp</File>
     <File>Text/Haikesi_Text.xml</File>
     <File>UI/Haikesi_Ability_Panel.lua</File>
     <File>UI/Haikesi_Ability_Panel.xml</File>
@@ -293,6 +303,7 @@
     <File>UI/Haikesi_TriTrade_Bridge.xml</File>
     <File>UI/Replacements/SelectedUnit_Expansion2.lua</File>
     <File>UI/Replacements/UnitPanel_Expansion2.lua</File>
+    <File>UI/Replacements/WorldInput_Expansion2.lua</File>
     <File>UI/Replacements/Haikesi_GetUnitActionsTable_BuilderLag.lua</File>
   </Files>
 </Mod>

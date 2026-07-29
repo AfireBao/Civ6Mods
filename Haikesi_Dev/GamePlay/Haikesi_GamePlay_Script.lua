@@ -12,6 +12,7 @@
 -- 2026-07-27: 暂停自动解锁，保留实现以便调试期需要时恢复。
 local DEV_FULL_MAP_VISION_PROP = 'PROP_NW_HAIKESI_DEV_FULL_MAP_VISION'
 local DEV_INITIAL_GOLD_PROP = 'PROP_NW_HAIKESI_DEV_INITIAL_GOLD'
+local DEV_INITIAL_DEBUG_BUNDLE_PROP = 'PROP_NW_HAIKESI_DEV_INITIAL_DEBUG_BUNDLE'
 local DEV_INITIAL_GOLD_AMOUNT = 1000000
 
 -- 内存 Map：RelicType → ModifierId[]（在 Initialize 中构建）
@@ -120,6 +121,12 @@ local function GetSelectedRelicTypesForPlayer(pPlayer)
         selected[relicType] = true
     end
     return selected
+end
+
+function Haikesi_MarkDeathCultBaseModifiersAttached(pPlayer)
+    if pPlayer == nil then return end
+    pPlayer:SetProperty('PROP_NW_DEATH_CULT_BASE_MODIFIERS_ATTACHED', 1)
+    pPlayer:SetProperty('PROP_NW_DEATH_CULT_BASE_MODIFIERS_V2_ATTACHED', 1)
 end
 
 local function IsTechnologyPrerequisiteMet(pPlayer, techType, allowInProgress)
@@ -527,11 +534,20 @@ function ApplyRelicToPlayer(iPlayer, relicType, isSelection, decisionReason)
     end
 
     local modifierIds = g_RelicModifierMap[relicType]
+    local attachedDeathCultBaseModifier = false
     if modifierIds then
         for _, modId in ipairs(modifierIds) do
             pPlayer:AttachModifierByID(modId)
             print("[Haikesi GamePlay] attached Modifier: " .. modId .. " -> Player" .. iPlayer)
+            if relicType == 'DEATHCULTRUNE'
+                and (modId == 'MODIFIER_NW_DEATH_CULT_WAR_WEARINESS'
+                    or modId == 'MODIFIER_NW_DEATH_CULT_GROWTH') then
+                attachedDeathCultBaseModifier = true
+            end
         end
+    end
+    if attachedDeathCultBaseModifier then
+        Haikesi_MarkDeathCultBaseModifiersAttached(pPlayer)
     end
 
     Haikesi_ApplyLuaEffect(iPlayer, relicType)
@@ -1872,6 +1888,20 @@ function HaikesiSelectRelic(iPlayer, param)
     end
 
     -- 三角贸易完成结算（不选海克斯；借用本事件：自定义 OnStart / ExposedMembers 不可靠）
+    if param ~= nil and param.DeathCultDevour ~= nil and tostring(param.DeathCultDevour) ~= "" then
+        print("[Haikesi DeathCult] HaikesiSelectRelic devour path caller=P" .. tostring(iPlayer))
+        local fn = ExposedMembers and ExposedMembers.HaikesiDeathCultDevour
+        if type(fn) == "function" then
+            local ok, err = pcall(fn, iPlayer, param)
+            if not ok then
+                print("[Haikesi DeathCult] devour failed: " .. tostring(err))
+            end
+        else
+            print("[Haikesi DeathCult] HaikesiDeathCultDevour missing")
+        end
+        return
+    end
+
     if param ~= nil and param.TriTradeQueue ~= nil and tostring(param.TriTradeQueue) ~= "" then
         print("[Haikesi TRI] HaikesiSelectRelic TriTradeQueue path caller=P" .. tostring(iPlayer))
         if Haikesi_ProcessTriTradeQueue ~= nil then
@@ -2375,6 +2405,18 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
             iPlayer, builderCount, builderCount, builderCount))
     end
 
+    if relicType == 'DEATHCULTRUNE' then
+        local refreshFn = ExposedMembers and ExposedMembers.Haikesi_RefreshDeathCultProjectUnlocks
+        if type(refreshFn) == 'function' then
+            local okRefresh, errRefresh = pcall(refreshFn, iPlayer)
+            if not okRefresh then
+                print('[Haikesi GamePlay] DEATHCULT project unlock refresh error: ' .. tostring(errRefresh))
+            end
+        else
+            print('[Haikesi GamePlay] DEATHCULT project unlock refresh delayed: DeathCult script not ready')
+        end
+    end
+
     -- ==============================
     -- CIRCLEOFDEATH 死亡之环
     -- 删除首都7环内全部非己方单位；删除首都9环外全部己方单位
@@ -2725,6 +2767,22 @@ end
 -- 种地仙人种植逻辑已拆至 GamePlay/Haikesi_Planter_GamePlay.lua
 -- （主脚本文件级 local 已近 Firaxis Lua 5.1 寄存器上限，再塞会整文件加载失败）
 
+local function Haikesi_DevGrantInitialDebugBundleForHumans()
+    if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) ~= 3 then return end
+    for _, pPlayer in ipairs(PlayerManager.GetAliveMajors()) do
+        if pPlayer:IsHuman() and pPlayer:GetProperty(DEV_INITIAL_DEBUG_BUNDLE_PROP) ~= 1 then
+            local okGov = pcall(function() pPlayer:AttachModifierByID('MODIFIER_NW_DEV_GOVERNOR_TITLES') end)
+            local okEnvoy = pcall(function() pPlayer:AttachModifierByID('MODIFIER_NW_DEV_INFLUENCE_TOKENS') end)
+            if okGov and okEnvoy then
+                pPlayer:SetProperty(DEV_INITIAL_DEBUG_BUNDLE_PROP, 1)
+            end
+            print("[Haikesi Dev] Granted debug bundle to human Player"
+                .. tostring(pPlayer:GetID()) .. ": governors=" .. tostring(okGov)
+                .. ", envoys=" .. tostring(okEnvoy))
+        end
+    end
+end
+
 local function OnDevVisionPlayerTurnActivated(_, bIsFirstTime)
     if not bIsFirstTime then return end
     Haikesi_DevGrantFullMapVisionForHumans()
@@ -2733,6 +2791,7 @@ end
 local function OnDevInitialGoldPlayerTurnActivated(_, bIsFirstTime)
     if not bIsFirstTime then return end
     Haikesi_DevGrantInitialGoldForHumans()
+    Haikesi_DevGrantInitialDebugBundleForHumans()
 end
 
 --||======================= INIT ========================||--
@@ -2772,9 +2831,7 @@ function Initialize()
     GameEvents.CityBuilt.Add(OnHaikesiCityBuilt)
 
     if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) == 3 then
-        Haikesi_DevGrantFullMapVisionForHumans()
         Events.PlayerTurnActivated.Add(OnDevVisionPlayerTurnActivated)
-        Haikesi_DevGrantInitialGoldForHumans()
         Events.PlayerTurnActivated.Add(OnDevInitialGoldPlayerTurnActivated)
     end
 

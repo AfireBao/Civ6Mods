@@ -34,6 +34,11 @@ INSERT INTO Haikesi_Relic_Prerequisites
     (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
     ('MIKAELSBLESSINGRUNE',   'TECHNOLOGY', 'TECH_ASTROLOGY', 1);
 
+INSERT INTO Haikesi_Relic_Prerequisites
+    (RelicType, PrerequisiteKind, PrerequisiteType, AllowInProgress) VALUES
+    ('DEATHCULTRUNE',         'RELIC', 'MIKAELSBLESSINGRUNE', 0),
+    ('NECROMILITARISMRUNE',   'RELIC', 'DEATHCULTRUNE',       0);
+
 -- District 升级套：须拥有对应特色区域 Trait 才进刷新池（AllowInProgress=0 对 TRAIT 无意义，保留默认值）
 -- Lua 端 TRAIT 分支按 PlayerConfigurations 匹配 CivilizationTraits / LeaderTraits。
 INSERT INTO Haikesi_Relic_Prerequisites

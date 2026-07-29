@@ -54,6 +54,11 @@ INSERT OR IGNORE INTO Types (Type, Kind) VALUES
 INSERT OR IGNORE INTO DynamicModifiers (ModifierType, CollectionType, EffectType) VALUES
     ('MODIFIER_NW_PLAYER_GRANT_INFLUENCE_TOKEN', 'COLLECTION_PLAYER_DISTRICTS', 'EFFECT_GRANT_INFLUENCE_TOKEN');
 
+INSERT OR IGNORE INTO Types (Type, Kind) VALUES
+    ('MODIFIER_NW_PLAYER_GRANT_INFLUENCE_TOKEN_IMMEDIATE', 'KIND_MODIFIER');
+INSERT OR IGNORE INTO DynamicModifiers (ModifierType, CollectionType, EffectType) VALUES
+    ('MODIFIER_NW_PLAYER_GRANT_INFLUENCE_TOKEN_IMMEDIATE', 'COLLECTION_OWNER', 'EFFECT_GRANT_INFLUENCE_TOKEN');
+
 -- ============================================================
 -- 二、通用 RequirementSet 预制件
 -- ============================================================

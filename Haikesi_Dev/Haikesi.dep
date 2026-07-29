@@ -579,9 +579,11 @@
 				<Element text="UI/HaikesiXiangIcons.blp"/>
 				<Element text="UI/HaikesiBiomassIcons.blp"/>
 				<Element text="UI/HaikesiVampireDukeIcons.blp"/>
+				<Element text="UI/HaikesiVampireDukePortraits.blp"/>
 				<Element text="UI/HaikesiSlotJuanIcons.blp"/>
 				<Element text="UI/HaikesiSlotXiangIcons.blp"/>
 				<Element text="UI/HaikesiSlotLeafIcons.blp"/>
+				<Element text="UI/HaikesiDeathCultIcons.blp"/>
 				<Element text="UI/Shell_Loading.blp"/>
 				<Element text="UI_LeaderScenes.blp"/>
 				<Element text="UILeaders.blp"/>

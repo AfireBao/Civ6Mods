@@ -635,10 +635,36 @@
             <Text>米凯尔的祝福</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_MIKAELSBLESSINGRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>圣地的信仰值相邻加成提供两遍信仰值。</Text>
+            <Text>+100%圣地相邻加成。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_MIKAELSBLESSINGRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>真福所及，连根之苦亦化为甘。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_DEATHCULTRUNE_NAME" Language="zh_Hans_CN">
+            <Text>死亡崇拜</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DEATHCULTRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>帝国厌战永久 -25%。所有城市增长速度 +50%。拥有圣地的城市解锁项目「异端献祭」：项目期间将 15% [ICON_Production] 生产力转化为 [ICON_Faith] 信仰；完成后失去 1 点人口并获得 1 个丧尸。若你已创立宗教，则按该城市异教人口额外失去人口并获得丧尸。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_DEATH_CULT_GROWTH_TOOLTIP" Language="zh_Hans_CN">
+            <Text>死亡崇拜：城市增长速度 +50%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_DEATH_CULT_GROWTH_ROW" Language="zh_Hans_CN">
+            <Text>{1_Amount}</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_DEATHCULTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>灰烬不回答祈祷，只回答计数。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NECROMILITARISMRUNE_NAME" Language="zh_Hans_CN">
+            <Text>逝者军事</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NECROMILITARISMRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>帝国厌战永久 -25%。丧尸击杀敌军后，有 33% 概率在下一回合于目标位置生成 1 个己方丧尸。丧尸解锁「吞噬」操作：消灭相邻友方陆地战斗单位，并恢复等同于该单位战斗力的生命值。你的非丧尸陆地战斗单位死亡时，同样有 33% 概率在死亡位置生成 1 个丧尸。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NECROMILITARISMRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>命令仍在传递，只是受令者已经不再呼吸。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_MINDOVERMATTERRUNE_NAME" Language="zh_Hans_CN">
@@ -1523,7 +1549,7 @@
             <Text>开发者模式</Text>
         </Row>
         <Row Tag="LOC_NW_HAIKESI_MODE_DEV_DESC" Language="zh_Hans_CN">
-            <Text>每回合解锁一次海克斯选择；人类玩家开局金币补至 1000000，并获得全图实时视野（调试用）</Text>
+            <Text>每回合解锁一次海克斯选择；人类玩家开局金币补至 1000000，获得 20 个总督头衔、100 个使者，并获得全图实时视野（调试用）</Text>
         </Row>
 
         <Row Tag="LOC_NW_HAIKESI_MODE_MP_NAME" Language="zh_Hans_CN">
@@ -1923,6 +1949,48 @@
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_WARFEED_MORSEL_DESCRIPTION" Language="zh_Hans_CN">
             <Text>（已废弃）生物质改为城市限时食物修正。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_BUILDING_NW_DEATH_CULT_PROJECT_UNLOCK_NAME" Language="zh_Hans_CN">
+            <Text>死亡崇拜</Text>
+        </Replace>
+        <Replace Tag="LOC_BUILDING_NW_DEATH_CULT_PROJECT_UNLOCK_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>死亡崇拜项目解锁令牌。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_PROJECT_NW_HERETIC_SACRIFICE_NAME" Language="zh_Hans_CN">
+            <Text>异端献祭</Text>
+        </Replace>
+        <Replace Tag="LOC_PROJECT_NW_HERETIC_SACRIFICE_SHORT_NAME" Language="zh_Hans_CN">
+            <Text>异端献祭</Text>
+        </Replace>
+        <Replace Tag="LOC_PROJECT_NW_HERETIC_SACRIFICE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>项目期间将 15% [ICON_Production] 生产力转化为 [ICON_Faith] 信仰。完成后失去人口并获得丧尸；若已创立宗教，则按城市中的异教人口额外结算。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_UNIT_NW_ZOMBIE_NAME" Language="zh_Hans_CN">
+            <Text>丧尸</Text>
+        </Replace>
+        <Replace Tag="LOC_UNIT_NW_ZOMBIE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>死亡崇拜创造的陆地近战单位。基础 [ICON_Strength] 战斗力 15，无法自然恢复生命值，无法获得经验升级。击杀敌军时恢复 20 点生命值。每当你的丧尸死亡时，所有你的丧尸获得 +1 [ICON_Strength] 变异之力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ZOMBIE_STENCH_NAME" Language="zh_Hans_CN">
+            <Text>骇人恶臭</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ZOMBIE_STENCH_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>相邻敌方单位 -5 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_ZOMBIE_STENCH_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>{1_Amount} 骇人恶臭</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_ZOMBIE_MUTATION_STRENGTH_DESC" Language="zh_Hans_CN">
+            <Text>+{Property} 变异之力</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_ZOMBIE_DEVOUR_NAME" Language="zh_Hans_CN">
+            <Text>吞噬</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_ZOMBIE_DEVOUR_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>消灭相邻友方陆地战斗单位，并恢复等同于该单位战斗力的生命值。需要剩余移动力。</Text>
         </Replace>
 
         <Replace Tag="LOC_UNIT_NW_VAMPIRE_DUKE_NAME" Language="zh_Hans_CN">

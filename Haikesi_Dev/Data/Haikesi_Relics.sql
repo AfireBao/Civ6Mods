@@ -148,6 +148,7 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'CIRCLEOFDEATHRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'CIRCLEOFDEATHRUNE';
 UPDATE Haikesi_Relics SET MinTurn = NULL WHERE RelicType = 'CIRCLEOFDEATHRUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'CIRCLEOFDEATHRUNE';
+UPDATE Haikesi_Relics SET MaxTurn = 45 WHERE RelicType = 'CIRCLEOFDEATHRUNE';
 
 -- 小丑学院
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
@@ -180,7 +181,7 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'COREOVERLOADRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'COREOVERLOADRUNE';
 UPDATE Haikesi_Relics SET MinTurn = NULL WHERE RelicType = 'COREOVERLOADRUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'COREOVERLOADRUNE';
-UPDATE Haikesi_Relics SET MaxTurn = 40 WHERE RelicType = 'COREOVERLOADRUNE';
+UPDATE Haikesi_Relics SET MaxTurn = 45 WHERE RelicType = 'COREOVERLOADRUNE';
 
 -- 大地苏醒
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
@@ -244,7 +245,7 @@ INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'COMMUNISMPLUSRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'COMMUNISMPLUSRUNE';
 UPDATE Haikesi_Relics SET MinTurn = 120 WHERE RelicType = 'COMMUNISMPLUSRUNE';
-UPDATE Haikesi_Relics SET Weight = 25 WHERE RelicType = 'COMMUNISMPLUSRUNE';
+UPDATE Haikesi_Relics SET Weight = 50 WHERE RelicType = 'COMMUNISMPLUSRUNE';
 
 -- 裂变
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
@@ -447,6 +448,22 @@ UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'MIKAELSBLESSINGRUN
 UPDATE Haikesi_Relics SET MinTurn = NULL WHERE RelicType = 'MIKAELSBLESSINGRUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'MIKAELSBLESSINGRUNE';
 
+-- 死亡崇拜
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('DEATHCULTRUNE', 'LOC_HAIKESI_RELIC_DEATHCULTRUNE_NAME', 'LOC_HAIKESI_RELIC_DEATHCULTRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_DEATHCULTRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_DEATHCULTRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'DEATHCULTRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'DEATHCULTRUNE';
+UPDATE Haikesi_Relics SET MinTurn = NULL WHERE RelicType = 'DEATHCULTRUNE';
+UPDATE Haikesi_Relics SET Weight = 200 WHERE RelicType = 'DEATHCULTRUNE';
+
+-- 逝者军事
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('NECROMILITARISMRUNE', 'LOC_HAIKESI_RELIC_NECROMILITARISMRUNE_NAME', 'LOC_HAIKESI_RELIC_NECROMILITARISMRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_NECROMILITARISMRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_NECROMILITARISMRUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'NECROMILITARISMRUNE';
+UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'NECROMILITARISMRUNE';
+UPDATE Haikesi_Relics SET MinTurn = NULL WHERE RelicType = 'NECROMILITARISMRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'NECROMILITARISMRUNE';
+
 -- COSPLAY
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
 ('MIMICRUNE', 'LOC_HAIKESI_RELIC_MIMICRUNE_NAME', 'LOC_HAIKESI_RELIC_MIMICRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_MIMICRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_MIMICRUNE', 'PRISMATIC');
@@ -462,6 +479,7 @@ UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'MOBILEHOMERUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'MOBILEHOMERUNE';
 UPDATE Haikesi_Relics SET MinTurn = NULL WHERE RelicType = 'MOBILEHOMERUNE';
 UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'MOBILEHOMERUNE';
+UPDATE Haikesi_Relics SET MaxTurn = 80 WHERE RelicType = 'MOBILEHOMERUNE';
 
 -- 蛋白粉奶昔
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
@@ -509,7 +527,7 @@ INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'SANGUINEDUKERUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'SANGUINEDUKERUNE';
 UPDATE Haikesi_Relics SET MinTurn = 40 WHERE RelicType = 'SANGUINEDUKERUNE';
-UPDATE Haikesi_Relics SET Weight = 25 WHERE RelicType = 'SANGUINEDUKERUNE';
+UPDATE Haikesi_Relics SET Weight = 50 WHERE RelicType = 'SANGUINEDUKERUNE';
 
 -- 三位一体
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
