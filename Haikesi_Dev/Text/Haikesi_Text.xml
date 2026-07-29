@@ -1712,6 +1712,46 @@
             <Text>一音既出，万响自随。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_NAVAL_MELEE_NAME" Language="zh_Hans_CN">
+            <Text>海军近战翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_NAVAL_MELEE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个海军近战单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_NAVAL_MELEE_FLAVOR" Language="zh_Hans_CN">
+            <Text>一舰出港，千帆应潮。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_NAVAL_RANGED_NAME" Language="zh_Hans_CN">
+            <Text>海军远程翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_NAVAL_RANGED_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个海军远程单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_NAVAL_RANGED_FLAVOR" Language="zh_Hans_CN">
+            <Text>炮声越过海面，另一侧随即回应。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_AIR_FIGHTER_NAME" Language="zh_Hans_CN">
+            <Text>战斗机翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_AIR_FIGHTER_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个战斗机单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_AIR_FIGHTER_FLAVOR" Language="zh_Hans_CN">
+            <Text>一翼掠空，双影并飞。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_AIR_BOMBER_NAME" Language="zh_Hans_CN">
+            <Text>轰炸机翻倍</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_AIR_BOMBER_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>每生产一个轰炸机单位，就获得一个相同单位。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ECHO_AIR_BOMBER_FLAVOR" Language="zh_Hans_CN">
+            <Text>云层压低，两列机影同时越过边界。</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_BARBARIAN_INVASION_NAME" Language="zh_Hans_CN">
             <Text>南蛮入侵</Text>
         </Replace>
@@ -1822,6 +1862,86 @@
             <Text>条条大路通罗马，商旅无虞。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SPICE_ROUTE_NAME" Language="zh_Hans_CN">
+            <Text>香料航路</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SPICE_ROUTE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【和平互利】通往本文明城市的国际 [ICON_TradeRoute] 商路：对方出发城 +1 [ICON_Food] 食物、+1 [ICON_Gold] 金币；本文明到达城 +4 [ICON_Gold] 金币、+1 [ICON_Science] 科技。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SPICE_ROUTE_FLAVOR" Language="zh_Hans_CN">
+            <Text>季风按时转向，胡椒、粮秣与星图一同抵港。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_TRANS_SAHARAN_NAME" Language="zh_Hans_CN">
+            <Text>撒哈拉金路</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_TRANS_SAHARAN_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【和平互利】通往本文明城市的国际 [ICON_TradeRoute] 商路：对方出发城 +1 [ICON_Faith] 信仰、+1 [ICON_Culture] 文化；本文明到达城 +4 [ICON_Gold] 金币、+1 [ICON_Food] 食物。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_TRANS_SAHARAN_FLAVOR" Language="zh_Hans_CN">
+            <Text>盐队向南，金队向北，朝觐者在沙海中央交换故事。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_TALENT_FLOW_NAME" Language="zh_Hans_CN">
+            <Text>人才流动</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_TALENT_FLOW_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【商路增强】[ICON_TradeRoute] 商路容量 +1；你的国际商路 +2 [ICON_Science] 科技、+2 [ICON_Culture] 文化、+2 [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_TALENT_FLOW_FLAVOR" Language="zh_Hans_CN">
+            <Text>学者、工匠与使节沿着同一条道路迁徙。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_FREE_TRADE_NAME" Language="zh_Hans_CN">
+            <Text>自由贸易</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_FREE_TRADE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【商路增强】[ICON_TradeRoute] 商路容量 +1；你的国际商路 +8 [ICON_Gold] 金币、+2 [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_FREE_TRADE_FLAVOR" Language="zh_Hans_CN">
+            <Text>让货物自由穿越边界，财富便自行寻找港口。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_PILGRIMAGE_ROAD_NAME" Language="zh_Hans_CN">
+            <Text>朝圣之路</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_PILGRIMAGE_ROAD_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【商路增强】[ICON_TradeRoute] 商路容量 +1；你的国际商路 +4 [ICON_Faith] 信仰、+2 [ICON_Culture] 文化。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_PILGRIMAGE_ROAD_FLAVOR" Language="zh_Hans_CN">
+            <Text>足迹通向圣城，也把诗歌带回故乡。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CLOSED_COUNTRY_NAME" Language="zh_Hans_CN">
+            <Text>闭关锁国</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CLOSED_COUNTRY_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【商路增强】[ICON_TradeRoute] 商路容量 +1；你的国内商路 +4 [ICON_Gold] 金币、+2 [ICON_Food] 食物、+2 [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CLOSED_COUNTRY_FLAVOR" Language="zh_Hans_CN">
+            <Text>海门虽闭，国内的米粮与金银仍昼夜流转。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CLOSED_DOOR_WORKS_NAME" Language="zh_Hans_CN">
+            <Text>闭门造车</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CLOSED_DOOR_WORKS_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【商路增强】[ICON_TradeRoute] 商路容量 +1；你的国内商路 +3 [ICON_Science] 科技、+3 [ICON_Production] 生产力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CLOSED_DOOR_WORKS_FLAVOR" Language="zh_Hans_CN">
+            <Text>不问远方风向，只把炉火与图纸留在城内。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_TEMPLE_ESTATES_NAME" Language="zh_Hans_CN">
+            <Text>香火田庄</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_TEMPLE_ESTATES_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【商路增强】[ICON_TradeRoute] 商路容量 +1；你的国内商路 +4 [ICON_Faith] 信仰、+2 [ICON_Food] 食物。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_TEMPLE_ESTATES_FLAVOR" Language="zh_Hans_CN">
+            <Text>香火供养田亩，田亩又供养香火。</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_SPY_BUREAU_NAME" Language="zh_Hans_CN">
             <Text>间谍署</Text>
         </Replace>
@@ -1840,6 +1960,16 @@
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_ENVOY_FOOTHOLD_FLAVOR" Language="zh_Hans_CN">
             <Text>既已立足，便再添两名随从。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MUSTER_FORWARD_NAME" Language="zh_Hans_CN">
+            <Text>征召上前</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MUSTER_FORWARD_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【外交基建】在你拥有 [ICON_Envoy] 使者数量最多的一个已相遇城邦中再派驻 3 名使者；该城邦在首都附近获得 5 个当前时代的陆地战斗单位。若当前时代没有合法单位，则回退至最近的先前时代。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MUSTER_FORWARD_FLAVOR" Language="zh_Hans_CN">
+            <Text>使节递上名册，城门外的军阵随即向前一步。</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_WONDER_WORKSHOP_NAME" Language="zh_Hans_CN">
@@ -1870,6 +2000,19 @@
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_MISSIONARY_WAVE_FLAVOR" Language="zh_Hans_CN">
             <Text>经文一折再折，信众一浪接一浪。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_PAPAL_AUTHORITY_NAME" Language="zh_Hans_CN">
+            <Text>教皇权威</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_PAPAL_AUTHORITY_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【宗教】所有宗教单位 +10 神学战斗力；拥有传播能力的宗教单位 +2 次传播次数。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_PAPAL_AUTHORITY_FLAVOR" Language="zh_Hans_CN">
+            <Text>敕令越过祭坛，教义便有了军势与路程。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_NW_AI_PAPAL_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>+{1_Amount} 教皇权威</Text>
         </Replace>
 
         <Replace Tag="LOC_HAIKESI_BARB_INVASION_ASSAULT_TITLE" Language="zh_Hans_CN">

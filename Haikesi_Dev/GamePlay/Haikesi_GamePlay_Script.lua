@@ -563,6 +563,8 @@ local AI_RELIC_TYPES = {
     'NW_AI_STATS_1', 'NW_AI_STATS_2', 'NW_AI_STATS_3', 'NW_AI_STATS_4', 'NW_AI_STATS_5', 'NW_AI_STATS_6',
     'NW_AI_ECHO_SETTLER', 'NW_AI_ECHO_BUILDER', 'NW_AI_ECHO_MELEE', 'NW_AI_ECHO_RANGED',
     'NW_AI_ECHO_LIGHT_CAVALRY', 'NW_AI_ECHO_HEAVY_CAVALRY', 'NW_AI_ECHO_ANTI_CAVALRY', 'NW_AI_ECHO_SIEGE',
+    'NW_AI_ECHO_NAVAL_MELEE', 'NW_AI_ECHO_NAVAL_RANGED',
+    'NW_AI_ECHO_AIR_FIGHTER', 'NW_AI_ECHO_AIR_BOMBER',
     -- 混乱干扰
     'NW_AI_BARBARIAN_INVASION',
     'NW_AI_LIGHTNING_STORM',
@@ -571,9 +573,14 @@ local AI_RELIC_TYPES = {
     'NW_AI_BRAVE_WOOD', 'NW_AI_MAMA_BORN', 'NW_AI_MILK_DRAGON', 'NW_AI_SILK_LAND', 'NW_AI_DRINK_TEA',
     -- 和平互利
     'NW_AI_CELESTIAL_EMPIRE', 'NW_AI_FERTILE_CRESCENT', 'NW_AI_PAX_ROMANA',
+    'NW_AI_SPICE_ROUTE', 'NW_AI_TRANS_SAHARAN',
+    -- 商路增强
+    'NW_AI_TALENT_FLOW', 'NW_AI_FREE_TRADE', 'NW_AI_PILGRIMAGE_ROAD',
+    'NW_AI_CLOSED_COUNTRY', 'NW_AI_CLOSED_DOOR_WORKS', 'NW_AI_TEMPLE_ESTATES',
     -- 外交 / 基建 / 宗教向
-    'NW_AI_SPY_BUREAU', 'NW_AI_ENVOY_FOOTHOLD',
-    'NW_AI_WONDER_WORKSHOP', 'NW_AI_WALL_ENGINEERING', 'NW_AI_MISSIONARY_WAVE',
+    'NW_AI_SPY_BUREAU', 'NW_AI_ENVOY_FOOTHOLD', 'NW_AI_MUSTER_FORWARD',
+    'NW_AI_WONDER_WORKSHOP', 'NW_AI_WALL_ENGINEERING',
+    'NW_AI_MISSIONARY_WAVE', 'NW_AI_PAPAL_AUTHORITY',
 }
 local AI_RELIC_TYPE_SET = {}
 for _, t in ipairs(AI_RELIC_TYPES) do AI_RELIC_TYPE_SET[t] = true end
@@ -2631,6 +2638,22 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
             end
         else
             print("[Haikesi GamePlay] FARMIMMORTALPLUS delayed: planter script not ready")
+        end
+        return
+    end
+
+    -- ==============================
+    -- NW_AI_MUSTER_FORWARD：使者最多的相遇城邦 +3 使者并获得 5 个时代单位
+    -- ==============================
+    if relicType == 'NW_AI_MUSTER_FORWARD' then
+        local applyFn = ExposedMembers and ExposedMembers.Haikesi_ApplyAIMusterForward
+        if type(applyFn) == 'function' then
+            local ok, err = pcall(applyFn, iPlayer)
+            if not ok then
+                print('[Haikesi GamePlay] MUSTER_FORWARD apply error: ' .. tostring(err))
+            end
+        else
+            print('[Haikesi GamePlay] MUSTER_FORWARD apply function missing')
         end
         return
     end

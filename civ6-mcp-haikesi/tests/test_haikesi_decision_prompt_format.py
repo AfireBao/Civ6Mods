@@ -78,9 +78,45 @@ def test_mutual_trade_relics_share_delayed_tag():
         "NW_AI_CELESTIAL_EMPIRE",
         "NW_AI_FERTILE_CRESCENT",
         "NW_AI_PAX_ROMANA",
+        "NW_AI_SPICE_ROUTE",
+        "NW_AI_TRANS_SAHARAN",
     ):
         assert "商路" in haikesi_lua.relic_timing_tag(relic)
         assert "入向" in haikesi_lua.relic_timing_tag(relic, intl_inbound=2)
+
+
+def test_new_echo_relics_use_separate_unit_tags():
+    expected = {
+        "NW_AI_ECHO_NAVAL_MELEE": "CLASS_NAVAL_MELEE",
+        "NW_AI_ECHO_NAVAL_RANGED": "CLASS_NAVAL_RANGED",
+        "NW_AI_ECHO_AIR_FIGHTER": "CLASS_AIR_FIGHTER",
+        "NW_AI_ECHO_AIR_BOMBER": "CLASS_AIR_BOMBER",
+    }
+    for relic, tag in expected.items():
+        assert tag in haikesi_lua.AI_LLM_DESCRIPTIONS[relic]
+        assert tag in haikesi_lua.relic_timing_tag(relic)
+
+
+def test_trade_boost_relics_use_owned_route_direction():
+    for relic in (
+        "NW_AI_TALENT_FLOW",
+        "NW_AI_FREE_TRADE",
+        "NW_AI_PILGRIMAGE_ROAD",
+    ):
+        assert "+1 TradeRoute capacity" in haikesi_lua.AI_LLM_DESCRIPTIONS[relic]
+        assert "商路容量+1" in haikesi_lua.relic_timing_tag(relic)
+        assert "国际商路" in haikesi_lua.relic_timing_tag(relic)
+        assert "国际出向" in haikesi_lua.relic_timing_tag(relic, intl_outbound=2)
+
+    for relic in (
+        "NW_AI_CLOSED_COUNTRY",
+        "NW_AI_CLOSED_DOOR_WORKS",
+        "NW_AI_TEMPLE_ESTATES",
+    ):
+        assert "+1 TradeRoute capacity" in haikesi_lua.AI_LLM_DESCRIPTIONS[relic]
+        assert "商路容量+1" in haikesi_lua.relic_timing_tag(relic)
+        assert "国内商路" in haikesi_lua.relic_timing_tag(relic)
+        assert "已有3条" in haikesi_lua.relic_timing_tag(relic, domestic_routes=3)
 
 
 def test_parse_trade_wire_into_leader_view():

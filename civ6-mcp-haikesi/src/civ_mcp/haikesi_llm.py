@@ -2248,6 +2248,16 @@ def _format_leader_block(
                     if view.trade is not None
                     else None
                 ),
+                intl_outbound=(
+                    int(view.trade.intl_out)
+                    if view.trade is not None
+                    else None
+                ),
+                domestic_routes=(
+                    int(view.trade.domestic)
+                    if view.trade is not None
+                    else None
+                ),
             )
         )
     )
@@ -2666,6 +2676,12 @@ def _format_leader_block_slim(
             cities=cities,
             intl_inbound=(
                 int(view.trade.intl_in) if view.trade is not None else None
+            ),
+            intl_outbound=(
+                int(view.trade.intl_out) if view.trade is not None else None
+            ),
+            domestic_routes=(
+                int(view.trade.domestic) if view.trade is not None else None
             ),
         )
     )

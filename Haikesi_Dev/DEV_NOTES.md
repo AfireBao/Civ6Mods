@@ -129,11 +129,12 @@ PVE「AI 海克斯」流程：人类玩家在 UI 确认海克斯时，由**某�
 | 系列 | 成员 |
 |------|------|
 | 属性叠属性叠属性 | `NW_AI_STATS_1`…`6` |
-| 回响施放 | `NW_AI_ECHO_*`（8） |
+| 回响施放 | `NW_AI_ECHO_*`（12；新增海军近战、海军远程、战斗机、轰炸机） |
 | 混乱干扰 | `NW_AI_BARBARIAN_INVASION`、`NW_AI_LIGHTNING_STORM`、`NW_AI_RIVER_FLOOD` |
 | 资源创建 | `NW_AI_BRAVE_WOOD` 等（5） |
-| 和平互利 | `NW_AI_CELESTIAL_EMPIRE`（天朝上国）、`NW_AI_FERTILE_CRESCENT`（两河粮仓）、`NW_AI_PAX_ROMANA`（罗马和平） |
-| 外交/基建/宗教 | `NW_AI_SPY_BUREAU`、`NW_AI_ENVOY_FOOTHOLD`、`NW_AI_WONDER_WORKSHOP`、`NW_AI_WALL_ENGINEERING`、`NW_AI_MISSIONARY_WAVE` |
+| 和平互利 | `NW_AI_CELESTIAL_EMPIRE`（天朝上国）、`NW_AI_FERTILE_CRESCENT`（两河粮仓）、`NW_AI_PAX_ROMANA`（罗马和平）、`NW_AI_SPICE_ROUTE`（香料航路）、`NW_AI_TRANS_SAHARAN`（撒哈拉金路） |
+| 商路增强 | 国际：`NW_AI_TALENT_FLOW`、`NW_AI_FREE_TRADE`、`NW_AI_PILGRIMAGE_ROAD`；国内：`NW_AI_CLOSED_COUNTRY`、`NW_AI_CLOSED_DOOR_WORKS`、`NW_AI_TEMPLE_ESTATES` |
+| 外交/基建/宗教 | `NW_AI_SPY_BUREAU`、`NW_AI_ENVOY_FOOTHOLD`、`NW_AI_MUSTER_FORWARD`、`NW_AI_WONDER_WORKSHOP`、`NW_AI_WALL_ENGINEERING`、`NW_AI_MISSIONARY_WAVE`、`NW_AI_PAPAL_AUTHORITY` |
 
 池大小以 `AI_RELIC_TYPES`（GamePlay / Panel 两侧须同步）为准；改 SQL 后须**开新档**。
 ExtAI / 大模型候选池固定 **6** 张（黄金双选仍 picks=2）。
@@ -162,6 +163,19 @@ ExtAI / 大模型候选池固定 **6** 张（黄金双选仍 picks=2）。
 | `NW_AI_CELESTIAL_EMPIRE` | 天朝上国 | +1 科、+1 文 | +4 金、+2 信仰 | 唐·朝贡科文外溢 |
 | `NW_AI_FERTILE_CRESCENT` | 两河粮仓 | +1 粮、+1 产 | +3 金、+1 粮 | 古代近东粮道 |
 | `NW_AI_PAX_ROMANA` | 罗马和平 | +1 产、+1 金 | +3 金、+1 产 | 地中海秩序 |
+| `NW_AI_SPICE_ROUTE` | 香料航路 | +1 粮、+1 金 | +4 金、+1 科 | 印度洋季风贸易 |
+| `NW_AI_TRANS_SAHARAN` | 撒哈拉金路 | +1 信仰、+1 文 | +4 金、+1 粮 | 西非金盐与朝觐商路 |
+
+## 商路增强
+
+| RelicType | 名称 | 路线 | 容量 | 每条商路额外产出 |
+|-----------|------|------|------|------------------|
+| `NW_AI_TALENT_FLOW` | 人才流动 | 国际 | +1 | +2 科、+2 文、+2 产 |
+| `NW_AI_FREE_TRADE` | 自由贸易 | 国际 | +1 | +8 金、+2 产 |
+| `NW_AI_PILGRIMAGE_ROAD` | 朝圣之路 | 国际 | +1 | +4 信仰、+2 文 |
+| `NW_AI_CLOSED_COUNTRY` | 闭关锁国 | 国内 | +1 | +4 金、+2 粮、+2 产 |
+| `NW_AI_CLOSED_DOOR_WORKS` | 闭门造车 | 国内 | +1 | +3 科、+3 产 |
+| `NW_AI_TEMPLE_ESTATES` | 香火田庄 | 国内 | +1 | +4 信仰、+2 粮 |
 
 ## ExtAI 近期（2026-07-22）
 
@@ -169,6 +183,6 @@ ExtAI / 大模型候选池固定 **6** 张（黄金双选仍 picks=2）。
 |----|------|
 | LLM 描述 Key 化 | `civ6-mcp-haikesi`：`AI_LLM_DESCRIPTIONS` 覆盖全部 `NW_AI_*`；候选/lookup 用 `YIELD_*`/`UNIT_*`/`CLASS_*`/`RESOURCE_*`/`BUILDING_*`/`CIVIC_*`。XML Name 仍中文；不改玩家卡文案。重启 watch 即生效。 |
 | 混乱互斥 | ExtAI **候选池**：同一种混乱卡（南蛮/闪电/仇水）全场至多进入 1 个 AI 的 options；**选定**：MCP 校验/修复同种混乱不可多 AI 同选。确定性/超时回退仍走 `Haikesi_EnforceChaosMutexInChoices`（每轮至多 1 类混乱落地）。`Haikesi_ApplyAIChoicesForRound(..., fromExtAI)` 第 5 参显式标记。 |
-| 外交基建宗教卡 | `SPY_BUREAU` / `ENVOY_FOOTHOLD` / `WONDER_WORKSHOP` / `WALL_ENGINEERING` / `MISSIONARY_WAVE`（见 SQL + Text） |
+| 外交基建宗教卡 | `SPY_BUREAU` / `ENVOY_FOOTHOLD` / `MUSTER_FORWARD` / `WONDER_WORKSHOP` / `WALL_ENGINEERING` / `MISSIONARY_WAVE` / `PAPAL_AUTHORITY`（见 SQL + Text） |
 | 洪水侦察 | ExtAI gather 输出 `FLOOD|` / `FLOOD_API|`；工具 `flood_targets` |
 

@@ -38,6 +38,10 @@ AI_LLM_DESCRIPTIONS: dict[str, str] = {
     "NW_AI_ECHO_HEAVY_CAVALRY": "On produce CLASS_HEAVY_CAVALRY, gain 1 copy.",
     "NW_AI_ECHO_ANTI_CAVALRY": "On produce CLASS_ANTI_CAVALRY, gain 1 copy.",
     "NW_AI_ECHO_SIEGE": "On produce CLASS_SIEGE, gain 1 copy.",
+    "NW_AI_ECHO_NAVAL_MELEE": "On produce CLASS_NAVAL_MELEE, gain 1 copy.",
+    "NW_AI_ECHO_NAVAL_RANGED": "On produce CLASS_NAVAL_RANGED, gain 1 copy.",
+    "NW_AI_ECHO_AIR_FIGHTER": "On produce CLASS_AIR_FIGHTER, gain 1 copy.",
+    "NW_AI_ECHO_AIR_BOMBER": "On produce CLASS_AIR_BOMBER, gain 1 copy.",
     "NW_AI_BARBARIAN_INVASION": (
         "[Chaos] Except picker: try spawn 3 barb camps in each other major's newest "
         "city r5 (vanilla spacing). Per missing camp, pad 3 barb warriors into "
@@ -88,12 +92,51 @@ AI_LLM_DESCRIPTIONS: dict[str, str] = {
         "origin city +1 YIELD_PRODUCTION +1 YIELD_GOLD; "
         "destination (this civ) +3 YIELD_GOLD +1 YIELD_PRODUCTION."
     ),
+    "NW_AI_SPICE_ROUTE": (
+        "[Mutual trade] Inbound international TradeRoute to this civ: "
+        "origin city +1 YIELD_FOOD +1 YIELD_GOLD; "
+        "destination (this civ) +4 YIELD_GOLD +1 YIELD_SCIENCE."
+    ),
+    "NW_AI_TRANS_SAHARAN": (
+        "[Mutual trade] Inbound international TradeRoute to this civ: "
+        "origin city +1 YIELD_FAITH +1 YIELD_CULTURE; "
+        "destination (this civ) +4 YIELD_GOLD +1 YIELD_FOOD."
+    ),
+    "NW_AI_TALENT_FLOW": (
+        "[International trade boost] +1 TradeRoute capacity; own outgoing international TradeRoute: "
+        "+2 YIELD_SCIENCE +2 YIELD_CULTURE +2 YIELD_PRODUCTION."
+    ),
+    "NW_AI_FREE_TRADE": (
+        "[International trade boost] +1 TradeRoute capacity; own outgoing international TradeRoute: "
+        "+8 YIELD_GOLD +2 YIELD_PRODUCTION."
+    ),
+    "NW_AI_PILGRIMAGE_ROAD": (
+        "[International trade boost] +1 TradeRoute capacity; own outgoing international TradeRoute: "
+        "+4 YIELD_FAITH +2 YIELD_CULTURE."
+    ),
+    "NW_AI_CLOSED_COUNTRY": (
+        "[Domestic trade boost] +1 TradeRoute capacity; own domestic TradeRoute: "
+        "+4 YIELD_GOLD +2 YIELD_FOOD +2 YIELD_PRODUCTION."
+    ),
+    "NW_AI_CLOSED_DOOR_WORKS": (
+        "[Domestic trade boost] +1 TradeRoute capacity; own domestic TradeRoute: "
+        "+3 YIELD_SCIENCE +3 YIELD_PRODUCTION."
+    ),
+    "NW_AI_TEMPLE_ESTATES": (
+        "[Domestic trade boost] +1 TradeRoute capacity; own domestic TradeRoute: "
+        "+4 YIELD_FAITH +2 YIELD_FOOD."
+    ),
     "NW_AI_SPY_BUREAU": (
         "+2 spy capacity; +25% YIELD_PRODUCTION when training UNIT_SPY "
         "(needs CIVIC_DIPLOMATIC_SERVICE)."
     ),
     "NW_AI_ENVOY_FOOTHOLD": (
         "For each met city-state with >=1 envoy already: immediately +2 envoys."
+    ),
+    "NW_AI_MUSTER_FORWARD": (
+        "Choose the met city-state with this player's most envoys (stable tie-break); "
+        "immediately +3 envoys there and spawn 5 current-era land combat units for it. "
+        "If the current era has no legal unit, use the nearest earlier era."
     ),
     "NW_AI_WONDER_WORKSHOP": "+15% YIELD_PRODUCTION when building Wonders.",
     "NW_AI_WALL_ENGINEERING": (
@@ -103,6 +146,10 @@ AI_LLM_DESCRIPTIONS: dict[str, str] = {
     ),
     "NW_AI_MISSIONARY_WAVE": (
         "UNIT_MISSIONARY faith purchase cost -50% (needs faith buy unlock)."
+    ),
+    "NW_AI_PAPAL_AUTHORITY": (
+        "All CLASS_RELIGIOUS_ALL units: theological combat strength +10. "
+        "CLASS_RELIGIOUS_SPREAD units: +2 permanent religious spreads."
     ),
 }
 
@@ -617,6 +664,10 @@ _ECHO_UNIT_LABELS: dict[str, str] = {
     "HEAVY_CAVALRY": "CLASS_HEAVY_CAVALRY",
     "ANTI_CAVALRY": "CLASS_ANTI_CAVALRY",
     "SIEGE": "CLASS_SIEGE",
+    "NAVAL_MELEE": "CLASS_NAVAL_MELEE",
+    "NAVAL_RANGED": "CLASS_NAVAL_RANGED",
+    "AIR_FIGHTER": "CLASS_AIR_FIGHTER",
+    "AIR_BOMBER": "CLASS_AIR_BOMBER",
 }
 
 # Chinese tokens for matching civ ability corpus (not for prompt Keys).
@@ -629,6 +680,10 @@ _ECHO_CORPUS_TOKENS: dict[str, str] = {
     "HEAVY_CAVALRY": "重骑兵",
     "ANTI_CAVALRY": "抗骑兵",
     "SIEGE": "攻城",
+    "NAVAL_MELEE": "海军近战",
+    "NAVAL_RANGED": "海军远程",
+    "AIR_FIGHTER": "战斗机",
+    "AIR_BOMBER": "轰炸机",
 }
 
 _STATS_YIELD_HINTS: dict[str, str] = {
@@ -640,13 +695,37 @@ _STATS_YIELD_HINTS: dict[str, str] = {
     "NW_AI_STATS_6": "YIELD_PRODUCTION",
 }
 
-# 和平互利：入向国际商路双方产出（天朝 / 两河 / 罗马和平）
+# 和平互利：入向国际商路双方产出
 _MUTUAL_TRADE_RELICS: frozenset[str] = frozenset(
     {
         "NW_AI_CELESTIAL_EMPIRE",
         "NW_AI_FERTILE_CRESCENT",
         "NW_AI_PAX_ROMANA",
+        "NW_AI_SPICE_ROUTE",
+        "NW_AI_TRANS_SAHARAN",
     }
+)
+
+_INTERNATIONAL_TRADE_BOOST_RELICS: frozenset[str] = frozenset(
+    {
+        "NW_AI_TALENT_FLOW",
+        "NW_AI_FREE_TRADE",
+        "NW_AI_PILGRIMAGE_ROAD",
+    }
+)
+
+_DOMESTIC_TRADE_BOOST_RELICS: frozenset[str] = frozenset(
+    {
+        "NW_AI_CLOSED_COUNTRY",
+        "NW_AI_CLOSED_DOOR_WORKS",
+        "NW_AI_TEMPLE_ESTATES",
+    }
+)
+
+_TRADE_ROUTE_RELICS: frozenset[str] = frozenset(
+    _MUTUAL_TRADE_RELICS
+    | _INTERNATIONAL_TRADE_BOOST_RELICS
+    | _DOMESTIC_TRADE_BOOST_RELICS
 )
 
 
@@ -655,11 +734,15 @@ def relic_timing_tag(
     *,
     cities: int | None = None,
     intl_inbound: int | None = None,
+    intl_outbound: int | None = None,
+    domestic_routes: int | None = None,
 ) -> str:
     """Prompt label: when the hex pays off (instant vs delayed).
 
     cities: 当前城市数；0 城时资源创建会空放（Gameplay skip），必须醒目标出。
-    intl_inbound: 打入本文明的国际商路条数（两河/天朝/罗马和平吃入向）。
+    intl_inbound: 打入本文明的国际商路条数（和平互利系列吃入向）。
+    intl_outbound: 本文明发出的国际商路条数（国际商路增强系列）。
+    domestic_routes: 本文明的国内商路条数（国内商路增强系列）。
     """
     if relic_type == "NW_AI_BARBARIAN_INVASION":
         return "【即时·触发者免疫】"
@@ -678,8 +761,18 @@ def relic_timing_tag(
         if intl_inbound is not None and intl_inbound > 0:
             return f"【条件即时·已有{intl_inbound}条国际入向商路】"
         return "【延迟·需他国商路打入本文明】"
+    if relic_type in _INTERNATIONAL_TRADE_BOOST_RELICS:
+        if intl_outbound is not None and intl_outbound > 0:
+            return f"【即时·商路容量+1·已有{intl_outbound}条国际出向商路受益】"
+        return "【即时·商路容量+1·路线产出需建立国际商路】"
+    if relic_type in _DOMESTIC_TRADE_BOOST_RELICS:
+        if domestic_routes is not None and domestic_routes > 0:
+            return f"【即时·商路容量+1·已有{domestic_routes}条国内商路受益】"
+        return "【即时·商路容量+1·路线产出需建立国内商路】"
     if relic_type == "NW_AI_ENVOY_FOOTHOLD":
         return "【条件即时·仅对已有使者的相遇城邦+2】"
+    if relic_type == "NW_AI_MUSTER_FORWARD":
+        return "【条件即时·需已相遇且可接收使者的城邦】"
     if relic_type == "NW_AI_SPY_BUREAU":
         return (
             "【即时·间谍容量+2·造间谍+25%·"
@@ -694,6 +787,8 @@ def relic_timing_tag(
         )
     if relic_type == "NW_AI_MISSIONARY_WAVE":
         return "【即时·UNIT_MISSIONARY信仰价-50%·需能购UNIT_MISSIONARY】"
+    if relic_type == "NW_AI_PAPAL_AUTHORITY":
+        return "【即时·CLASS_RELIGIOUS_ALL神学战斗力+10·CLASS_RELIGIOUS_SPREAD传播次数+2】"
     if relic_type in get_resource_spawn_map() or "MILK" in relic_type:
         if cities is not None and cities <= 0:
             return "【空放·当前0城无落点·勿选】"
@@ -843,6 +938,8 @@ def format_option_lines(
     *,
     cities: int | None = None,
     intl_inbound: int | None = None,
+    intl_outbound: int | None = None,
+    domestic_routes: int | None = None,
 ) -> list[str]:
     catalog = get_ai_relic_catalog(text_xml)
     lines: list[str] = []
@@ -852,7 +949,13 @@ def format_option_lines(
         desc = _llm_relic_description(
             opt, _strip_civ_icons(info.get("description", ""))
         )
-        tag = relic_timing_tag(opt, cities=cities, intl_inbound=intl_inbound)
+        tag = relic_timing_tag(
+            opt,
+            cities=cities,
+            intl_inbound=intl_inbound,
+            intl_outbound=intl_outbound,
+            domestic_routes=domestic_routes,
+        )
         lines.append(f"- {tag} {opt}: {name} — {desc}")
     return lines
 
@@ -1321,17 +1424,32 @@ def _rst_strategy_hint(rst: RstStrategyView | None, relic_type: str) -> str | No
         relic_type.startswith("NW_AI_STATS_2")
         or relic_type.startswith("NW_AI_ECHO_BUILDER")
         or relic_type in get_resource_spawn_map()
+        or relic_type == "NW_AI_TALENT_FLOW"
+        or relic_type == "NW_AI_CLOSED_DOOR_WORKS"
     ):
         return f"{tag} 主战略=科技，发展/改良类候选偏高"
-    if strat == "CULTURE" and relic_type.startswith("NW_AI_STATS_1"):
+    if strat == "CULTURE" and (
+        relic_type.startswith("NW_AI_STATS_1")
+        or relic_type == "NW_AI_TALENT_FLOW"
+        or relic_type == "NW_AI_PILGRIMAGE_ROAD"
+    ):
         return f"{tag} 主战略=文化，文化产出类候选偏高"
     if strat == "RELIGION" and (
         relic_type.startswith("NW_AI_STATS_4")
         or relic_type == "NW_AI_CELESTIAL_EMPIRE"
+        or relic_type == "NW_AI_MISSIONARY_WAVE"
+        or relic_type == "NW_AI_PAPAL_AUTHORITY"
+        or relic_type == "NW_AI_PILGRIMAGE_ROAD"
+        or relic_type == "NW_AI_TEMPLE_ESTATES"
     ):
-        return f"{tag} 主战略=宗教，信仰/商路类候选偏高"
-    if strat == "DIPLO" and relic_type in _MUTUAL_TRADE_RELICS:
-        return f"{tag} 主战略=外交，贸易互利类候选偏高"
+        return f"{tag} 主战略=宗教，信仰/宗教类候选偏高"
+    if strat == "DIPLO" and (
+        relic_type in _MUTUAL_TRADE_RELICS
+        or relic_type in _INTERNATIONAL_TRADE_BOOST_RELICS
+        or relic_type == "NW_AI_ENVOY_FOOTHOLD"
+        or relic_type == "NW_AI_MUSTER_FORWARD"
+    ):
+        return f"{tag} 主战略=外交，贸易/使者类候选偏高"
     return None
 
 
@@ -1352,10 +1470,10 @@ def build_trait_option_synergy_hints(
             k in corpus for k in ("蛮族", "哨站", "部落", "肃清", "征集")
         ):
             hints.append("能力与蛮族/清营相关；南蛮类需权衡连带干扰（触发者免疫）")
-        if opt in _MUTUAL_TRADE_RELICS and any(
+        if opt in _TRADE_ROUTE_RELICS and any(
             k in corpus for k in ("贸易", "商路", "商人", "同盟", "Camp", "牧场")
         ):
-            hints.append("贸易/同盟特性与国际商路互利协同")
+            hints.append("贸易/同盟特性与对应商路增益协同")
         if opt.startswith("NW_AI_ECHO_SETTLER") and any(
             k in corpus for k in ("扩张", "城市", "冻土", "领土", "定居")
         ):
