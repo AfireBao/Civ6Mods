@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Mod id="06a5a56e-cbd2-4e28-960f-34cef56f6a78" version="1">
+  <Properties>
+    <Name>AfireBao 的总督修改</Name>
+    <Description>以 Better Balanced Game 7.4.6 的总督技能树为基础制作的独立版本。八位常规及专属总督均为 3 回合就职。</Description>
+    <Teaser>BBG 总督技能树独立版，并缩短总督就职时间。</Teaser>
+    <Authors>AfireBao</Authors>
+    <SpecialThanks>CivilizationVI Better Balanced Game contributors</SpecialThanks>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <CompatibleVersions>2.0</CompatibleVersions>
+  </Properties>
+  <Dependencies>
+    <Mod id="1B28771A-C749-434B-9053-D1380C553DE9" title="Expansion: Rise and Fall" />
+    <Mod id="4873eb62-8ccc-4574-b784-dda455e74e68" title="Expansion: Gathering Storm" />
+  </Dependencies>
+  <Blocks>
+    <Mod id="cb84075d-5007-4207-b662-c35a5f7be260" title="Better Balanced Game" />
+  </Blocks>
+  <InGameActions>
+    <UpdateDatabase id="AFIREBAO_GOVERNORS_DATABASE">
+      <Properties>
+        <LoadOrder>11650</LoadOrder>
+      </Properties>
+      <File>Data/Dependencies.sql</File>
+      <File>Data/Governors.sql</File>
+      <File>Data/Governors_XP2.sql</File>
+      <File>Data/Ibrahim.sql</File>
+      <File>Data/ZZ_Establishment.sql</File>
+    </UpdateDatabase>
+    <UpdateText id="AFIREBAO_GOVERNORS_TEXT">
+      <Properties>
+        <LoadOrder>11650</LoadOrder>
+      </Properties>
+      <File>Text/Governors_en_US.xml</File>
+      <File>Text/Governors_zh_Hans_CN.xml</File>
+    </UpdateText>
+  </InGameActions>
+  <Files>
+    <File>Data/Dependencies.sql</File>
+    <File>Data/Governors.sql</File>
+    <File>Data/Governors_XP2.sql</File>
+    <File>Data/Ibrahim.sql</File>
+    <File>Data/ZZ_Establishment.sql</File>
+    <File>Text/Governors_en_US.xml</File>
+    <File>Text/Governors_zh_Hans_CN.xml</File>
+  </Files>
+</Mod>

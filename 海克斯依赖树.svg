@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1680" viewBox="0 0 1800 1680">
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1870" viewBox="0 0 1800 1870">
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#58606a"/>
@@ -27,7 +27,7 @@
     .edge-soft { stroke: #8a929b; stroke-width: 1.4; fill: none; marker-end: url(#arrow); }
   </style>
 
-  <rect class="bg" width="1800" height="1680"/>
+  <rect class="bg" width="1800" height="1870"/>
   <text class="title" x="52" y="52">海克斯依赖树</text>
   <text class="subtitle" x="52" y="82">排除文明 / 特色区域限定升级卡。蓝色为 1 级入口，黄色为中间层，绿色为终点层，灰色为当前无叠层卡。</text>
 
@@ -155,32 +155,41 @@
   <path class="edge-soft" d="M1335 932 L1375 932"/><path class="edge-soft" d="M1615 832 L1625 832"/>
   <path class="edge-soft" d="M1615 882 L1625 882"/>
 
+  <!-- Faith / death line -->
+  <rect class="panel" x="40" y="1080" width="1700" height="150"/>
+  <text class="panel-title" x="66" y="1115">信仰 / 死亡线</text>
+  <rect class="root node" x="470" y="1140" width="240" height="40"/><text class="txt" x="590" y="1161">米凯尔的祝福</text>
+  <rect class="mid node" x="820" y="1140" width="160" height="40"/><text class="txt" x="900" y="1161">死亡崇拜</text>
+  <rect class="terminal node" x="1090" y="1140" width="160" height="40"/><text class="txt" x="1170" y="1161">逝者军事</text>
+  <path class="edge" d="M710 1160 L820 1160"/><path class="edge" d="M980 1160 L1090 1160"/>
+  <text class="small" x="590" y="1202">需要占星术已完成或研究中</text>
+
   <!-- Standalone -->
-  <rect class="panel" x="40" y="1080" width="1700" height="520"/>
-  <text class="panel-title" x="66" y="1115">当前无叠层的非文明限定卡</text>
+  <rect class="panel" x="40" y="1270" width="1700" height="520"/>
+  <text class="panel-title" x="66" y="1305">当前无叠层的非文明限定卡</text>
 
-  <rect class="lone node" x="75" y="1160" width="135" height="38"/><text class="txt" x="142.5" y="1180">代偿</text>
-  <rect class="lone node" x="230" y="1160" width="135" height="38"/><text class="txt" x="297.5" y="1180">超负荷</text>
-  <rect class="lone node" x="385" y="1160" width="135" height="38"/><text class="txt" x="452.5" y="1180">裂变</text>
-  <rect class="lone node" x="540" y="1160" width="135" height="38"/><text class="txt" x="607.5" y="1180">手快全选</text>
-  <rect class="lone node" x="695" y="1160" width="135" height="38"/><text class="txt" x="762.5" y="1180">掷骰狂人</text>
-  <rect class="lone node" x="850" y="1160" width="135" height="38"/><text class="txt" x="917.5" y="1180">蛋白粉奶昔</text>
-  <rect class="lone node" x="1005" y="1160" width="135" height="38"/><text class="txt" x="1072.5" y="1180">米凯尔的祝福</text>
-  <rect class="lone node" x="1160" y="1160" width="135" height="38"/><text class="txt" x="1227.5" y="1180">炼狱导管</text>
-  <rect class="lone node" x="1315" y="1160" width="135" height="38"/><text class="txt" x="1382.5" y="1180">死亡之环</text>
-  <rect class="lone node" x="1470" y="1160" width="135" height="38"/><text class="txt" x="1537.5" y="1180">行幄初张</text>
+  <rect class="lone node" x="75" y="1350" width="135" height="38"/><text class="txt" x="142.5" y="1370">代偿</text>
+  <rect class="lone node" x="230" y="1350" width="135" height="38"/><text class="txt" x="297.5" y="1370">超负荷</text>
+  <rect class="lone node" x="385" y="1350" width="135" height="38"/><text class="txt" x="452.5" y="1370">裂变</text>
+  <rect class="lone node" x="540" y="1350" width="135" height="38"/><text class="txt" x="607.5" y="1370">手快全选</text>
+  <rect class="lone node" x="695" y="1350" width="135" height="38"/><text class="txt" x="762.5" y="1370">掷骰狂人</text>
+  <rect class="lone node" x="850" y="1350" width="135" height="38"/><text class="txt" x="917.5" y="1370">蛋白粉奶昔</text>
+  <rect class="lone node" x="1005" y="1350" width="135" height="38"/><text class="txt" x="1072.5" y="1370">炼狱导管</text>
+  <rect class="lone node" x="1160" y="1350" width="135" height="38"/><text class="txt" x="1227.5" y="1370">死亡之环</text>
+  <rect class="lone node" x="1315" y="1350" width="135" height="38"/><text class="txt" x="1382.5" y="1370">行幄初张</text>
 
-  <rect class="lone node" x="75" y="1225" width="135" height="38"/><text class="txt" x="142.5" y="1245">尊我为王</text>
-  <rect class="lone node" x="230" y="1225" width="180" height="38"/><text class="txt" x="320" y="1245">COSPLAY / 仿生模仿</text>
-  <rect class="lone node" x="585" y="1225" width="135" height="38"/><text class="txt" x="652.5" y="1245">狂野符文</text>
-  <rect class="lone node" x="740" y="1225" width="135" height="38"/><text class="txt" x="807.5" y="1245">掌上明猪</text>
-  <rect class="lone node" x="895" y="1225" width="135" height="38"/><text class="txt" x="962.5" y="1245">憨豆特工</text>
-  <rect class="lone node" x="1050" y="1225" width="135" height="38"/><text class="txt" x="1117.5" y="1245">铝翼坠毁</text>
-  <rect class="lone node" x="1205" y="1225" width="225" height="38"/><text class="txt" x="1317.5" y="1245">能陪我组一辈子的乐队吗？</text>
-  <rect class="lone node" x="1450" y="1225" width="170" height="38"/><text class="txt" x="1535" y="1245">鬼斧 / 奇点AI</text>
+  <rect class="lone node" x="75" y="1415" width="135" height="38"/><text class="txt" x="142.5" y="1435">尊我为王</text>
+  <rect class="lone node" x="230" y="1415" width="180" height="38"/><text class="txt" x="320" y="1435">COSPLAY / 仿生模仿</text>
+  <rect class="lone node" x="585" y="1415" width="135" height="38"/><text class="txt" x="652.5" y="1435">狂野符文</text>
+  <rect class="lone node" x="740" y="1415" width="135" height="38"/><text class="txt" x="807.5" y="1435">三位一体</text>
+  <rect class="lone node" x="895" y="1415" width="135" height="38"/><text class="txt" x="962.5" y="1435">憨豆特工</text>
+  <rect class="lone node" x="1050" y="1415" width="135" height="38"/><text class="txt" x="1117.5" y="1435">铝翼坠毁</text>
+  <rect class="lone node" x="1205" y="1415" width="225" height="38"/><text class="txt" x="1317.5" y="1435">能陪我组一辈子的乐队吗？</text>
+  <rect class="lone node" x="1450" y="1415" width="170" height="38"/><text class="txt" x="1535" y="1435">鬼斧 / 奇点AI</text>
 
-  <text class="subtitle" x="75" y="1335">备注</text>
-  <text class="legend" x="75" y="1370">1. “共产主义”目前可由“大地苏醒”或“金铲铲”解锁。</text>
-  <text class="legend" x="75" y="1400">2. “种地仙人+”除前置“种地仙人”外，还需要秘密结社模式。</text>
-  <text class="legend" x="75" y="1430">3. 这张图反映当前 SQL 前置关系，不含文明专属区域升级海克斯。</text>
+  <text class="subtitle" x="75" y="1525">备注</text>
+  <text class="legend" x="75" y="1560">1. “共产主义”目前可由“大地苏醒”或“金铲铲”解锁。</text>
+  <text class="legend" x="75" y="1590">2. “种地仙人+”除前置“种地仙人”外，还需要秘密结社模式。</text>
+  <text class="legend" x="75" y="1620">3. “米凯尔的祝福”需要占星术已完成或正在研究；其后依次解锁“死亡崇拜”和“逝者军事”。</text>
+  <text class="legend" x="75" y="1650">4. 这张图反映当前 SQL 前置关系，不含文明专属区域升级海克斯。</text>
 </svg>

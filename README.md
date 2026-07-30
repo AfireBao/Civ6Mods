@@ -9,6 +9,7 @@
 |------|------|
 | [`Haikesi_Dev/`](Haikesi_Dev/) | 海克斯大乱斗 Dev 模组（不与工坊原版同时启用）。将本目录整体复制到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\Haikesi_Dev\` |
 | [`CreatePantheon_Dev/`](CreatePantheon_Dev/) | 创造万神殿 Dev（工坊 [Create Your Pantheon](https://steamcommunity.com/sharedfiles/filedetails/?id=2990102039) 本地分支，**v20**）。复制或链接到：`%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods\CreatePantheon_Dev\`。**勿与工坊原版同时启用**；署名与变更见 [`CreatePantheon_Dev/CREDITS.md`](CreatePantheon_Dev/CREDITS.md) |
+| [`AfireBao_Governors/`](AfireBao_Governors/) | AfireBao 的总督修改：以 [Better Balanced Game 7.4.6](https://steamcommunity.com/sharedfiles/filedetails/?id=2865001760) 总督技能树为基础的独立版本；八位常规/专属总督均为 3 回合就职。**勿与 BBG 同时启用**；技能书、署名与许可证见 [`AfireBao_Governors/README.md`](AfireBao_Governors/README.md) |
 | [`civ6-mcp-haikesi/`](civ6-mcp-haikesi/) | 基于 [civ6-mcp](https://github.com/lmwilki/civ6-mcp) 的本地副本，含海克斯 AI 决策扩展（不向 upstream 推送） |
 | [`ExtAI_领袖性格对照.md`](ExtAI_领袖性格对照.md) | ExtAI 风格比例、领袖基线对照表、选卡 Skill 一览（可由 `civ6-mcp-haikesi/scripts/gen_extai_style_reference_md.py` 再生） |
 
@@ -54,6 +55,12 @@
    https://steamcommunity.com/sharedfiles/filedetails/?id=2990102039  
    本地分支见 [`CreatePantheon_Dev/`](CreatePantheon_Dev/)（新 Mod ID，修复阈值/AI/文案）；**勿与工坊原版同时启用**。
 
+5. **Better Balanced Game（BBG）**
+
+   https://steamcommunity.com/sharedfiles/filedetails/?id=2865001760
+
+   [`AfireBao_Governors/`](AfireBao_Governors/) 复制并整理 BBG 7.4.6 的总督技能树，按 MIT License 保留原版权与许可证；该目录为独立实现，运行时不依赖 BBG，且不可与 BBG 同时启用。
+
 ### 拓展依赖（软依赖）
 
 下列模组增强体验，**非硬性必需**；建议与海克斯 PVE / 外部大模型流程一并启用。
@@ -61,6 +68,7 @@
 1. **Real Strategy / RST（Steam 创意工坊）**  
    https://steamcommunity.com/sharedfiles/filedetails/?id=1617282434  
    AI 行为增强；与海克斯及外部大模型选卡流程配合使用。
+   由于RST的AI仍然太弱了，所以本项目已经仿照其独立实现了一份评分系统，即便没有RST大模型也能拿到一个类似的胜利路线权重，但在开启RST时仍然会优先使用该模组的分值。
 
 ---
 
@@ -70,6 +78,8 @@
 
 | 上传日期 | 描述 |
 |----------|------|
+| 2026-07-30 | **独立总督平衡模组**：新增 [`AfireBao_Governors/`](AfireBao_Governors/)，以 BBG 7.4.6 总督技能树为基础独立打包；八位总督均为 **3 回合**就职，维克多“驻军司令”改为 **+5 战斗力**，莫克夏“守护圣人”恢复原版使徒与武僧额外升级效果，并保留 BBG 的信仰转科技/文化效果。 |
+| 2026-07-30 | **AI 海克斯重复性调整**：`闪电风暴` 改为不可重复，避免再次抽中覆盖全局五回合调度；即时结算的 `使者立足` 与 `征召上前` 改为可重复。 |
 | 2026-07-30 | **世外桃源效果调整**：基础 `世外桃源` 不再为全城地块提供 **+1 魅力**，改用越南同款玩家级地貌解锁 Modifier，将建造者种植树林的前置市政提前至 **法典**；惊艳地块 **+1 生产力**保持不变。 |
 | 2026-07-29 | **AI 专属海克斯扩充**：回响系列新增海军近战、海军远程、战斗机、轰炸机四类单位翻倍；宗教新增 `教皇权威`（宗教单位神学战斗力 **+10**、传播次数 **+2**）；和平互利新增 `香料航路` 与 `撒哈拉金路`；新增商路增强系列，所有卡均额外提供 **+1 商路容量**，国际路线为 `人才流动`（+2 科文产）、`自由贸易`（+8 金、+2 产）、`朝圣之路`（+4 信仰、+2 文），国内路线为 `闭关锁国`（+4 金、+2 粮产）、`闭门造车`（+3 科产）、`香火田庄`（+4 信仰、+2 粮）；外交新增 `征召上前`，向使者最多的已相遇城邦追加 **3** 使者，并为其生成 **5** 个当前时代陆地战斗单位。ExtAI 描述、路线方向判断、时机标签与候选池同步更新。 |
 | 2026-07-28 | **死亡崇拜线海克斯**：新增 `死亡崇拜`（前置 `米凯尔的祝福`，权重 **200**）：帝国厌战永久 **-25%**、城市增长 **+50%**，通过隐藏建筑令牌使拥有圣地城市解锁项目 `异端献祭`（圣地项目同款花费/涨价、15% 生产力转信仰），完成后消耗人口并生成自定义 `丧尸`。丧尸复用丧尸模式资源，基础 **15** 力、无自然回血、无法升级、击杀回血 **20**，相邻敌军 **-5**，并按玩家各自丧尸死亡次数获得 `变异之力`。新增 `逝者军事`（前置死亡崇拜，权重 **100**）：额外厌战 **-25%**，丧尸击杀敌军后的感染与非丧尸陆地战斗单位死亡转化共用 **33%** 概率，并为丧尸添加相邻友军吞噬回血操作。 |

@@ -588,7 +588,7 @@ for _, t in ipairs(AI_RELIC_TYPES) do AI_RELIC_TYPE_SET[t] = true end
 local BARBARIAN_INVASION_RELIC = 'NW_AI_BARBARIAN_INVASION'
 local LIGHTNING_STORM_RELIC = 'NW_AI_LIGHTNING_STORM'
 local RIVER_FLOOD_RELIC = 'NW_AI_RIVER_FLOOD'
--- 南蛮入侵 / 闪电风暴 / 仇水连汛：每轮至多 1 个 AI 抽中混乱干扰类之一
+-- 南蛮入侵 / 闪电风暴 / 仇水连汛：非 ExtAI 流程每轮至多 1 个 AI 抽中混乱干扰类之一
 local function IsChaosInterferenceRelic(relicType)
     return relicType == BARBARIAN_INVASION_RELIC
         or relicType == LIGHTNING_STORM_RELIC
@@ -827,7 +827,7 @@ function Haikesi_BuildDeterministicAIChoices(requesterPlayerID, countBefore)
     return choices
 end
 
--- 每轮至多 1 个 AI 拿混乱干扰类；重复强制改抽（落地前最后一道闸）
+-- 非 ExtAI 流程每轮至多 1 个 AI 拿混乱干扰类；重复强制改抽（落地前最后一道闸）
 -- choices 值可为 "A" 或 "A+B"
 local function Haikesi_EnforceChaosMutexInChoices(choices, requesterPlayerID, countBefore)
     if choices == nil then return choices end

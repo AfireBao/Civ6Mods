@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+  <LocalizedText>
+		<!-- == Viktor == -->
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_REDOUBT_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市驻军 [ICON_Strength] 战斗力+5。为城市提供额外+6忠诚度。3回合就职。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_GARRISON_COMMANDER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市领土内的单位+5 [ICON_Strength] 战斗力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_DEFENSE_LOGISTICS_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市生产军事单位时+25% [ICON_PRODUCTION] 生产力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_EMBRASURE_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>就职城市无法被围攻。城市每回合获得一次额外的 [ICON_Ranged] 远程攻击机会。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_ARMS_RACE_PROPONENT_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>此城中生产的所有军事单位若初始未拥有免费 [ICON_Promotion] 升级，则其初始可获得一项免费 [ICON_Promotion] 升级。城市生产单位时无需消耗战略资源。在城市中进行核武器项目时+50% [ICON_Production] 生产力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_AIR_DEFENSE_INITIATIVE_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>防御飞机和洲际弹道导弹的攻击时，位于城市领土中的防空支援单位+25 [ICON_ANTIAIR_LARGE] 战斗力。</Text>
+		</Replace>
+
+		<!-- == Reyna == -->
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_MERCHANT_LAND_ACQUISITION_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市获得新单元格的速度加快。经过城市的每条外国 [ICON_TradeRoute] 商路每回合提供+4 [ICON_Gold] 金币。3回合就职。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_MERCHANT_HARBORMASTER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中商业中心和港口的相邻加成加倍。若城市同时拥有市场和灯塔，则额外+1 [ICON_TradeRoute] 贸易路线容量。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_MERCHANT_FORESTRY_MANAGEMENT_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>每个未改良的地貌和魅力为惊艳的单元格可向该城市提供+2 [ICON_Gold] 金币。该城市中未改良单元格向周围单元格提供+1魅力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_MERCHANT_TAX_COLLECTOR_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市里的每一位 [ICON_Citizen] 公民每回合提供+2 [ICON_Gold] 金币，+1 [ICON_TradeRoute] 贸易路线容量。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_MERCHANT_CONTRACTOR_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市可使用 [ICON_Gold] 金币购买区域。该城市购买建筑和支援单位花费的 [ICON_GOLD] 金币减半。</Text>
+		</Replace>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_MERCHANT_INVESTOR_NAME" Language="zh_Hans_CN">
+			<Text>外汇资金</Text>
+		</Row>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_MERCHANT_INVESTOR_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>经过城市的每条外国 [ICON_TradeRoute] 商路每回合提供+1 [ICON_SCIENCE] 科技值、+1 [ICON_CULTURE] 文化值。“经济”科技后提升至+2 [ICON_SCIENCE] 科技值、+2 [ICON_CULTURE] 文化值。</Text>
+		</Row>
+
+		<!-- == Liang == -->
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_BUILDER_GUILDMASTER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中生产的所有建造者+1建造次数。3回合就职。</Text>
+		</Replace>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_AGRICULTURE_NAME" Language="zh_Hans_CN">
+			<Text>农业发展</Text>
+		</Row>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_AGRICULTURE_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中所有的露天资源（加成、战略、奢侈品）提供额外+1 [ICON_FOOD] 食物。</Text>
+		</Row>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_REINFORCED_INFRASTRUCTURE_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>为该城市的火山土与泛滥平原+1 [ICON_PRODUCTION] 生产力。该城市的改良设施、建筑和区域将免疫自然灾害影响。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_PARKS_RECREATION_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>解锁“游戏和娱乐”市政后可以在平地上建造市立公园。每个城市仅限建造一座。+3 [ICON_SCIENCE] 科技值、+2 [ICON_Culture] 文化值、+2 [ICON_HOUSING] 住房、+1 [ICON_Amenities] 宜居度和+2魅力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_ZONING_COMMISSIONER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中所有的露天资源（加成、战略、奢侈品）提供额外+1 [ICON_PRODUCTION] 生产力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_WATER_WORKS_NAME" Language="zh_Hans_CN">
+			<Text>住房扩建</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_WATER_WORKS_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中的每个 [ICON_DISTRICT] 区域和奇观+1 [ICON_Amenities] 宜居度、+1 [ICON_HOUSING] 住房。</Text>
+		</Replace>
+
+		<!-- == Moksha == -->
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_CARDINAL_BISHOP_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>该城市每回合产出的 [ICON_Culture] 文化值+15%，对相邻城市的宗教压力+100%。城市中的每个特色区域提供+2 [ICON_Faith] 信仰值。3回合就职。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_CONNOISSEUR_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中每位 [ICON_Citizen] 公民每回合可带来+1 [ICON_CULTURE] 文化值。该城市的宗教不受其他文明所创立宗教的被动压力，也不受神学战斗造成的宗教压力变化。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_CARDINAL_CITADEL_OF_GOD_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市拥有圣地时，每回合产生+2 [ICON_GreatProphet] 大预言家点数。6单元格内每个拥有圣地的城市为该城市+2 [ICON_Faith] 信仰值。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_CARDINAL_DIVINE_ARCHITECT_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>以此处为终点的 [ICON_TradeRoute] 国内贸易路线+1 [ICON_FOOD] 食物、+2 [ICON_CULTURE] 文化值。城市可用 [ICON_Faith] 信仰值购买 [ICON_DISTRICT] 区域，购买 [ICON_DISTRICT] 区域时-10% [ICON_Faith] 信仰值消耗。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_CARDINAL_PATRON_SAINT_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>获得等同于城市所产生 [ICON_FAITH] 信仰值20%的 [ICON_SCIENCE] 科技值和 [ICON_CULTURE] 文化值。该城市生产的使徒和武僧在获得升级后，可额外再获得一次升级。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_MERCHANT_CURATOR_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中艺术、音乐和著作巨作提供的 [ICON_Tourism] 旅游业绩+100%。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_THE_CARDINAL_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>{LOC_GOVERNOR_THE_CARDINAL_NAME} 是文化和宗教领袖。可以增加城市的 [ICON_CULTURE] 文化产出和 [ICON_Religion] 宗教力量。是您帝国里的 [ICON_CULTURE] 文化和 [ICON_FAITH] 信仰明灯。</Text>
+		</Replace>
+
+		<!-- == Pingala == -->
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_LIBRARIAN_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市每回合产出的 [ICON_Science] 科技值+15%。3回合就职。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_GRANTS_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市每回合从区域、建筑、万神殿、世界奇观中产出的 [ICON_GreatPerson] 伟人点数+100%。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_RESEARCHER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中每位 [ICON_Citizen] 公民每回合可带来+1 [ICON_SCIENCE] 科技值。</Text>
+		</Replace>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_EUREKA_NAME" Language="zh_Hans_CN">
+			<Text>尤里卡</Text>
+		</Row>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_EUREKA_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>该城市图书馆+3 [ICON_Science] 科技值，大学+5 [ICON_Science] 科技值，研究实验室+7 [ICON_Science] 科技值。</Text>
+		</Row>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_KNOWLEDGE_NAME" Language="zh_Hans_CN">
+			<Text>共享知识</Text>
+		</Row>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_KNOWLEDGE_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>以此处为终点的 [ICON_TradeRoute] 国内贸易路线+1 [ICON_Food] 食物、+3 [ICON_SCIENCE] 科技值。</Text>
+		</Row>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_EDUCATOR_SPACE_INITIATIVE_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>在城市中进行太空计划项目时+30% [ICON_Production] 生产力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_THE_EDUCATOR_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>{LOC_GOVERNOR_THE_EDUCATOR_NAME} 专注于城市中的 [ICON_SCIENCE] 科学耕耘。他还十分擅长将 [ICON_GreatPerson] 伟人吸引到城市中。</Text>
+		</Replace>
+
+
+		<!-- == Amani == -->
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_AMBASSADOR_MESSENGER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>可派遣至城邦，效力等同于2名 [ICON_Envoy] 使者。拥有通向该城邦 [ICON_TradeRoute] 贸易路线的己方城市获得+2 [ICON_Food] 食物和+2 [ICON_PRODUCTION] 生产力。3回合就职。</Text>
+		</Replace>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_AMBASSADOR_NEGOTIATOR_NAME" Language="zh_Hans_CN">
+			<Text>谈判者</Text>
+		</Row>
+		<Row Tag="LOC_GOVERNOR_PROMOTION_AMBASSADOR_NEGOTIATOR_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>该城市不能被围攻，+5城市防御。</Text>
+		</Row>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_AMBASSADOR_AFFLUENCE_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>每回合提供2份文明已解锁的战略资源。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_LOCAL_INFORMANTS_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>9单元格之内的所有城市每回合向您的文明+4忠诚度。敌方间谍在此城中的行动等级减3。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_AMBASSADOR_FOREIGN_INVESTOR_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>每级市政广场建筑+1 [ICON_Favor] 外交支持、+1 [ICON_InfluencePerTurn] 影响力点数。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_AMBASSADOR_PUPPETEER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>派遣到城邦后使当地的 [ICON_Envoy] 使者数量加倍。</Text>
+		</Replace>
+
+		<!-- == Magnus == -->
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_RESOURCE_MANAGER_GROUNDBREAKER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中格位收获和移除地貌的产出+40%。3回合就职。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_RESOURCE_MANAGER_EXPEDITION_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市的 [ICON_Food] 食物增长+20%。以此处为终点的 [ICON_TradeRoute] 国内贸易路线+1 [ICON_Food] 食物、+1 [ICON_PRODUCTION] 生产力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_RESOURCE_MANAGER_INDUSTRIALIST_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>建造工业区建筑时+25% [ICON_PRODUCTION] 生产力。城市中生产的开拓者不消耗 [ICON_Citizen] 人口。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_RESOURCE_MANAGER_SURPLUS_LOGISTICS_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市生产单位、区域、建筑时+20% [ICON_PRODUCTION] 生产力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_RESOURCE_MANAGER_BLACK_MARKETEER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中的工作坊+2 [ICON_PRODUCTION] 生产力，工厂+4 [ICON_PRODUCTION] 生产力，发电厂+7 [ICON_PRODUCTION] 生产力，+4 [ICON_POWER] 电力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_RESOURCE_MANAGER_VERTICAL_INTEGRATION_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>此城市可从附近所有拥有区域加成的工业区处获得 [ICON_Production] 生产力，而不仅是从首个建成的工业区处获得。</Text>
+		</Replace>
+
+		<!-- == Ibrahim == -->
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_PASHA_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市建造任意军事单位时+25% [ICON_Production] 生产力。在外国盟友的 [ICON_Capital] 首都就职时，此盟友的同盟点数每回合额外增加0.5。3回合就职。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_HEAD_FALCONER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中每位 [ICON_Citizen] 公民每回合可带来+1 [ICON_SCIENCE] 科技值。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_SERASKER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>攻击防御性区域时，市中心周围10个单元格内的己方单位+10 [ICON_Strength] 战斗力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_KHASS_ODA_BASHI_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>城市中每位 [ICON_Citizen] 公民每回合可带来+1 [ICON_CULTURE] 文化值。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_CAPOU_AGHA_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>市中心周围10个单元格内的己方单位+1 [ICON_Movement] 移动力。在城市领土中战斗的所有友方单位+3 [ICON_Strength] 战斗力。</Text>
+		</Replace>
+		<Replace Tag="LOC_GOVERNOR_PROMOTION_GRAND_VISIER_DESCRIPTION" Language="zh_Hans_CN">
+			<Text>+5 [ICON_AMENITIES] 宜居度、+5 [ICON_HOUSING] 住房。</Text>
+		</Replace>
+
+  </LocalizedText>
+</GameData>
