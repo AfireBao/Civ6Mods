@@ -2015,6 +2015,16 @@
             <Text>钟声止于国境，脚步却仍可越界。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CULTURAL_BARRIER_NAME" Language="zh_Hans_CN">
+            <Text>文化壁垒</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CULTURAL_BARRIER_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【文化】其他文明对本文明产生的 [ICON_Tourism] 旅游业绩降低 20%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_CULTURAL_BARRIER_FLAVOR" Language="zh_Hans_CN">
+            <Text>世界仍能看见我们，却只能看见我们允许展示的部分。</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_BARB_INVASION_ASSAULT_TITLE" Language="zh_Hans_CN">
             <Text>南蛮入侵</Text>
         </Replace>

@@ -691,3 +691,17 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
     VALUES ('MODIFIER_NW_AI_FAITH_BORDER_PRESSURE', 'Enable', 'true');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId)
     VALUES ('NW_AI_FAITH_BORDER', 'MODIFIER_NW_AI_FAITH_BORDER_PRESSURE');
+
+-- ----- 文化壁垒：其他文明对本文明产生的有效旅游业绩降低 20% -----
+-- 复用原版“太空旅游”政策的总体入境旅游削减效果；不影响持有者对外输出的旅游业绩，
+-- 也不会追溯扣除已经累计的旅游业绩或国外游客。
+INSERT INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity, IsActive, IsRepeatable) VALUES
+    ('NW_AI_CULTURAL_BARRIER', 'LOC_HAIKESI_RELIC_NW_AI_CULTURAL_BARRIER_NAME', 'LOC_HAIKESI_RELIC_NW_AI_CULTURAL_BARRIER_DESCRIPTION', 'LOC_HAIKESI_RELIC_NW_AI_CULTURAL_BARRIER_FLAVOR', 'ICON_HAIKESI_RELIC_STATSONSTATSONSTATSRUNE', 'PRISMATIC', 0, 0);
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_AI_CULTURAL_BARRIER_TOURISM',
+            'MODIFIER_PLAYER_ADJUST_OVERALL_TOURISM_REDUCTION');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_AI_CULTURAL_BARRIER_TOURISM', 'Modifier', '20');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId)
+    VALUES ('NW_AI_CULTURAL_BARRIER', 'MODIFIER_NW_AI_CULTURAL_BARRIER_TOURISM');

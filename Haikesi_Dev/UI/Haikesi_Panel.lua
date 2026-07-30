@@ -69,10 +69,11 @@ local AI_RELIC_TYPES = {
     -- 商路增强
     'NW_AI_TALENT_FLOW', 'NW_AI_FREE_TRADE', 'NW_AI_PILGRIMAGE_ROAD',
     'NW_AI_CLOSED_COUNTRY', 'NW_AI_CLOSED_DOOR_WORKS', 'NW_AI_TEMPLE_ESTATES',
-    -- 外交 / 基建 / 宗教向
+    -- 外交 / 基建 / 宗教 / 文化防御向
     'NW_AI_SPY_BUREAU', 'NW_AI_ENVOY_FOOTHOLD', 'NW_AI_MUSTER_FORWARD',
     'NW_AI_WONDER_WORKSHOP', 'NW_AI_WALL_ENGINEERING',
     'NW_AI_MISSIONARY_WAVE', 'NW_AI_PAPAL_AUTHORITY', 'NW_AI_FAITH_BORDER',
+    'NW_AI_CULTURAL_BARRIER',
 }
 local BARBARIAN_INVASION_RELIC = 'NW_AI_BARBARIAN_INVASION'
 local LIGHTNING_STORM_RELIC = 'NW_AI_LIGHTNING_STORM'
@@ -87,6 +88,10 @@ local AI_RELIC_REQUIRES_FOUNDED_RELIGION = {
     ['NW_AI_FAITH_BORDER'] = true,
 }
 
+local AI_RELIC_REQUIRES_CULTURE_VICTORY = {
+    ['NW_AI_CULTURAL_BARRIER'] = true,
+}
+
 local function AIPlayerHasFoundedReligionForUI(pAI)
     if pAI == nil then return false end
     local ok, religionType = pcall(function()
@@ -97,9 +102,21 @@ local function AIPlayerHasFoundedReligionForUI(pAI)
     return ok and type(religionType) == 'number' and religionType >= 0
 end
 
+local function IsCultureVictoryEnabledForUI()
+    local victory = GameInfo.Victories['VICTORY_CULTURE']
+    if victory == nil or Game.IsVictoryEnabled == nil then return false end
+    local ok, enabled = pcall(function()
+        return Game.IsVictoryEnabled(victory.Index)
+    end)
+    return ok and enabled == true
+end
+
 local function AIPlayerMeetsRelicGateForUI(pAI, relicType)
     if AI_RELIC_REQUIRES_FOUNDED_RELIGION[relicType] then
         return AIPlayerHasFoundedReligionForUI(pAI)
+    end
+    if AI_RELIC_REQUIRES_CULTURE_VICTORY[relicType] then
+        return IsCultureVictoryEnabledForUI()
     end
     return true
 end

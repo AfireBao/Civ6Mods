@@ -109,6 +109,18 @@ def test_faith_border_only_blocks_passive_foreign_pressure():
     assert "需已创立宗教" in timing
 
 
+def test_cultural_barrier_only_reduces_future_incoming_tourism():
+    relic = "NW_AI_CULTURAL_BARRIER"
+    description = haikesi_lua.AI_LLM_DESCRIPTIONS[relic]
+    timing = haikesi_lua.relic_timing_tag(relic)
+    assert "other civilizations" in description
+    assert "-20%" in description
+    assert "outgoing Tourism" in description
+    assert "already accumulated Tourism / Visiting Tourists" in description
+    assert "有效TOURISM-20%" in timing
+    assert "仅文化胜利启用时入池" in timing
+
+
 def test_trade_boost_relics_use_owned_route_direction():
     for relic in (
         "NW_AI_TALENT_FLOW",
