@@ -151,6 +151,10 @@ AI_LLM_DESCRIPTIONS: dict[str, str] = {
         "All CLASS_RELIGIOUS_ALL units: theological combat strength +10. "
         "CLASS_RELIGIOUS_SPREAD units: +2 permanent religious spreads."
     ),
+    "NW_AI_FAITH_BORDER": (
+        "All cities ignore passive religious pressure from religions not founded by this civilization. "
+        "Active UNIT_MISSIONARY / UNIT_APOSTLE spreads and theological-combat religious effects remain enabled."
+    ),
 }
 
 _DEFAULT_SPAWN_SQL = (
@@ -789,6 +793,8 @@ def relic_timing_tag(
         return "【即时·UNIT_MISSIONARY信仰价-50%·需能购UNIT_MISSIONARY】"
     if relic_type == "NW_AI_PAPAL_AUTHORITY":
         return "【即时·CLASS_RELIGIOUS_ALL神学战斗力+10·CLASS_RELIGIOUS_SPREAD传播次数+2】"
+    if relic_type == "NW_AI_FAITH_BORDER":
+        return "【持续·所有城市屏蔽外国被动宗教压力·主动传教/神学战斗仍有效·需已创立宗教】"
     if relic_type in get_resource_spawn_map() or "MILK" in relic_type:
         if cities is not None and cities <= 0:
             return "【空放·当前0城无落点·勿选】"
@@ -1439,6 +1445,7 @@ def _rst_strategy_hint(rst: RstStrategyView | None, relic_type: str) -> str | No
         or relic_type == "NW_AI_CELESTIAL_EMPIRE"
         or relic_type == "NW_AI_MISSIONARY_WAVE"
         or relic_type == "NW_AI_PAPAL_AUTHORITY"
+        or relic_type == "NW_AI_FAITH_BORDER"
         or relic_type == "NW_AI_PILGRIMAGE_ROAD"
         or relic_type == "NW_AI_TEMPLE_ESTATES"
     ):

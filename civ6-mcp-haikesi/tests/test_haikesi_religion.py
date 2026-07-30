@@ -101,7 +101,7 @@ def test_religion_block_in_prompt():
         HaikesiGameContext(overview=overview, leader_views={1: view}, human_player_id=0),
     )
     assert "【本国宗教】" in prompt
-    assert "本国万神殿/教义" in prompt
+    assert "各文明万神殿" in prompt
 
 
 def test_build_civ_religion_query():

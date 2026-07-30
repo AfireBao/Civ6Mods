@@ -72,7 +72,7 @@ local AI_RELIC_TYPES = {
     -- 外交 / 基建 / 宗教向
     'NW_AI_SPY_BUREAU', 'NW_AI_ENVOY_FOOTHOLD', 'NW_AI_MUSTER_FORWARD',
     'NW_AI_WONDER_WORKSHOP', 'NW_AI_WALL_ENGINEERING',
-    'NW_AI_MISSIONARY_WAVE', 'NW_AI_PAPAL_AUTHORITY',
+    'NW_AI_MISSIONARY_WAVE', 'NW_AI_PAPAL_AUTHORITY', 'NW_AI_FAITH_BORDER',
 }
 local BARBARIAN_INVASION_RELIC = 'NW_AI_BARBARIAN_INVASION'
 local LIGHTNING_STORM_RELIC = 'NW_AI_LIGHTNING_STORM'
@@ -81,6 +81,27 @@ local function IsChaosInterferenceRelic(relicType)
     return relicType == BARBARIAN_INVASION_RELIC
         or relicType == LIGHTNING_STORM_RELIC
         or relicType == RIVER_FLOOD_RELIC
+end
+
+local AI_RELIC_REQUIRES_FOUNDED_RELIGION = {
+    ['NW_AI_FAITH_BORDER'] = true,
+}
+
+local function AIPlayerHasFoundedReligionForUI(pAI)
+    if pAI == nil then return false end
+    local ok, religionType = pcall(function()
+        local pReligion = pAI:GetReligion()
+        if pReligion == nil then return -1 end
+        return pReligion:GetReligionTypeCreated()
+    end)
+    return ok and type(religionType) == 'number' and religionType >= 0
+end
+
+local function AIPlayerMeetsRelicGateForUI(pAI, relicType)
+    if AI_RELIC_REQUIRES_FOUNDED_RELIGION[relicType] then
+        return AIPlayerHasFoundedReligionForUI(pAI)
+    end
+    return true
 end
 
 -- 为指定 AI 构建未选过的候选池（excludeChaosThisRound：本轮混乱干扰已被占用）
@@ -102,7 +123,7 @@ local function GetAIAvailableRelicsForUI(pAI, excludeChaosThisRound)
         local relicDef = GameInfo.Haikesi_Relics[relicType]
         local alreadySelected = selected[relicType]
         local canPick = not alreadySelected or (relicDef ~= nil and relicDef.IsRepeatable == 1)
-        if canPick then
+        if canPick and AIPlayerMeetsRelicGateForUI(pAI, relicType) then
             if not (excludeChaosThisRound and IsChaosInterferenceRelic(relicType)) then
                 table.insert(candidates, relicType)
             end

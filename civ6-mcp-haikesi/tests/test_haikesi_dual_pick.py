@@ -20,7 +20,18 @@ def test_parse_ai_line_picks_and_age():
 
 
 def test_normalize_extai_choices_list_and_plus():
-    ais = [{"player_id": 2, "picks": 2}, {"player_id": 3, "picks": 1}]
+    ais = [
+        {
+            "player_id": 2,
+            "picks": 2,
+            "options": ["NW_AI_A", "NW_AI_B"],
+        },
+        {
+            "player_id": 3,
+            "picks": 1,
+            "options": ["NW_AI_C"],
+        },
+    ]
     out = haikesi_lua.normalize_extai_choices(
         {
             "2": ["NW_AI_A", "NW_AI_B"],

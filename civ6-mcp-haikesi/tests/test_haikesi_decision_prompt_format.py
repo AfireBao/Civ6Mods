@@ -97,6 +97,18 @@ def test_new_echo_relics_use_separate_unit_tags():
         assert tag in haikesi_lua.relic_timing_tag(relic)
 
 
+def test_faith_border_only_blocks_passive_foreign_pressure():
+    relic = "NW_AI_FAITH_BORDER"
+    description = haikesi_lua.AI_LLM_DESCRIPTIONS[relic]
+    timing = haikesi_lua.relic_timing_tag(relic)
+    assert "passive religious pressure" in description
+    assert "UNIT_MISSIONARY" in description
+    assert "UNIT_APOSTLE" in description
+    assert "theological-combat" in description
+    assert "主动传教/神学战斗仍有效" in timing
+    assert "需已创立宗教" in timing
+
+
 def test_trade_boost_relics_use_owned_route_direction():
     for relic in (
         "NW_AI_TALENT_FLOW",

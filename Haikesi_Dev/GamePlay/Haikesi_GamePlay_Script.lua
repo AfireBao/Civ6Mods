@@ -580,7 +580,7 @@ local AI_RELIC_TYPES = {
     -- 外交 / 基建 / 宗教向
     'NW_AI_SPY_BUREAU', 'NW_AI_ENVOY_FOOTHOLD', 'NW_AI_MUSTER_FORWARD',
     'NW_AI_WONDER_WORKSHOP', 'NW_AI_WALL_ENGINEERING',
-    'NW_AI_MISSIONARY_WAVE', 'NW_AI_PAPAL_AUTHORITY',
+    'NW_AI_MISSIONARY_WAVE', 'NW_AI_PAPAL_AUTHORITY', 'NW_AI_FAITH_BORDER',
 }
 local AI_RELIC_TYPE_SET = {}
 for _, t in ipairs(AI_RELIC_TYPES) do AI_RELIC_TYPE_SET[t] = true end
@@ -615,6 +615,27 @@ local function Haikesi_GetPlayerRelicCount(pPlayer)
     return tonumber(pPlayer:GetProperty(RelicsCountPropertyKey) or 0) or 0
 end
 
+local AI_RELIC_REQUIRES_FOUNDED_RELIGION = {
+    ['NW_AI_FAITH_BORDER'] = true,
+}
+
+local function AIPlayerHasFoundedReligion(pAI)
+    if pAI == nil then return false end
+    local ok, religionType = pcall(function()
+        local pReligion = pAI:GetReligion()
+        if pReligion == nil then return -1 end
+        return pReligion:GetReligionTypeCreated()
+    end)
+    return ok and type(religionType) == 'number' and religionType >= 0
+end
+
+local function AIPlayerMeetsRelicGate(pAI, relicType)
+    if AI_RELIC_REQUIRES_FOUNDED_RELIGION[relicType] then
+        return AIPlayerHasFoundedReligion(pAI)
+    end
+    return true
+end
+
 local function GetAIAvailableRelics(pAI, excludeChaosThisRound)
     local selected = GetSelectedRelicTypesForPlayer(pAI)
     local available = {}
@@ -622,7 +643,7 @@ local function GetAIAvailableRelics(pAI, excludeChaosThisRound)
         local relicDef = GameInfo.Haikesi_Relics[t]
         local alreadySelected = selected[t]
         local canPick = not alreadySelected or (relicDef ~= nil and relicDef.IsRepeatable == 1)
-        if canPick then
+        if canPick and AIPlayerMeetsRelicGate(pAI, t) then
             if not (excludeChaosThisRound and IsChaosInterferenceRelic(t)) then
                 table.insert(available, t)
             end
@@ -959,7 +980,10 @@ function Haikesi_ApplyAIChoicesForRound(requesterPlayerID, aiChoicesTable, count
                                     aiRelic = nil
                                 end
                             end
-                            if aiRelic ~= nil then
+                            if aiRelic ~= nil and not AIPlayerMeetsRelicGate(pAI, aiRelic) then
+                                print("[Haikesi GamePlay] AIChoices rejected (gate not met): AI"
+                                    .. aiID .. " " .. tostring(aiRelic))
+                            elseif aiRelic ~= nil then
                                 local selectedTypes = GetSelectedRelicTypesForPlayer(pAI)
                                 local relicDef = GameInfo.Haikesi_Relics[aiRelic]
                                 local canApply = not selectedTypes[aiRelic]

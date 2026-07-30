@@ -2005,6 +2005,16 @@
             <Text>+{1_Amount} 教皇权威</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_FAITH_BORDER_NAME" Language="zh_Hans_CN">
+            <Text>信仰国境</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_FAITH_BORDER_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>【宗教】所有城市将不会受到来自非本文明创立宗教的被动宗教压力。外国传教士、使徒等宗教单位的主动传播及神学战斗造成的宗教影响仍正常生效。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_NW_AI_FAITH_BORDER_FLAVOR" Language="zh_Hans_CN">
+            <Text>钟声止于国境，脚步却仍可越界。</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_BARB_INVASION_ASSAULT_TITLE" Language="zh_Hans_CN">
             <Text>南蛮入侵</Text>
         </Replace>
