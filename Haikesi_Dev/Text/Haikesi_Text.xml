@@ -2226,5 +2226,16 @@
             <Text>位于敌方境内时+5 [ICON_Strength] 战斗力。</Text>
         </Replace>
 
+        <!-- 领袖专属海克斯：爱之法庭 -->
+        <Replace Tag="LOC_HAIKESI_RELIC_COURTOFLOVERUNE_NAME" Language="zh_Hans_CN">
+            <Text>爱之法庭</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COURTOFLOVERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>巨作根据所在城市拥有的区域获得额外产出：著作和遗物+1，艺术品和文物+2，音乐+4。学院提供[ICON_Science]科技值；剧院广场提供[ICON_Culture]文化值；港口或商业中心提供[ICON_Gold]金币；圣地提供[ICON_Faith]信仰值；工业区提供[ICON_Production]生产力；社区提供[ICON_Food]食物。拥有此海克斯时无法获得安善的巨作额外科技值。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_COURTOFLOVERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>宫廷中的每一件作品，都在为城市低声歌唱。</Text>
+        </Replace>
+
     </LocalizedText>
 </GameData>

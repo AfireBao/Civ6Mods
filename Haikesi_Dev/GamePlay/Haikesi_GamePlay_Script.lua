@@ -19,6 +19,8 @@ local DEV_INITIAL_GOLD_AMOUNT = 1000000
 local g_RelicModifierMap = nil
 -- RelicType → 资源创建配置（Haikesi_Relic_ResourceSpawns）
 local g_RelicResourceSpawnMap = nil
+-- RelicType → 可选 LeaderType 集合；无记录的普通海克斯不受限制
+local g_RelicLeaderEligibilityMap = nil
 
 --||======================= Key ========================||--
 local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
@@ -123,6 +125,29 @@ local function GetSelectedRelicTypesForPlayer(pPlayer)
     return selected
 end
 
+local function BuildRelicLeaderEligibilityMap()
+    if g_RelicLeaderEligibilityMap then return g_RelicLeaderEligibilityMap end
+
+    g_RelicLeaderEligibilityMap = {}
+    if GameInfo.Haikesi_Relic_LeaderEligibility ~= nil then
+        for row in GameInfo.Haikesi_Relic_LeaderEligibility() do
+            if not g_RelicLeaderEligibilityMap[row.RelicType] then
+                g_RelicLeaderEligibilityMap[row.RelicType] = {}
+            end
+            g_RelicLeaderEligibilityMap[row.RelicType][row.LeaderType] = true
+        end
+    end
+    return g_RelicLeaderEligibilityMap
+end
+
+local function IsRelicLeaderEligible(playerID, relicType)
+    local allowedLeaders = BuildRelicLeaderEligibilityMap()[relicType]
+    if allowedLeaders == nil then return true end
+
+    local _, leaderType = GetPlayerConfigTypes(playerID)
+    return leaderType ~= nil and allowedLeaders[leaderType] == true
+end
+
 function Haikesi_MarkDeathCultBaseModifiersAttached(pPlayer)
     if pPlayer == nil then return end
     pPlayer:SetProperty('PROP_NW_DEATH_CULT_BASE_MODIFIERS_ATTACHED', 1)
@@ -171,6 +196,10 @@ local function IsCapabilityPrerequisiteMet(capType)
 end
 
 local function AreRelicPrerequisitesMet(pPlayer, relicType, selectedTypes)
+    if not IsRelicLeaderEligible(pPlayer:GetID(), relicType) then
+        return false
+    end
+
     local tableAvailable = GameInfo.Haikesi_Relic_Prerequisites ~= nil
     local matchedRows = 0
     local anyRelicPrereqs = {}
@@ -489,6 +518,10 @@ function ApplyRelicToPlayer(iPlayer, relicType, isSelection, decisionReason)
     local relicDef = GameInfo.Haikesi_Relics[relicType]
     if relicDef == nil then
         print("[Haikesi GamePlay] unknown relic type: " .. tostring(relicType))
+        return false
+    end
+    if not IsRelicLeaderEligible(iPlayer, relicType) then
+        print("[Haikesi GamePlay] rejected leader-ineligible relic " .. tostring(relicType) .. " for Player" .. tostring(iPlayer))
         return false
     end
     if (not isSelection) and IsRelicSelectionOnly(relicType) then

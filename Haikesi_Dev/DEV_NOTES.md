@@ -1,5 +1,11 @@
 ﻿# Haikesi Dev — 问题分析与开发改动
 
+## 2026-07-30：领袖专属海克斯分区
+
+- 新增 `Haikesi_Relic_LeaderEligibility`，为海克斯提供多领袖 OR 资格限制；UI 抽取与 Gameplay 授予双重校验。
+- 新增权重 300 的「爱之法庭」，仅英格兰/法国埃莉诺与松迪亚塔·凯塔可选；按城市区域为巨作提供额外产出。
+- 持有「爱之法庭」时禁用安善的巨作科技值，且兼容保留先加载模组（包括 BBG）已有的安善条件。
+
 ## 背景
 
 PVE「AI 海克斯」流程：人类玩家在 UI 确认海克斯时，由**某一端**为所有 AI 随机挑选 AI 专用海克斯，经 `param.AIChoices` 随 `HaikesiSelectRelic` 下发；Gameplay 端校验并 `ApplyRelicToPlayer`。

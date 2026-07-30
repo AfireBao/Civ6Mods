@@ -3527,3 +3527,138 @@ INSERT OR IGNORE INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('DEATHCULTRUNE', 'MODIFIER_NW_ZOMBIE_HEAL_AFTER_KILL'),
     ('DEATHCULTRUNE', 'MODIFIER_NW_ZOMBIE_DISABLE_HEALING'),
     ('NECROMILITARISMRUNE', 'MODIFIER_NW_NECROMILITARISM_WAR_WEARINESS');
+
+-- ==========================================================================
+-- 爱之法庭 (COURTOFLOVERUNE)
+-- 复刻 BBG 埃莉诺的区域→巨作产出：著作/遗物 +1，艺术品/文物 +2，音乐 +4。
+-- 同时以玩家属性禁用安善巨作科技；安善补丁会保留先加载模组已有的 Subject 条件。
+-- ==========================================================================
+DROP TABLE IF EXISTS NW_CourtOfLoveDistrictYields;
+CREATE TEMP TABLE NW_CourtOfLoveDistrictYields (
+    DistrictType TEXT NOT NULL PRIMARY KEY,
+    YieldType    TEXT NOT NULL
+);
+INSERT INTO NW_CourtOfLoveDistrictYields (DistrictType, YieldType) VALUES
+    ('DISTRICT_NEIGHBORHOOD',   'YIELD_FOOD'),
+    ('DISTRICT_INDUSTRIAL_ZONE','YIELD_PRODUCTION'),
+    ('DISTRICT_COMMERCIAL_HUB', 'YIELD_GOLD'),
+    ('DISTRICT_HARBOR',         'YIELD_GOLD'),
+    ('DISTRICT_CAMPUS',         'YIELD_SCIENCE'),
+    ('DISTRICT_THEATER',        'YIELD_CULTURE'),
+    ('DISTRICT_HOLY_SITE',      'YIELD_FAITH');
+
+DROP TABLE IF EXISTS NW_CourtOfLoveGreatWorkAmounts;
+CREATE TEMP TABLE NW_CourtOfLoveGreatWorkAmounts (
+    GreatWorkObjectType TEXT NOT NULL PRIMARY KEY,
+    YieldChange         INTEGER NOT NULL
+);
+INSERT INTO NW_CourtOfLoveGreatWorkAmounts (GreatWorkObjectType, YieldChange) VALUES
+    ('GREATWORKOBJECT_WRITING',   1),
+    ('GREATWORKOBJECT_RELIC',     1),
+    ('GREATWORKOBJECT_ARTIFACT',  2),
+    ('GREATWORKOBJECT_PORTRAIT',  2),
+    ('GREATWORKOBJECT_LANDSCAPE', 2),
+    ('GREATWORKOBJECT_RELIGIOUS', 2),
+    ('GREATWORKOBJECT_SCULPTURE', 2),
+    ('GREATWORKOBJECT_MUSIC',     4);
+
+-- 每种区域各建一个“城市拥有该区域”条件，避免依赖 BBG 的工具表。
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
+SELECT 'NW_COURT_CITY_HAS_' || DistrictType, 'REQUIREMENTSET_TEST_ALL'
+FROM NW_CourtOfLoveDistrictYields;
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
+SELECT 'NW_COURT_CITY_HAS_' || DistrictType || '_REQUIREMENT', 'REQUIREMENT_CITY_HAS_DISTRICT'
+FROM NW_CourtOfLoveDistrictYields;
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value)
+SELECT 'NW_COURT_CITY_HAS_' || DistrictType || '_REQUIREMENT', 'DistrictType', DistrictType
+FROM NW_CourtOfLoveDistrictYields;
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId)
+SELECT 'NW_COURT_CITY_HAS_' || DistrictType,
+       'NW_COURT_CITY_HAS_' || DistrictType || '_REQUIREMENT'
+FROM NW_CourtOfLoveDistrictYields;
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId, Permanent)
+SELECT 'MODIFIER_NW_COURT_' || gw.GreatWorkObjectType || '_' || dy.DistrictType,
+       'MODIFIER_PLAYER_CITIES_ADJUST_GREATWORK_YIELD',
+       'NW_COURT_CITY_HAS_' || dy.DistrictType,
+       1
+FROM NW_CourtOfLoveGreatWorkAmounts gw
+CROSS JOIN NW_CourtOfLoveDistrictYields dy;
+
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+SELECT 'MODIFIER_NW_COURT_' || gw.GreatWorkObjectType || '_' || dy.DistrictType,
+       'GreatWorkObjectType', gw.GreatWorkObjectType
+FROM NW_CourtOfLoveGreatWorkAmounts gw
+CROSS JOIN NW_CourtOfLoveDistrictYields dy;
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+SELECT 'MODIFIER_NW_COURT_' || gw.GreatWorkObjectType || '_' || dy.DistrictType,
+       'YieldType', dy.YieldType
+FROM NW_CourtOfLoveGreatWorkAmounts gw
+CROSS JOIN NW_CourtOfLoveDistrictYields dy;
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+SELECT 'MODIFIER_NW_COURT_' || gw.GreatWorkObjectType || '_' || dy.DistrictType,
+       'YieldChange', gw.YieldChange
+FROM NW_CourtOfLoveGreatWorkAmounts gw
+CROSS JOIN NW_CourtOfLoveDistrictYields dy;
+
+-- 属性标记供安善条件读取；先绑定标记，再绑定 56 个巨作修正。
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, Permanent) VALUES
+    ('MODIFIER_NW_COURT_OF_LOVE_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY', 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_COURT_OF_LOVE_MARKER', 'Key', 'PROPERTY_NW_HAIKESI_COURT_OF_LOVE'),
+    ('MODIFIER_NW_COURT_OF_LOVE_MARKER', 'Amount', '1');
+INSERT OR IGNORE INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('COURTOFLOVERUNE', 'MODIFIER_NW_COURT_OF_LOVE_MARKER');
+INSERT OR IGNORE INTO Haikesi_Relic_Modifiers (RelicType, ModifierId)
+SELECT 'COURTOFLOVERUNE',
+       'MODIFIER_NW_COURT_' || gw.GreatWorkObjectType || '_' || dy.DistrictType
+FROM NW_CourtOfLoveGreatWorkAmounts gw
+CROSS JOIN NW_CourtOfLoveDistrictYields dy;
+
+-- 安善兼容：条件为“原有 Subject 条件全部成立”且“玩家未持有爱之法庭”。
+-- Haikesi 的加载顺序晚于 BBG，因此可保留 BBG_PLAYER_IS_NOT_ELEANOR 等现有要求。
+INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType, Inverse) VALUES
+    ('NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE', 'REQUIREMENT_PLAYER_PROPERTY_MATCHES', 1);
+UPDATE Requirements
+SET RequirementType = 'REQUIREMENT_PLAYER_PROPERTY_MATCHES', Inverse = 1
+WHERE RequirementId = 'NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE';
+INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value) VALUES
+    ('NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE', 'PropertyName', 'PROPERTY_NW_HAIKESI_COURT_OF_LOVE'),
+    ('NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE', 'PropertyMinimum', '1');
+
+DROP TABLE IF EXISTS NW_CourtOfLoveAnshanModifiers;
+CREATE TEMP TABLE NW_CourtOfLoveAnshanModifiers (
+    ModifierId                 TEXT NOT NULL PRIMARY KEY,
+    CompatibilityRequirementSetId TEXT NOT NULL
+);
+INSERT INTO NW_CourtOfLoveAnshanModifiers (ModifierId, CompatibilityRequirementSetId) VALUES
+    ('MINOR_CIV_BABYLON_GREAT_WORK_WRITING_SCIENCE',  'NW_ANSHAN_WRITING_NO_COURT_OF_LOVE'),
+    ('MINOR_CIV_BABYLON_GREAT_WORK_RELIC_SCIENCE',    'NW_ANSHAN_RELIC_NO_COURT_OF_LOVE'),
+    ('MINOR_CIV_BABYLON_GREAT_WORK_ARTIFACT_SCIENCE', 'NW_ANSHAN_ARTIFACT_NO_COURT_OF_LOVE');
+
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
+SELECT CompatibilityRequirementSetId, 'REQUIREMENTSET_TEST_ALL'
+FROM NW_CourtOfLoveAnshanModifiers;
+
+-- 在改写 Modifier 之前复制其现有 RequirementSet 成员，以兼容 BBG 或其他先加载模组。
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId)
+SELECT compat.CompatibilityRequirementSetId, existing.RequirementId
+FROM NW_CourtOfLoveAnshanModifiers compat
+JOIN Modifiers modifier ON modifier.ModifierId = compat.ModifierId
+JOIN RequirementSetRequirements existing
+  ON existing.RequirementSetId = modifier.SubjectRequirementSetId;
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId)
+SELECT CompatibilityRequirementSetId, 'NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE'
+FROM NW_CourtOfLoveAnshanModifiers;
+
+UPDATE Modifiers
+SET SubjectRequirementSetId = (
+    SELECT compat.CompatibilityRequirementSetId
+    FROM NW_CourtOfLoveAnshanModifiers compat
+    WHERE compat.ModifierId = Modifiers.ModifierId
+)
+WHERE ModifierId IN (SELECT ModifierId FROM NW_CourtOfLoveAnshanModifiers);
+
+DROP TABLE NW_CourtOfLoveAnshanModifiers;
+DROP TABLE NW_CourtOfLoveGreatWorkAmounts;
+DROP TABLE NW_CourtOfLoveDistrictYields;

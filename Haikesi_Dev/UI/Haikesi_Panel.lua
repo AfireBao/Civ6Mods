@@ -309,6 +309,7 @@ local function GetSelectedRelicTypes()
 end
 
 local g_RelicPrerequisiteMap = nil
+local g_RelicLeaderEligibilityMap = nil
 local HAIKESI_DEBUG_PREREQS = false
 local g_PrereqDebugPrinted = {}
 
@@ -365,6 +366,29 @@ local function GetPlayerConfigTypes(playerID)
     if not pConfig then return nil, nil end
     return pConfig:GetCivilizationTypeName(), pConfig:GetLeaderTypeName()
 end
+
+local function BuildRelicLeaderEligibilityMap()
+    if g_RelicLeaderEligibilityMap then return g_RelicLeaderEligibilityMap end
+
+    g_RelicLeaderEligibilityMap = {}
+    if GameInfo.Haikesi_Relic_LeaderEligibility ~= nil then
+        for row in GameInfo.Haikesi_Relic_LeaderEligibility() do
+            if not g_RelicLeaderEligibilityMap[row.RelicType] then
+                g_RelicLeaderEligibilityMap[row.RelicType] = {}
+            end
+            g_RelicLeaderEligibilityMap[row.RelicType][row.LeaderType] = true
+        end
+    end
+    return g_RelicLeaderEligibilityMap
+end
+
+local function IsRelicLeaderEligible(playerID, relicType)
+    local allowedLeaders = BuildRelicLeaderEligibilityMap()[relicType]
+    if allowedLeaders == nil then return true end
+
+    local _, leaderType = GetPlayerConfigTypes(playerID)
+    return leaderType ~= nil and allowedLeaders[leaderType] == true
+end
 local function IsTechnologyPrerequisiteMet(pPlayer, techType, allowInProgress)
     local tech = GameInfo.Technologies[techType]
     if not tech then return false end
@@ -418,6 +442,11 @@ local function ScaleTurnForGameSpeed(standardTurn)
 end
 
 local function IsRelicRefreshEligible(aug, selectedTypes)
+    local localPlayerID = Game.GetLocalPlayer()
+    if not IsRelicLeaderEligible(localPlayerID, aug.Type) then
+        return false
+    end
+
     -- 回合限制检查（以标准速度为准，经游戏速度缩放）
     if aug.MinTurn ~= nil or aug.MaxTurn ~= nil then
         local currentTurn = Game.GetCurrentGameTurn()
@@ -434,7 +463,6 @@ local function IsRelicRefreshEligible(aug, selectedTypes)
     local prereqs = BuildRelicPrerequisiteMap()[aug.Type]
     if not prereqs then return true end
 
-    local localPlayerID = Game.GetLocalPlayer()
     local pLocal = Players[localPlayerID]
     local anyRelicPrereqs = {}
     for _, req in ipairs(prereqs) do

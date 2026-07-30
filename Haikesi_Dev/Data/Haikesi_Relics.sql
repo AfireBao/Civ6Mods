@@ -13,6 +13,16 @@ CREATE TABLE IF NOT EXISTS Haikesi_Relics (
     MaxTurn     INTEGER DEFAULT NULL
 );
 
+-- 领袖专属海克斯资格表：同一 RelicType 的多行 LeaderType 采用 OR 语义。
+-- 没有资格行的普通海克斯不受限制。
+CREATE TABLE IF NOT EXISTS Haikesi_Relic_LeaderEligibility (
+    RelicType  TEXT NOT NULL,
+    LeaderType TEXT NOT NULL,
+    PRIMARY KEY (RelicType, LeaderType),
+    FOREIGN KEY (RelicType) REFERENCES Haikesi_Relics (RelicType) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (LeaderType) REFERENCES Leaders (LeaderType) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- 秘术冲拳
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
 ('ARCANEPUNCHRUNE', 'LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_NAME', 'LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_ARCANEPUNCHRUNE_FLAVOR', 'ICON_HAIKESI_RELIC_ARCANEPUNCHRUNE', 'PRISMATIC');
@@ -689,4 +699,26 @@ INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'LAVRAUPGRADERUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 0 WHERE RelicType = 'LAVRAUPGRADERUNE';
 UPDATE Haikesi_Relics SET MinTurn = NULL WHERE RelicType = 'LAVRAUPGRADERUNE';
-UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'LAVRAUPGRADERUNE';
+UPDATE Haikesi_Relics SET Weight = 300 WHERE RelicType = 'LAVRAUPGRADERUNE';
+
+-- 领袖专属：爱之法庭（英格兰/法国埃莉诺或松迪亚塔·凯塔）
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('COURTOFLOVERUNE', 'LOC_HAIKESI_RELIC_COURTOFLOVERUNE_NAME', 'LOC_HAIKESI_RELIC_COURTOFLOVERUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_COURTOFLOVERUNE_FLAVOR', 'ICON_HAIKESI_RELIC_COURTOFLOVERUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics
+SET IsActive = 1,
+    IsRepeatable = 0,
+    SelectionOnly = 0,
+    Weight = 8000,
+    MinTurn = NULL,
+    MaxTurn = NULL
+WHERE RelicType = 'COURTOFLOVERUNE';
+
+-- SELECT 可令未安装对应 DLC 的领袖自动跳过，避免外键校验失败。
+INSERT OR IGNORE INTO Haikesi_Relic_LeaderEligibility (RelicType, LeaderType)
+SELECT 'COURTOFLOVERUNE', LeaderType
+FROM Leaders
+WHERE LeaderType IN (
+    'LEADER_ELEANOR_ENGLAND',
+    'LEADER_ELEANOR_FRANCE',
+    'LEADER_SUNDIATA_KEITA'
+);
