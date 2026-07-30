@@ -66,3 +66,26 @@ FROM Haikesi_PlanterChargeSlots;
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
 SELECT 'ABILITY_NW_PLANTER_CONSUMED_CHARGE_' || Slot || '_MODIFIER', 'Amount', -1
 FROM Haikesi_PlanterChargeSlots;
+
+-- 林肯「解放黑奴」隐藏收获代理资源。
+-- 原生收获会对 Resource_Harvests 的两行使用同一套速度/进度/总督缩放，
+-- 因此食物与金币始终等量；Frequency=0，正常地图不会生成该资源。
+INSERT OR IGNORE INTO Types (Type, Kind) VALUES
+    ('RESOURCE_NW_EMANCIPATION_HARVEST_PROXY', 'KIND_RESOURCE');
+
+INSERT OR IGNORE INTO Resources
+    (ResourceType, Name, ResourceClassType, Frequency, SeaFrequency, LakeEligible)
+VALUES
+    ('RESOURCE_NW_EMANCIPATION_HARVEST_PROXY', 'LOC_RESOURCE_BANANAS_NAME', 'RESOURCECLASS_BONUS', 0, 0, 0);
+
+INSERT OR IGNORE INTO Resource_ValidTerrains (ResourceType, TerrainType)
+SELECT 'RESOURCE_NW_EMANCIPATION_HARVEST_PROXY', TerrainType
+FROM Terrains;
+
+INSERT OR IGNORE INTO Resource_ValidFeatures (ResourceType, FeatureType)
+SELECT 'RESOURCE_NW_EMANCIPATION_HARVEST_PROXY', FeatureType
+FROM Features;
+
+INSERT OR IGNORE INTO Resource_Harvests (ResourceType, YieldType, Amount, PrereqTech) VALUES
+    ('RESOURCE_NW_EMANCIPATION_HARVEST_PROXY', 'YIELD_FOOD', 20, 'TECH_IRRIGATION'),
+    ('RESOURCE_NW_EMANCIPATION_HARVEST_PROXY', 'YIELD_GOLD', 20, 'TECH_IRRIGATION');

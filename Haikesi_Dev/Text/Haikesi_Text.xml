@@ -2237,5 +2237,110 @@
             <Text>宫廷中的每一件作品，都在为城市低声歌唱。</Text>
         </Replace>
 
+        <!-- 罗伯特一世领袖专属海克斯：化学极乐 -->
+        <Replace Tag="LOC_HAIKESI_RELIC_CHEMICALECSTASYRUNE_NAME" Language="zh_Hans_CN">
+            <Text>化学极乐</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CHEMICALECSTASYRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>领土中的奢侈品资源为额外4座城市提供1点[ICON_Amenities]宜居度。开心的城市+10%[ICON_Culture]文化值和[ICON_Faith]信仰值；欣喜若狂的城市改为+20%。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_CHEMICALECSTASYRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>快乐并非美德，而是一门可以重复验证的实验。</Text>
+        </Replace>
+
+        <!-- 旃陀罗笈多领袖专属海克斯：政事论 -->
+        <Replace Tag="LOC_HAIKESI_RELIC_ARTHASHASTRARUNE_NAME" Language="zh_Hans_CN">
+            <Text>政事论</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ARTHASHASTRARUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>拥有神社的城市训练的战斗单位获得+1[ICON_Movement]移动力和+2[ICON_Strength]战斗力；拥有寺庙的城市训练的战斗单位额外获得+1视野和+2[ICON_Strength]战斗力，且每座拥有寺庙的城市每回合+1大将军点数；拥有礼拜建筑的城市训练的战斗单位再获得+2[ICON_Strength]战斗力，并在组建陆军军团和集团军时获得25%折扣。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_ARTHASHASTRARUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>信仰维系秩序，秩序铸成军队。</Text>
+        </Replace>
+
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_SHRINE_MOVEMENT_NAME" Language="zh_Hans_CN">
+            <Text>政事论：神社行军</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_SHRINE_MOVEMENT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>由拥有神社的城市训练，+1[ICON_Movement]移动力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_SHRINE_COMBAT_NAME" Language="zh_Hans_CN">
+            <Text>政事论：神社军略</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_SHRINE_COMBAT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>由拥有神社的城市训练，+2[ICON_Strength]战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_TEMPLE_SIGHT_NAME" Language="zh_Hans_CN">
+            <Text>政事论：寺庙耳目</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_TEMPLE_SIGHT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>由拥有寺庙的城市训练，+1视野。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_TEMPLE_COMBAT_NAME" Language="zh_Hans_CN">
+            <Text>政事论：寺庙军略</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_TEMPLE_COMBAT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>由拥有寺庙的城市训练，+2[ICON_Strength]战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_WORSHIP_COMBAT_NAME" Language="zh_Hans_CN">
+            <Text>政事论：礼拜军略</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ARTHASHASTRA_WORSHIP_COMBAT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>由拥有礼拜建筑的城市训练，+2[ICON_Strength]战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_ARTHASHASTRA_SHRINE_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>政事论（神社）：+2[ICON_Strength]战斗力</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_ARTHASHASTRA_TEMPLE_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>政事论（寺庙）：+2[ICON_Strength]战斗力</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_ARTHASHASTRA_WORSHIP_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>政事论（礼拜建筑）：+2[ICON_Strength]战斗力</Text>
+        </Replace>
+
+        <!-- 武则天领袖专属海克斯：罗织经 -->
+        <Replace Tag="LOC_HAIKESI_RELIC_MANUALOFENTRAPMENTRUNE_NAME" Language="zh_Hans_CN">
+            <Text>罗织经</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MANUALOFENTRAPMENTRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立即在首都获得1名免费间谍和1点额外间谍容量。进攻性间谍任务成功时，额外获得目标城市该回合[ICON_Science]科技值与[ICON_Culture]文化值的50%。可以使用[ICON_Faith]信仰值购买间谍。位于侦察单位3格范围内的己方陆地战斗单位+3[ICON_Strength]战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_MANUALOFENTRAPMENTRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>密网既张，耳目遍于朝野；一纸成狱，天下莫敢不言。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_MANUAL_OF_ENTRAPMENT_RECON_AURA_SOURCE_NAME" Language="zh_Hans_CN">
+            <Text>罗织经：耳目</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_MANUAL_OF_ENTRAPMENT_RECON_AURA_SOURCE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>3格范围内的己方陆地战斗单位获得+3[ICON_Strength]战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_MANUAL_OF_ENTRAPMENT_RECON_COMBAT_NAME" Language="zh_Hans_CN">
+            <Text>罗织经：密报</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_MANUAL_OF_ENTRAPMENT_RECON_COMBAT_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>位于侦察单位3格范围内，+3[ICON_Strength]战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_MANUAL_OF_ENTRAPMENT_RECON_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>罗织经（侦察单位支援）：+3[ICON_Strength]战斗力</Text>
+        </Replace>
+
+        <!-- 亚伯拉罕·林肯领袖专属海克斯：解放黑奴 -->
+        <Replace Tag="LOC_HAIKESI_RELIC_EMANCIPATIONPROCLAMATIONRUNE_NAME" Language="zh_Hans_CN">
+            <Text>解放黑奴</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EMANCIPATIONPROCLAMATIONRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>建造工业区和水渠时+100%[ICON_Production]生产力。工业区额外+1[ICON_Amenities]宜居度（合计+3）并保留原有+3忠诚度；每座种植园额外-3忠诚度，与原有-2合计为-5。工人可以直接收获己方可建造种植园的奢侈品或加成资源，无需先建造种植园：移除资源及其已有改良、消耗1次劳动力，按香蕉的原生收获规则获得[ICON_Food]食物和等量[ICON_Gold]金币，并获得1个当前最先进的免费近战单位。该单位启用与工业区赠送单位相同的“解放黑奴宣言”属性。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_EMANCIPATIONPROCLAMATIONRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>凡以他人枷锁筑成的繁荣，都应由自由亲手拆除。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_LINCOLN_HARVEST_NAME" Language="zh_Hans_CN">
+            <Text>解放种植园</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_LINCOLN_HARVEST_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>直接收获该种植园类奢侈品或加成资源，无需先建造种植园。移除资源及其已有改良、消耗1次劳动力，按香蕉的原生收获规则获得[ICON_Food]食物和等量[ICON_Gold]金币，并获得1个具有林肯工业区赠兵属性的当前最先进近战单位。</Text>
+        </Replace>
+
     </LocalizedText>
 </GameData>

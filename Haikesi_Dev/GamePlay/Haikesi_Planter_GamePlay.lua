@@ -14,9 +14,22 @@ local FARM_IMMORTAL_PLUS_GRANT_PROP = 'PROP_NW_FARM_IMMORTAL_PLUS_UNIT_GRANTED'
 local LEY_LINE_YIELDS_APPLIED_PROP = 'PROP_NW_FARM_IMMORTAL_PLUS_LEY_LINE_BONUS_MODS_APPLIED'
 local LEY_LINE_RESOURCE_TYPE = 'RESOURCE_LEY_LINE'
 local LEY_LINE_BONUS_PLOT_PROP = 'NW_FARM_IMMORTAL_PLUS_LEY_LINE_BONUS'
+local LINCOLN_RELIC = 'EMANCIPATIONPROCLAMATIONRUNE'
+local LINCOLN_LEADER = 'LEADER_ABRAHAM_LINCOLN'
+local LINCOLN_MELEE_ABILITY = 'ABILITY_LINCOLN_MELEE_UNITS'
+local PLANTATION_IMPROVEMENT = 'IMPROVEMENT_PLANTATION'
+local LINCOLN_HARVEST_PROXY_RESOURCE = 'RESOURCE_NW_EMANCIPATION_HARVEST_PROXY'
+local LINCOLN_HARVEST_PENDING_PROP = 'PROP_NW_LINCOLN_HARVEST_PENDING'
+local LINCOLN_HARVEST_X_PROP = 'PROP_NW_LINCOLN_HARVEST_X'
+local LINCOLN_HARVEST_Y_PROP = 'PROP_NW_LINCOLN_HARVEST_Y'
+local LINCOLN_HARVEST_OLD_RESOURCE_PROP = 'PROP_NW_LINCOLN_HARVEST_OLD_RESOURCE'
+local LINCOLN_HARVEST_OLD_RESOURCE_COUNT_PROP = 'PROP_NW_LINCOLN_HARVEST_OLD_RESOURCE_COUNT'
+local LINCOLN_HARVEST_OLD_IMPROVEMENT_PROP = 'PROP_NW_LINCOLN_HARVEST_OLD_IMPROVEMENT'
+local LINCOLN_HARVEST_SPAWNED_UNIT_PROP = 'PROP_NW_LINCOLN_HARVEST_SPAWNED_UNIT'
 local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
+local g_LincolnPlantationResourceTypes = nil
 
 local FARM_IMMORTAL_PLUS_LEY_LINE_YIELD_MODIFIERS = {
     'MODIFIER_NW_FARM_IMMORTAL_PLUS_LEY_LINE_BONUS_FOOD',
@@ -61,6 +74,185 @@ local function Haikesi_PlanterPlayerHasRelic(pPlayer, relicType)
         end
     end
     return false
+end
+
+local function Haikesi_LincolnUnitHasTag(unitType, wantedTag)
+    if unitType == nil or wantedTag == nil or GameInfo.TypeTags == nil then
+        return false
+    end
+    for row in GameInfo.TypeTags() do
+        if row.Type == unitType and row.Tag == wantedTag then
+            return true
+        end
+    end
+    return false
+end
+
+local function Haikesi_LincolnIsBuilder(unit)
+    local unitInfo = unit and GameInfo.Units[unit:GetType()] or nil
+    return unitInfo ~= nil
+        and Haikesi_LincolnUnitHasTag(unitInfo.UnitType, 'CLASS_BUILDER')
+end
+
+local function Haikesi_LincolnPlayerIsEligible(playerID, pPlayer)
+    local config = PlayerConfigurations[playerID]
+    return pPlayer ~= nil
+        and config ~= nil
+        and config:GetLeaderTypeName() == LINCOLN_LEADER
+        and Haikesi_PlanterPlayerHasRelic(pPlayer, LINCOLN_RELIC)
+end
+
+local function Haikesi_LincolnIsPlantationResourceType(resourceType)
+    if resourceType == nil or resourceType == '' or GameInfo.Improvement_ValidResources == nil then
+        return false
+    end
+    if g_LincolnPlantationResourceTypes == nil then
+        g_LincolnPlantationResourceTypes = {}
+        for row in GameInfo.Improvement_ValidResources() do
+            if row.ImprovementType == PLANTATION_IMPROVEMENT then
+                g_LincolnPlantationResourceTypes[row.ResourceType] = true
+            end
+        end
+    end
+    return g_LincolnPlantationResourceTypes[resourceType] == true
+end
+
+local function Haikesi_LincolnIsPlantationResource(plot, playerID)
+    if plot == nil or plot:GetOwner() ~= playerID then
+        return false, nil
+    end
+    local resourceInfo = GameInfo.Resources[plot:GetResourceType()]
+    return resourceInfo ~= nil
+        and (resourceInfo.ResourceClassType == 'RESOURCECLASS_LUXURY'
+            or resourceInfo.ResourceClassType == 'RESOURCECLASS_BONUS')
+        and Haikesi_LincolnIsPlantationResourceType(resourceInfo.ResourceType), resourceInfo
+end
+
+local function Haikesi_LincolnHasTech(pPlayer, techType)
+    if techType == nil or techType == '' then return true end
+    local techInfo = GameInfo.Technologies[techType]
+    local techs = pPlayer and pPlayer:GetTechs() or nil
+    return techInfo ~= nil and techs ~= nil and techs:HasTech(techInfo.Index)
+end
+
+local function Haikesi_LincolnHasCivic(pPlayer, civicType)
+    if civicType == nil or civicType == '' then return true end
+    local civicInfo = GameInfo.Civics[civicType]
+    local culture = pPlayer and pPlayer:GetCulture() or nil
+    return civicInfo ~= nil and culture ~= nil and culture:HasCivic(civicInfo.Index)
+end
+
+local function Haikesi_LincolnMeleeIsAvailable(pPlayer, unitInfo)
+    if unitInfo == nil
+        or unitInfo.PromotionClass ~= 'PROMOTION_CLASS_MELEE'
+        or unitInfo.Domain ~= 'DOMAIN_LAND'
+        or unitInfo.FormationClass ~= 'FORMATION_CLASS_LAND_COMBAT'
+        or unitInfo.TraitType ~= nil
+        or (tonumber(unitInfo.Combat) or 0) <= 0
+        or (tonumber(unitInfo.Cost) or -1) < 0 then
+        return false
+    end
+    if not Haikesi_LincolnHasTech(pPlayer, unitInfo.PrereqTech)
+        or not Haikesi_LincolnHasCivic(pPlayer, unitInfo.PrereqCivic) then
+        return false
+    end
+    if unitInfo.MandatoryObsoleteTech ~= nil
+        and unitInfo.MandatoryObsoleteTech ~= ''
+        and Haikesi_LincolnHasTech(pPlayer, unitInfo.MandatoryObsoleteTech) then
+        return false
+    end
+    if unitInfo.MandatoryObsoleteCivic ~= nil
+        and unitInfo.MandatoryObsoleteCivic ~= ''
+        and Haikesi_LincolnHasCivic(pPlayer, unitInfo.MandatoryObsoleteCivic) then
+        return false
+    end
+    return true
+end
+
+local function Haikesi_LincolnGetBestMeleeType(pPlayer)
+    local bestType = nil
+    local bestCombat = -1
+    local bestCost = -1
+    for unitInfo in GameInfo.Units() do
+        if Haikesi_LincolnMeleeIsAvailable(pPlayer, unitInfo) then
+            local combat = tonumber(unitInfo.Combat) or 0
+            local cost = tonumber(unitInfo.Cost) or 0
+            if combat > bestCombat or (combat == bestCombat and cost > bestCost) then
+                bestType = unitInfo.UnitType
+                bestCombat = combat
+                bestCost = cost
+            end
+        end
+    end
+    return bestType
+end
+
+local function Haikesi_LincolnPlotHasBlockingUnit(playerID, plot)
+    if plot == nil then return true end
+    local x = plot:GetX()
+    local y = plot:GetY()
+    for checkPlayerID = 0, 63 do
+        local checkPlayer = Players[checkPlayerID]
+        local units = checkPlayer and checkPlayer:GetUnits() or nil
+        if units ~= nil then
+            for _, checkUnit in units:Members() do
+                if checkUnit ~= nil and checkUnit:GetX() == x and checkUnit:GetY() == y then
+                    local checkInfo = GameInfo.Units[checkUnit:GetType()]
+                    if checkPlayerID ~= playerID
+                        or (checkInfo ~= nil and checkInfo.FormationClass == 'FORMATION_CLASS_LAND_COMBAT') then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function Haikesi_LincolnCanSpawnMelee(playerID, plot)
+    if plot == nil or plot:IsWater() or plot:IsImpassable() then
+        return false
+    end
+    local owner = plot:GetOwner()
+    if owner ~= -1 and owner ~= playerID then
+        return false
+    end
+    return not Haikesi_LincolnPlotHasBlockingUnit(playerID, plot)
+end
+
+local function Haikesi_LincolnFindSpawnPlot(playerID, x, y)
+    local plot = Map.GetPlot(x, y)
+    if Haikesi_LincolnCanSpawnMelee(playerID, plot) then
+        return plot
+    end
+    for direction = 0, 5 do
+        local adjacent = Map.GetAdjacentPlot(x, y, direction)
+        if Haikesi_LincolnCanSpawnMelee(playerID, adjacent) then
+            return adjacent
+        end
+    end
+    return nil
+end
+
+local function Haikesi_LincolnClearPendingHarvest(unit)
+    if unit == nil then return end
+    unit:SetProperty(LINCOLN_HARVEST_PENDING_PROP, nil)
+    unit:SetProperty(LINCOLN_HARVEST_X_PROP, nil)
+    unit:SetProperty(LINCOLN_HARVEST_Y_PROP, nil)
+    unit:SetProperty(LINCOLN_HARVEST_OLD_RESOURCE_PROP, nil)
+    unit:SetProperty(LINCOLN_HARVEST_OLD_RESOURCE_COUNT_PROP, nil)
+    unit:SetProperty(LINCOLN_HARVEST_OLD_IMPROVEMENT_PROP, nil)
+    unit:SetProperty(LINCOLN_HARVEST_SPAWNED_UNIT_PROP, nil)
+end
+
+local function Haikesi_LincolnStorePendingHarvest(unit, x, y, oldResource, oldResourceCount, oldImprovement, spawnedUnitID)
+    unit:SetProperty(LINCOLN_HARVEST_PENDING_PROP, 1)
+    unit:SetProperty(LINCOLN_HARVEST_X_PROP, x)
+    unit:SetProperty(LINCOLN_HARVEST_Y_PROP, y)
+    unit:SetProperty(LINCOLN_HARVEST_OLD_RESOURCE_PROP, oldResource)
+    unit:SetProperty(LINCOLN_HARVEST_OLD_RESOURCE_COUNT_PROP, oldResourceCount)
+    unit:SetProperty(LINCOLN_HARVEST_OLD_IMPROVEMENT_PROP, oldImprovement)
+    unit:SetProperty(LINCOLN_HARVEST_SPAWNED_UNIT_PROP, spawnedUnitID)
 end
 
 local function Haikesi_GetPlayerSecretSocietyType(pPlayer)
@@ -527,13 +719,167 @@ function HaikesiPlantResource(playerID, params)
     ))
 end
 
+function HaikesiLincolnHarvest(playerID, params)
+    local player = Players[playerID]
+    local unit = params and UnitManager.GetUnit(playerID, tonumber(params.UnitID)) or nil
+    local x = params and tonumber(params.X) or nil
+    local y = params and tonumber(params.Y) or nil
+    local plot = x ~= nil and y ~= nil and Map.GetPlot(x, y) or nil
+
+    if not Haikesi_LincolnPlayerIsEligible(playerID, player)
+        or unit == nil
+        or plot == nil
+        or not Haikesi_LincolnIsBuilder(unit)
+        or unit:GetX() ~= x
+        or unit:GetY() ~= y
+        or unit:GetBuildCharges() <= 0
+        or unit:GetMovesRemaining() <= 0 then
+        print('[Haikesi Lincoln] harvest canceled: invalid player or builder state')
+        return
+    end
+
+    local isPlantationResource, resourceInfo = Haikesi_LincolnIsPlantationResource(plot, playerID)
+    if not isPlantationResource then
+        print('[Haikesi Lincoln] harvest canceled: resource is not an owned plantation-type luxury/bonus resource')
+        return
+    end
+    if params.ResourceType ~= nil and tostring(params.ResourceType) ~= resourceInfo.ResourceType then
+        print('[Haikesi Lincoln] harvest canceled: resource changed before execution')
+        return
+    end
+    if GameInfo.UnitAbilities == nil or GameInfo.UnitAbilities[LINCOLN_MELEE_ABILITY] == nil then
+        print('[Haikesi Lincoln] harvest canceled: Lincoln melee ability unavailable')
+        return
+    end
+
+    local meleeType = Haikesi_LincolnGetBestMeleeType(player)
+    local spawnPlot = Haikesi_LincolnFindSpawnPlot(playerID, x, y)
+    local harvestProxyInfo = GameInfo.Resources[LINCOLN_HARVEST_PROXY_RESOURCE]
+    local harvestOperation = UnitOperationTypes and UnitOperationTypes.HARVEST_RESOURCE or nil
+    if meleeType == nil or spawnPlot == nil or harvestProxyInfo == nil or harvestOperation == nil then
+        print('[Haikesi Lincoln] harvest canceled: no melee type, spawn plot, harvest proxy, or harvest operation')
+        return
+    end
+
+    local oldImprovement = plot:GetImprovementType()
+    local oldResource = plot:GetResourceType()
+    local oldResourceCount = math.max(1, tonumber(plot:GetResourceCount()) or 1)
+    local ok, newUnit = pcall(
+        UnitManager.InitUnit,
+        playerID,
+        meleeType,
+        spawnPlot:GetX(),
+        spawnPlot:GetY()
+    )
+    if not ok or newUnit == nil then
+        print('[Haikesi Lincoln] harvest canceled: free melee spawn failed')
+        return
+    end
+
+    local newAbility = newUnit:GetAbility()
+    if newAbility == nil then
+        pcall(UnitManager.Kill, newUnit, false)
+        print('[Haikesi Lincoln] harvest canceled: spawned melee has no ability component')
+        return
+    end
+
+    newAbility:ChangeAbilityCount(LINCOLN_MELEE_ABILITY, 1)
+
+    -- Reuse the native harvest operation with a hidden proxy carrying equal Food/Gold rows,
+    -- so both yields share the game's scaling, city targeting and harvest bonuses.
+    ImprovementBuilder.SetImprovementType(plot, -1, -1)
+    if oldResource ~= harvestProxyInfo.Index then
+        ResourceBuilder.SetResourceType(plot, -1)
+        ResourceBuilder.SetResourceType(plot, harvestProxyInfo.Index, 1)
+    end
+    if plot:GetImprovementType() ~= -1 or plot:GetResourceType() ~= harvestProxyInfo.Index then
+        pcall(UnitManager.Kill, newUnit, false)
+        ResourceBuilder.SetResourceType(plot, -1)
+        ResourceBuilder.SetResourceType(plot, oldResource, oldResourceCount)
+        ImprovementBuilder.SetImprovementType(plot, oldImprovement, playerID)
+        print('[Haikesi Lincoln] harvest canceled: failed to prepare native food harvest')
+        return
+    end
+
+    -- Do not nest HARVEST_RESOURCE inside the EXECUTE_SCRIPT player operation.
+    -- The UI requests the native unit operation after PlayerOperationComplete.
+    Haikesi_LincolnStorePendingHarvest(
+        unit,
+        x, y,
+        oldResource,
+        oldResourceCount,
+        oldImprovement,
+        newUnit:GetID()
+    )
+    print(string.format(
+        '[Haikesi Lincoln] prepared %s for native equal food/gold harvest at (%d,%d), granted %s at (%d,%d)',
+        resourceInfo.ResourceType,
+        x, y,
+        meleeType,
+        spawnPlot:GetX(), spawnPlot:GetY()
+    ))
+end
+
+function HaikesiLincolnHarvestRollback(playerID, params)
+    local unit = params and UnitManager.GetUnit(playerID, tonumber(params.UnitID)) or nil
+    if unit == nil or tonumber(unit:GetProperty(LINCOLN_HARVEST_PENDING_PROP) or 0) ~= 1 then
+        print('[Haikesi Lincoln] harvest rollback skipped: no pending harvest')
+        return
+    end
+
+    local x = tonumber(unit:GetProperty(LINCOLN_HARVEST_X_PROP))
+    local y = tonumber(unit:GetProperty(LINCOLN_HARVEST_Y_PROP))
+    local oldResource = tonumber(unit:GetProperty(LINCOLN_HARVEST_OLD_RESOURCE_PROP))
+    local oldResourceCount = math.max(1, tonumber(unit:GetProperty(LINCOLN_HARVEST_OLD_RESOURCE_COUNT_PROP)) or 1)
+    local oldImprovement = tonumber(unit:GetProperty(LINCOLN_HARVEST_OLD_IMPROVEMENT_PROP))
+    local spawnedUnitID = tonumber(unit:GetProperty(LINCOLN_HARVEST_SPAWNED_UNIT_PROP))
+    local plot = x ~= nil and y ~= nil and Map.GetPlot(x, y) or nil
+    local spawnedUnit = spawnedUnitID ~= nil and UnitManager.GetUnit(playerID, spawnedUnitID) or nil
+
+    if spawnedUnit ~= nil then
+        pcall(UnitManager.Kill, spawnedUnit, false)
+    end
+    if plot ~= nil and oldResource ~= nil and oldImprovement ~= nil then
+        ResourceBuilder.SetResourceType(plot, -1)
+        ResourceBuilder.SetResourceType(plot, oldResource, oldResourceCount)
+        ImprovementBuilder.SetImprovementType(plot, oldImprovement, playerID)
+    end
+    Haikesi_LincolnClearPendingHarvest(unit)
+    print(string.format(
+        '[Haikesi Lincoln] rolled back failed native harvest at (%s,%s)',
+        tostring(x), tostring(y)
+    ))
+end
+
+local function Haikesi_LincolnOnUnitOperationStarted(playerID, unitID, operationID)
+    if operationID ~= UnitOperationTypes.HARVEST_RESOURCE then return end
+    local unit = UnitManager.GetUnit(playerID, unitID)
+    if unit == nil or tonumber(unit:GetProperty(LINCOLN_HARVEST_PENDING_PROP) or 0) ~= 1 then
+        return
+    end
+    local x = tonumber(unit:GetProperty(LINCOLN_HARVEST_X_PROP))
+    local y = tonumber(unit:GetProperty(LINCOLN_HARVEST_Y_PROP))
+    local plot = x ~= nil and y ~= nil and Map.GetPlot(x, y) or nil
+    local proxyInfo = GameInfo.Resources[LINCOLN_HARVEST_PROXY_RESOURCE]
+    if plot ~= nil and proxyInfo ~= nil and plot:GetResourceType() == proxyInfo.Index then
+        Haikesi_LincolnClearPendingHarvest(unit)
+        print(string.format(
+            '[Haikesi Lincoln] native harvest started at (%d,%d); pending state cleared',
+            x, y
+        ))
+    end
+end
+
 local function InitializePlanter()
     Haikesi_PlanterBuildValidImprovementCache()
     GameEvents.HaikesiPlantResource.Add(HaikesiPlantResource)
+    GameEvents.HaikesiLincolnHarvest.Add(HaikesiLincolnHarvest)
+    GameEvents.HaikesiLincolnHarvestRollback.Add(HaikesiLincolnHarvestRollback)
     GameEvents.HaikesiSyncSecretSociety.Add(HaikesiSyncSecretSociety)
     if ExposedMembers ~= nil then
         ExposedMembers.Haikesi_ApplyFarmImmortalPlusRelic = Haikesi_ApplyFarmImmortalPlusRelic
     end
+    Events.UnitOperationStarted.Add(Haikesi_LincolnOnUnitOperationStarted)
     print('[Haikesi Planter] GamePlay ready (split from main script)')
 end
 

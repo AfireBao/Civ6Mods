@@ -582,6 +582,10 @@ function ApplyRelicToPlayer(iPlayer, relicType, isSelection, decisionReason)
     if attachedDeathCultBaseModifier then
         Haikesi_MarkDeathCultBaseModifiersAttached(pPlayer)
     end
+    if relicType == 'EMANCIPATIONPROCLAMATIONRUNE' then
+        -- 新领取时已由映射挂载新版种植园忠诚度链，记录版本以免旧档迁移重复挂载。
+        pPlayer:SetProperty('PROP_NW_EMANCIPATION_LOYALTY_ATTACH_V1', 1)
+    end
 
     Haikesi_ApplyLuaEffect(iPlayer, relicType)
 
@@ -2904,6 +2908,29 @@ function Initialize()
         rowCount = rowCount + 1
     end
     print("[Haikesi GamePlay] RelicModifierMap 构建完成，行数 = " .. rowCount)
+
+    -- 旧档兼容：旧实现把 -3 忠诚度挂在 ImprovementModifiers 上，已领取海克斯的存档
+    -- 不会自动获得新加入映射的玩家改良遍历 Modifier，因此在版本标记缺失时只补挂一次。
+    for _, pPlayer in ipairs(PlayerManager.GetAliveMajors()) do
+        if pPlayer:GetProperty('PROP_NW_EMANCIPATION_LOYALTY_ATTACH_V1') ~= 1 then
+            local selectedRelics = GetSelectedRelicTypeListForPlayer(pPlayer)
+            for _, selectedRelicType in ipairs(selectedRelics) do
+                if selectedRelicType == 'EMANCIPATIONPROCLAMATIONRUNE' then
+                    local ok, err = pcall(function()
+                        pPlayer:AttachModifierByID('MODIFIER_NW_EMANCIPATION_PROCLAMATION_PLANTATION_LOYALTY_ATTACH')
+                    end)
+                    if ok then
+                        pPlayer:SetProperty('PROP_NW_EMANCIPATION_LOYALTY_ATTACH_V1', 1)
+                        print("[Haikesi GamePlay] migrated emancipation plantation loyalty -> Player" .. tostring(pPlayer:GetID()))
+                    else
+                        print("[Haikesi GamePlay] failed emancipation loyalty migration -> Player"
+                            .. tostring(pPlayer:GetID()) .. ": " .. tostring(err))
+                    end
+                    break
+                end
+            end
+        end
+    end
 
     -- 资源创建类型配置 Map
     g_RelicResourceSpawnMap = {}

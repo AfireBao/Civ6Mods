@@ -22,6 +22,11 @@ local HAIKESI_RELICS_COUNT_PROPERTY_KEY = "PROP_NW_HAIKESI_RELIC_COUNT";
 local HAIKESI_RELICS_SLOT_PROPERTY_PREFIX = "PROP_NW_HAIKESI_RELIC_";
 local HAIKESI_LEGACY_RELICS_COUNT_PROPERTY_KEY = "PROP_NW_HAIKESI_RELICS_COUNT";
 local HAIKESI_LEGACY_RELICS_SLOT_PROPERTY_PREFIX = "PROP_NW_HAIKESI_RELIC_SLOT_";
+local HAIKESI_LINCOLN_RELIC = "EMANCIPATIONPROCLAMATIONRUNE";
+local HAIKESI_LINCOLN_LEADER = "LEADER_ABRAHAM_LINCOLN";
+local HAIKESI_LINCOLN_HARVEST_PROXY = "RESOURCE_NW_EMANCIPATION_HARVEST_PROXY";
+local g_HaikesiLincolnPlantationResourceTypes:table = nil;
+local g_HaikesiLincolnPendingHarvest:table = nil;
 
 InterfaceModeTypes.DEATH_CULT_DEVOUR = InterfaceModeTypes.DEATH_CULT_DEVOUR or DB.MakeHash("INTERFACEMODE_DEATH_CULT_DEVOUR");
 
@@ -60,6 +65,75 @@ local function HaikesiPlayerHasRelic(playerID:number, relicType:string)
 		end
 	end
 	return false;
+end
+
+local function HaikesiUnitTypeHasTag(unitType:string, wantedTag:string)
+	if unitType == nil or wantedTag == nil or GameInfo.TypeTags == nil then return false; end
+	for row in GameInfo.TypeTags() do
+		if row.Type == unitType and row.Tag == wantedTag then
+			return true;
+		end
+	end
+	return false;
+end
+
+local function HaikesiIsLincolnPlantationResourceType(resourceType:string)
+	if resourceType == nil or GameInfo.Improvement_ValidResources == nil then return false; end
+	if g_HaikesiLincolnPlantationResourceTypes == nil then
+		g_HaikesiLincolnPlantationResourceTypes = {};
+		for row in GameInfo.Improvement_ValidResources() do
+			if row.ImprovementType == "IMPROVEMENT_PLANTATION" then
+				g_HaikesiLincolnPlantationResourceTypes[row.ResourceType] = true;
+			end
+		end
+	end
+	return g_HaikesiLincolnPlantationResourceTypes[resourceType] == true;
+end
+
+local function HaikesiGetLincolnHarvestResource(pUnit:table)
+	if pUnit == nil or pUnit:GetBuildCharges() <= 0 then return nil; end
+	local playerID:number = pUnit:GetOwner();
+	local config:table = PlayerConfigurations[playerID];
+	if config == nil
+		or config:GetLeaderTypeName() ~= HAIKESI_LINCOLN_LEADER
+		or not HaikesiPlayerHasRelic(playerID, HAIKESI_LINCOLN_RELIC) then
+		return nil;
+	end
+
+	local unitInfo:table = GameInfo.Units[pUnit:GetUnitType()];
+	if unitInfo == nil or not HaikesiUnitTypeHasTag(unitInfo.UnitType, "CLASS_BUILDER") then
+		return nil;
+	end
+	local irrigationInfo:table = GameInfo.Technologies["TECH_IRRIGATION"];
+	local player:table = Players[playerID];
+	local techs:table = player ~= nil and player:GetTechs() or nil;
+	if irrigationInfo == nil or techs == nil or not techs:HasTech(irrigationInfo.Index) then
+		return nil;
+	end
+
+	local plot:table = Map.GetPlot(pUnit:GetX(), pUnit:GetY());
+	if plot == nil or plot:GetOwner() ~= playerID then return nil; end
+	local resourceInfo:table = GameInfo.Resources[plot:GetResourceType()];
+	if resourceInfo == nil
+		or (resourceInfo.ResourceClassType ~= "RESOURCECLASS_LUXURY"
+			and resourceInfo.ResourceClassType ~= "RESOURCECLASS_BONUS")
+		or not HaikesiIsLincolnPlantationResourceType(resourceInfo.ResourceType) then
+		return nil;
+	end
+	return resourceInfo;
+end
+
+local function HaikesiRemoveActionByUserTag(actionsTable:table, userTag:number)
+	if actionsTable == nil or userTag == nil then return; end
+	for _, category in pairs(actionsTable) do
+		if type(category) == "table" then
+			for i:number = #category, 1, -1 do
+				if category[i] ~= nil and category[i].userTag == userTag then
+					table.remove(category, i);
+				end
+			end
+		end
+	end
 end
 
 local function IsCreatePantheonActive()
@@ -199,6 +273,38 @@ function GetUnitActionsTable(pUnit)
 			ContextPtr:RequestRefresh();
 		end
 		AddActionToTable(actionsTable, devourAction, false, toolTipString, 991732, callback, nil, nil, devourAction.Icon);
+	end
+	local lincolnResource:table = HaikesiGetLincolnHarvestResource(pUnit);
+	if lincolnResource ~= nil then
+		-- Bananas already expose the vanilla harvest button. Replace it with the
+		-- relic action so harvesting bananas cannot bypass the free-unit effect.
+		HaikesiRemoveActionByUserTag(actionsTable, UnitOperationTypes.HARVEST_RESOURCE);
+		local harvestAction:table = {
+			CategoryInUI = "INPLACE",
+			Icon = "ICON_UNITOPERATION_HARVEST_RESOURCE",
+			Sound = "Build_Improvement_2D"
+		};
+		local toolTipString:string = Locale.Lookup("LOC_HAIKESI_LINCOLN_HARVEST_NAME")
+			.. "：" .. Locale.Lookup(lincolnResource.Name)
+			.. "[NEWLINE]" .. Locale.Lookup("LOC_HAIKESI_LINCOLN_HARVEST_DESCRIPTION");
+		local callback = function()
+			g_HaikesiLincolnPendingHarvest = {
+				PlayerID = pUnit:GetOwner(),
+				UnitID = pUnit:GetID(),
+				X = pUnit:GetX(),
+				Y = pUnit:GetY()
+			};
+			UI.RequestPlayerOperation(pUnit:GetOwner(), PlayerOperations.EXECUTE_SCRIPT, {
+				OnStart = "HaikesiLincolnHarvest",
+				UnitID = pUnit:GetID(),
+				X = pUnit:GetX(),
+				Y = pUnit:GetY(),
+				ResourceType = lincolnResource.ResourceType
+			});
+			SimUnitSystem.SetAnimationState(pUnit, "ACTION_1", "IDLE");
+			UI.PlaySound("Build_Improvement_2D");
+		end
+		AddActionToTable(actionsTable, harvestAction, false, toolTipString, 991733, callback, nil, nil, harvestAction.Icon);
 	end
 	return actionsTable;
 end
@@ -363,3 +469,60 @@ function LateCheckOperationBeforeAdd( tResults: table, kActionsTable: table, act
 	-- Not a railroad, fall through to the base version.
 	return BASE_LateCheckOperationBeforeAdd( tResults, kActionsTable, actionHash, isDisabled, tooltipString, overrideIcon );
 end
+
+-- ===========================================================================
+-- The gameplay handler first prepares the hidden harvest proxy. Starting the
+-- native harvest inside EXECUTE_SCRIPT is rejected because that player
+-- operation is still active, so request HARVEST_RESOURCE only after it ends.
+-- ===========================================================================
+local function HaikesiOnPlayerOperationComplete(playerID:number, operation:number)
+	local pending:table = g_HaikesiLincolnPendingHarvest;
+	if pending == nil
+		or operation ~= PlayerOperations.EXECUTE_SCRIPT
+		or playerID ~= pending.PlayerID then
+		return;
+	end
+	g_HaikesiLincolnPendingHarvest = nil;
+
+	local pUnit:table = UnitManager.GetUnit(playerID, pending.UnitID);
+	local pPlot:table = Map.GetPlot(pending.X, pending.Y);
+	local proxyInfo:table = GameInfo.Resources[HAIKESI_LINCOLN_HARVEST_PROXY];
+	if pUnit == nil
+		or pPlot == nil
+		or proxyInfo == nil
+		or pUnit:GetX() ~= pending.X
+		or pUnit:GetY() ~= pending.Y
+		or pPlot:GetResourceType() ~= proxyInfo.Index then
+		print("[Haikesi Lincoln UI] harvest preparation did not complete");
+		ContextPtr:RequestRefresh();
+		return;
+	end
+
+	local callOK, canStart, results = pcall(
+		UnitManager.CanStartOperation,
+		pUnit,
+		UnitOperationTypes.HARVEST_RESOURCE,
+		nil,
+		false,
+		OperationResultsTypes.NO_TARGETS
+	);
+	if callOK and canStart then
+		UnitManager.RequestOperation(pUnit, UnitOperationTypes.HARVEST_RESOURCE);
+		print(string.format(
+			"[Haikesi Lincoln UI] native harvest requested for unit %d at (%d,%d)",
+			pending.UnitID, pending.X, pending.Y
+		));
+	else
+		UI.RequestPlayerOperation(playerID, PlayerOperations.EXECUTE_SCRIPT, {
+			OnStart = "HaikesiLincolnHarvestRollback",
+			UnitID = pending.UnitID
+		});
+		print(string.format(
+			"[Haikesi Lincoln UI] native harvest unavailable; rollback requested (call=%s, canStart=%s, details=%s)",
+			tostring(callOK), tostring(canStart), tostring(results)
+		));
+	end
+	ContextPtr:RequestRefresh();
+end
+
+Events.PlayerOperationComplete.Add(HaikesiOnPlayerOperationComplete);
