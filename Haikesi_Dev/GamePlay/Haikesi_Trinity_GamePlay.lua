@@ -285,21 +285,25 @@ end
 
 local function ApplyIncomeBundle(pPlayer, bundle)
     if pPlayer == nil or bundle == nil then return end
-    local techs = pPlayer:GetTechs()
-    local culture = pPlayer:GetCulture()
-    local treasury = pPlayer:GetTreasury()
-    local religion = pPlayer:GetReligion()
-    if techs ~= nil and bundle.science > 0 then
-        pcall(function() techs:ChangeCurrentResearchProgress(bundle.science) end)
-    end
-    if culture ~= nil and bundle.culture > 0 then
-        pcall(function() culture:ChangeCurrentCulturalProgress(bundle.culture) end)
-    end
-    if treasury ~= nil and bundle.gold > 0 then
-        pcall(function() treasury:ChangeGoldBalance(bundle.gold) end)
-    end
-    if religion ~= nil and bundle.faith > 0 then
-        pcall(function() religion:ChangeFaithBalance(bundle.faith) end)
+    local rewards = {
+        { yieldType = "YIELD_SCIENCE", amount = bundle.science },
+        { yieldType = "YIELD_CULTURE", amount = bundle.culture },
+        { yieldType = "YIELD_GOLD", amount = bundle.gold },
+        { yieldType = "YIELD_FAITH", amount = bundle.faith },
+    }
+    for _, reward in ipairs(rewards) do
+        local amount = tonumber(reward.amount) or 0
+        local yieldInfo = GameInfo.Yields[reward.yieldType]
+        if yieldInfo ~= nil and amount > 0 then
+            TrinityLog(string.format("slot income grant begin yield=%s amount=%d", reward.yieldType, amount))
+            local ok, err = pcall(function()
+                -- Firaxis scripted unit commands use Player:GrantYield here.  It safely
+                -- handles science/culture completion while an EXECUTE_SCRIPT is active.
+                pPlayer:GrantYield(yieldInfo.Index, amount)
+            end)
+            TrinityLog(string.format("slot income grant end yield=%s ok=%s err=%s",
+                reward.yieldType, tostring(ok), ok and "" or tostring(err)))
+        end
     end
 end
 
@@ -385,6 +389,10 @@ local function ApplySlotReward(playerID, x, y, results)
         return "JUAN2", Locale.Lookup("LOC_HAIKESI_SLOT_MACHINE_RESULT_JUAN2")
     elseif counts.LEAF >= 3 then
         local bundle = GetIncomeBundle(pPlayer, 1)
+        bundle.science = bundle.science * 2
+        bundle.culture = bundle.culture * 2
+        bundle.gold = bundle.gold * 2
+        bundle.faith = bundle.faith * 2
         ApplyIncomeBundle(pPlayer, bundle)
         return "LEAF3", string.format(
             "+%d [ICON_Science] +%d [ICON_Culture] +%d [ICON_Gold] +%d [ICON_Faith]",

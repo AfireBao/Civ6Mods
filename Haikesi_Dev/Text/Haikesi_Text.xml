@@ -476,16 +476,6 @@
             <Text>大幕将合，众声自肃。</Text>
         </Replace>
 
-        <Replace Tag="LOC_HAIKESI_RELIC_GROUNDEDRUNE_NAME" Language="zh_Hans_CN">
-            <Text>坚壁清野</Text>
-        </Replace>
-        <Replace Tag="LOC_HAIKESI_RELIC_GROUNDEDRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>位于己方领土的非队友单位 -2 移动力、-1 射程。</Text>
-        </Replace>
-        <Replace Tag="LOC_HAIKESI_RELIC_GROUNDEDRUNE_FLAVOR" Language="zh_Hans_CN">
-            <Text>焦土何堪再耕，来犯者步履自沉。</Text>
-        </Replace>
-
         <Replace Tag="LOC_HAIKESI_RELIC_GROWINGSTRONGERRUNE_NAME" Language="zh_Hans_CN">
             <Text>滋长</Text>
         </Replace>
@@ -921,7 +911,7 @@
             <Text>世外桃源</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市的所有地块 +1 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Production] 生产力。</Text>
+            <Text>完成“法典”市政后，建造者即可种植树林。[NEWLINE][NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Production] 生产力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>桃林深处无车马喧，唯听风过水田。</Text>
@@ -1047,7 +1037,7 @@
             <Text>获得当前回合收入的 1/5：科技、文化、金币、信仰</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_RESULT_LEAF3" Language="zh_Hans_CN">
-            <Text>获得当前回合收入：科技、文化、金币、信仰</Text>
+            <Text>获得当前回合收入的 2 倍：科技、文化、金币、信仰</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_SLOT_MACHINE_RESULT_XIANG2" Language="zh_Hans_CN">
             <Text>最新城市附近出现 2 个当前时代蛮族战士</Text>

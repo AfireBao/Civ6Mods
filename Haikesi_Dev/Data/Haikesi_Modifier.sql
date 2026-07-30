@@ -1743,35 +1743,6 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIF
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_LAVRA_ADJACENCY_PRODUCTION', 'YieldTypeToGrant', 'YIELD_PRODUCTION');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('LAVRAUPGRADERUNE', 'MODIFIER_NW_LAVRA_ADJACENCY_PRODUCTION');
 
--- 坚壁清野 (GROUNDEDRUNE): 位于己方领土的非队友单位 -2 移动力、-1 射程
--- 机制: ALL_UNITS_GRANT_ABILITY 给符合 SubjectReqSet 的单位授 ABILITY_NW_SCORCHED_EARTH
---   Ability 挂两条 debuff modifier(MOVEMENT -2 / RANGE -1)；过滤全在 GRANT_ABILITY 的 SubjectReqSet
---   ① UNIT_IN_OWNER_TERRITORY: 单位位于 modifier owner(玩家)领土
---   ② PLAYER_IS_TEAM_MEMBER Inverse=1: 非同队（排除自己与队友）
--- 参考: EVEREST_ADJACENT_UNITS_GRANT_ABILITY（ALL_UNITS_GRANT_ABILITY 范式）/ BIGKNIFE（Ability 挂 debuff）
-INSERT OR IGNORE INTO Types (Type, Kind) VALUES ('ABILITY_NW_SCORCHED_EARTH', 'KIND_ABILITY');
-INSERT OR IGNORE INTO TypeTags (Type, Tag) VALUES ('ABILITY_NW_SCORCHED_EARTH', 'CLASS_ALL_COMBAT_UNITS');
-INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactive) VALUES ('ABILITY_NW_SCORCHED_EARTH', 'LOC_HAIKESI_RELIC_GROUNDEDRUNE_NAME', 'LOC_HAIKESI_RELIC_GROUNDEDRUNE_DESCRIPTION', 1);
-
-INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_SCORCHED_MOVEMENT', 'MODIFIER_UNIT_ADJUST_MOVEMENT');
-INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_SCORCHED_MOVEMENT', 'Amount', '-2');
-UPDATE ModifierArguments SET Value = '-2'
-    WHERE ModifierId = 'MODIFIER_NW_SCORCHED_MOVEMENT' AND Name = 'Amount';
-INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES ('MODIFIER_NW_SCORCHED_RANGE', 'MODIFIER_UNIT_ADJUST_ATTACK_RANGE');
-INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_SCORCHED_RANGE', 'Amount', '-1');
-INSERT OR IGNORE INTO UnitAbilityModifiers (UnitAbilityType, ModifierId) VALUES ('ABILITY_NW_SCORCHED_EARTH', 'MODIFIER_NW_SCORCHED_MOVEMENT');
-INSERT OR IGNORE INTO UnitAbilityModifiers (UnitAbilityType, ModifierId) VALUES ('ABILITY_NW_SCORCHED_EARTH', 'MODIFIER_NW_SCORCHED_RANGE');
-
-INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES ('NW_REQUIRES_SCORCHED_IN_OWNER_TERRITORY', 'REQUIREMENT_UNIT_IN_OWNER_TERRITORY');
-INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType, Inverse) VALUES ('NW_REQUIRES_SCORCHED_NOT_TEAM_MEMBER', 'REQUIREMENT_PLAYER_IS_TEAM_MEMBER', 1);
-INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType) VALUES ('NW_SCORCHED_TARGET_REQUIREMENTS', 'REQUIREMENTSET_TEST_ALL');
-INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES ('NW_SCORCHED_TARGET_REQUIREMENTS', 'NW_REQUIRES_SCORCHED_IN_OWNER_TERRITORY');
-INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES ('NW_SCORCHED_TARGET_REQUIREMENTS', 'NW_REQUIRES_SCORCHED_NOT_TEAM_MEMBER');
-
-INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId) VALUES ('MODIFIER_NW_SCORCHED_GRANT', 'MODIFIER_ALL_UNITS_GRANT_ABILITY', 'NW_SCORCHED_TARGET_REQUIREMENTS');
-INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_SCORCHED_GRANT', 'AbilityType', 'ABILITY_NW_SCORCHED_EARTH');
-INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('GROUNDEDRUNE', 'MODIFIER_NW_SCORCHED_GRANT');
-
 -- ===========================================================================
 -- 终身乐队 (ETERNALBANDRUNE): 首都赠 1 只 +8 场地等级摇滚乐队（不影响原版 UNIT_ROCK_BAND）
 -- 图标暂借未实装 SYMPHONYOFWARRUNE，不改写占位
@@ -2742,9 +2713,24 @@ DELETE FROM Haikesi_Relic_Modifiers
     WHERE RelicType = 'HIGHFLIGHTNAVRUNE' AND ModifierId = 'MODIFIER_NW_XIANG_GRANT';
 
 -- ===========================================================================
--- 世外桃源 (SHANGRILARUNE): 全城地块 +1 魅力；惊艳（魅力≥4）地块 +1 生产力
+-- 世外桃源 (SHANGRILARUNE): 建造者可种植树林；惊艳（魅力≥4）地块 +1 生产力
 -- 产量侧抄大地女神 GS（CITY_PLOT_YIELDS + PLOT_BREATHTAKING / MinimumAppeal=4）
 -- ===========================================================================
+-- 越南同款：将 FEATURE_FOREST 的玩家级解锁市政提前到法典。
+INSERT OR IGNORE INTO Types (Type, Kind)
+    VALUES ('MODIFIER_NW_PLAYER_ADJUST_FEATURE_UNLOCK', 'KIND_MODIFIER');
+INSERT OR IGNORE INTO DynamicModifiers (ModifierType, CollectionType, EffectType)
+    VALUES ('MODIFIER_NW_PLAYER_ADJUST_FEATURE_UNLOCK',
+            'COLLECTION_OWNER',
+            'EFFECT_ADJUST_FEATURE_PREREQ');
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_SHANGRILA_PLANT_FOREST',
+            'MODIFIER_NW_PLAYER_ADJUST_FEATURE_UNLOCK');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_SHANGRILA_PLANT_FOREST', 'FeatureType', 'FEATURE_FOREST'),
+    ('MODIFIER_NW_SHANGRILA_PLANT_FOREST', 'CivicType',   'CIVIC_CODE_OF_LAWS');
+
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType)
     VALUES ('NW_REQUIRES_PLOT_APPEAL_GE_4', 'REQUIREMENT_PLOT_IS_APPEAL_BETWEEN');
 INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value)
@@ -2754,14 +2740,6 @@ INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
     VALUES ('NW_PLOT_APPEAL_GE_4', 'REQUIREMENTSET_TEST_ALL');
 INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId)
     VALUES ('NW_PLOT_APPEAL_GE_4', 'NW_REQUIRES_PLOT_APPEAL_GE_4');
-
--- 所有城市地块 +1 魅力（埃菲尔同款）
-INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
-    VALUES ('MODIFIER_NW_SHANGRILA_APPEAL', 'MODIFIER_PLAYER_CITIES_ADJUST_CITY_APPEAL');
-INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
-    VALUES ('MODIFIER_NW_SHANGRILA_APPEAL', 'Amount', '1');
-UPDATE ModifierArguments SET Value = '1'
-    WHERE ModifierId = 'MODIFIER_NW_SHANGRILA_APPEAL' AND Name = 'Amount';
 
 -- 内层：城内地块产量；外层：挂到玩家所有城市
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
@@ -2778,7 +2756,7 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
     VALUES ('MODIFIER_NW_SHANGRILA_PROD', 'ModifierId', 'MODIFIER_NW_SHANGRILA_PROD_PLOT');
 
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
-    ('SHANGRILARUNE', 'MODIFIER_NW_SHANGRILA_APPEAL'),
+    ('SHANGRILARUNE', 'MODIFIER_NW_SHANGRILA_PLANT_FOREST'),
     ('SHANGRILARUNE', 'MODIFIER_NW_SHANGRILA_PROD');
 
 -- 世外桃源+ (SHANGRILAPLUSRUNE): 全城地块 +1 魅力；惊艳（魅力>=4）地块 +1 食物

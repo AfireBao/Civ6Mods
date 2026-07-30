@@ -9349,18 +9349,6 @@
    ]
   },
   {
-   "id": "GROUNDEDRUNE",
-   "kind": "haikesi_relic",
-   "chapter": "haikesi",
-   "audience": "human",
-   "name": "坚壁清野",
-   "description": "位于己方领土的非队友单位 -1 移动力、-1 射程。",
-   "flavor": "焦土何堪再耕，来犯者步履自沉。",
-   "aliases": [
-    "HAIKESI_RELIC_GROUNDEDRUNE"
-   ]
-  },
-  {
    "id": "GROWINGSTRONGERRUNE",
    "kind": "haikesi_relic",
    "chapter": "haikesi",
@@ -10071,7 +10059,7 @@
    "chapter": "haikesi",
    "audience": "human",
    "name": "世外桃源",
-   "description": "所有城市的所有地块 +1 魅力。 魅力达到惊艳（≥4）的地块 +1 生产力。",
+   "description": "建造者在完成法典后即可种植树林。 魅力达到惊艳（≥4）的地块 +1 生产力。",
    "flavor": "桃林深处无车马喧，唯听风过水田。",
    "aliases": [
     "HAIKESI_RELIC_SHANGRILARUNE"

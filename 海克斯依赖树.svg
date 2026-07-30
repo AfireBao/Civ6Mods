@@ -151,11 +151,9 @@
   <rect class="terminal node" x="1625" y="815" width="100" height="34"/><text class="txt" x="1675" y="833">误中副车</text>
   <rect class="root node" x="1515" y="865" width="100" height="34"/><text class="txt" x="1565" y="883">小丑学院</text>
   <rect class="terminal node" x="1625" y="865" width="100" height="34"/><text class="txt" x="1675" y="883">尤里卡</text>
-  <rect class="root node" x="1515" y="915" width="100" height="34"/><text class="txt" x="1565" y="933">坚壁清野</text>
-  <rect class="terminal node" x="1625" y="915" width="100" height="34"/><text class="txt" x="1675" y="933">高翔导航</text>
   <path class="edge-soft" d="M1335 832 L1375 832"/><path class="edge-soft" d="M1335 882 L1375 882"/>
   <path class="edge-soft" d="M1335 932 L1375 932"/><path class="edge-soft" d="M1615 832 L1625 832"/>
-  <path class="edge-soft" d="M1615 882 L1625 882"/><path class="edge-soft" d="M1615 932 L1625 932"/>
+  <path class="edge-soft" d="M1615 882 L1625 882"/>
 
   <!-- Standalone -->
   <rect class="panel" x="40" y="1080" width="1700" height="520"/>
