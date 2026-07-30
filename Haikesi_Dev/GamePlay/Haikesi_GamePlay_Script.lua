@@ -586,6 +586,10 @@ function ApplyRelicToPlayer(iPlayer, relicType, isSelection, decisionReason)
         -- 新领取时已由映射挂载新版种植园忠诚度链，记录版本以免旧档迁移重复挂载。
         pPlayer:SetProperty('PROP_NW_EMANCIPATION_LOYALTY_ATTACH_V1', 1)
     end
+    if relicType == 'ARTHASHASTRARUNE' then
+        -- 新领取时已由映射挂载按城市建筑筛选的新版效果链。
+        pPlayer:SetProperty('PROP_NW_ARTHASHASTRA_CITY_ATTACH_V1', 1)
+    end
 
     Haikesi_ApplyLuaEffect(iPlayer, relicType)
 
@@ -2924,6 +2928,31 @@ function Initialize()
                         print("[Haikesi GamePlay] migrated emancipation plantation loyalty -> Player" .. tostring(pPlayer:GetID()))
                     else
                         print("[Haikesi GamePlay] failed emancipation loyalty migration -> Player"
+                            .. tostring(pPlayer:GetID()) .. ": " .. tostring(err))
+                    end
+                    break
+                end
+            end
+        end
+        -- 旧档兼容：旧版政事论仅挂载玩家属性 Marker，且该属性 RequirementType 无效。
+        -- 已领取海克斯的玩家补挂新版城市建筑效果链，避免读档后仍然没有单位加成。
+        if pPlayer:GetProperty('PROP_NW_ARTHASHASTRA_CITY_ATTACH_V1') ~= 1 then
+            local selectedRelics = GetSelectedRelicTypeListForPlayer(pPlayer)
+            for _, selectedRelicType in ipairs(selectedRelics) do
+                if selectedRelicType == 'ARTHASHASTRARUNE' then
+                    local ok, err = pcall(function()
+                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_SHRINE_MOVEMENT_ATTACH')
+                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_SHRINE_COMBAT_ATTACH')
+                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_TEMPLE_SIGHT_ATTACH')
+                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_TEMPLE_COMBAT_ATTACH')
+                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_WORSHIP_COMBAT_ATTACH')
+                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_CORPS_ARMY_DISCOUNT_ATTACH')
+                    end)
+                    if ok then
+                        pPlayer:SetProperty('PROP_NW_ARTHASHASTRA_CITY_ATTACH_V1', 1)
+                        print("[Haikesi GamePlay] migrated Arthashastra city effects -> Player" .. tostring(pPlayer:GetID()))
+                    else
+                        print("[Haikesi GamePlay] failed Arthashastra city effect migration -> Player"
                             .. tostring(pPlayer:GetID()) .. ": " .. tostring(err))
                     end
                     break

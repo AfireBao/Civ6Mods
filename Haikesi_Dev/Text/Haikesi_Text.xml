@@ -2330,7 +2330,7 @@
             <Text>解放黑奴</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EMANCIPATIONPROCLAMATIONRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>建造工业区和水渠时+100%[ICON_Production]生产力。工业区额外+1[ICON_Amenities]宜居度（合计+3）并保留原有+3忠诚度；每座种植园额外-3忠诚度，与原有-2合计为-5。工人可以直接收获己方可建造种植园的奢侈品或加成资源，无需先建造种植园：移除资源及其已有改良、消耗1次劳动力，按香蕉的原生收获规则获得[ICON_Food]食物和等量[ICON_Gold]金币，并获得1个当前最先进的免费近战单位。该单位启用与工业区赠送单位相同的“解放黑奴宣言”属性。</Text>
+            <Text>建造工业区和水渠时+100%[ICON_Production]生产力。工业区额外+1[ICON_Amenities]宜居度（合计+3）并保留原有+3忠诚度；每座种植园额外-3忠诚度，与原有-2合计为-5。工人可以直接收获己方可建造种植园的奢侈品或加成资源，获得[ICON_Food]食物和等量[ICON_Gold]金币，并获得1个当前最先进的免费近战单位。该单位启用与工业区赠送单位相同的“解放黑奴宣言”属性。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EMANCIPATIONPROCLAMATIONRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>凡以他人枷锁筑成的繁荣，都应由自由亲手拆除。</Text>

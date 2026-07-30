@@ -482,8 +482,6 @@ local function HaikesiOnPlayerOperationComplete(playerID:number, operation:numbe
 		or playerID ~= pending.PlayerID then
 		return;
 	end
-	g_HaikesiLincolnPendingHarvest = nil;
-
 	local pUnit:table = UnitManager.GetUnit(playerID, pending.UnitID);
 	local pPlot:table = Map.GetPlot(pending.X, pending.Y);
 	local proxyInfo:table = GameInfo.Resources[HAIKESI_LINCOLN_HARVEST_PROXY];
@@ -493,6 +491,7 @@ local function HaikesiOnPlayerOperationComplete(playerID:number, operation:numbe
 		or pUnit:GetX() ~= pending.X
 		or pUnit:GetY() ~= pending.Y
 		or pPlot:GetResourceType() ~= proxyInfo.Index then
+		g_HaikesiLincolnPendingHarvest = nil;
 		print("[Haikesi Lincoln UI] harvest preparation did not complete");
 		ContextPtr:RequestRefresh();
 		return;
@@ -513,6 +512,7 @@ local function HaikesiOnPlayerOperationComplete(playerID:number, operation:numbe
 			pending.UnitID, pending.X, pending.Y
 		));
 	else
+		g_HaikesiLincolnPendingHarvest = nil;
 		UI.RequestPlayerOperation(playerID, PlayerOperations.EXECUTE_SCRIPT, {
 			OnStart = "HaikesiLincolnHarvestRollback",
 			UnitID = pending.UnitID
@@ -525,4 +525,28 @@ local function HaikesiOnPlayerOperationComplete(playerID:number, operation:numbe
 	ContextPtr:RequestRefresh();
 end
 
+function HaikesiOnLincolnHarvestOperationDeactivated(playerID:number, unitID:number, operationID:number)
+	local pending:table = g_HaikesiLincolnPendingHarvest;
+	if pending == nil
+		or operationID ~= UnitOperationTypes.HARVEST_RESOURCE
+		or playerID ~= pending.PlayerID
+		or unitID ~= pending.UnitID then
+		return;
+	end
+	g_HaikesiLincolnPendingHarvest = nil;
+	UI.RequestPlayerOperation(playerID, PlayerOperations.EXECUTE_SCRIPT, {
+		OnStart = "HaikesiLincolnHarvestFinalize",
+		UnitID = pending.UnitID,
+		X = pending.X,
+		Y = pending.Y
+	});
+	print(string.format(
+		"[Haikesi Lincoln UI] native harvest completed; proxy cleanup requested at (%d,%d)",
+		pending.X, pending.Y
+	));
+	ContextPtr:RequestRefresh();
+end
+
 Events.PlayerOperationComplete.Add(HaikesiOnPlayerOperationComplete);
+Events.UnitOperationDeactivated.Add(HaikesiOnLincolnHarvestOperationDeactivated);
+Events.UnitOperationsCleared.Add(HaikesiOnLincolnHarvestOperationDeactivated);

@@ -851,35 +851,81 @@ function HaikesiLincolnHarvestRollback(playerID, params)
     ))
 end
 
-local function Haikesi_LincolnOnUnitOperationStarted(playerID, unitID, operationID)
-    if operationID ~= UnitOperationTypes.HARVEST_RESOURCE then return end
-    local unit = UnitManager.GetUnit(playerID, unitID)
-    if unit == nil or tonumber(unit:GetProperty(LINCOLN_HARVEST_PENDING_PROP) or 0) ~= 1 then
-        return
-    end
-    local x = tonumber(unit:GetProperty(LINCOLN_HARVEST_X_PROP))
-    local y = tonumber(unit:GetProperty(LINCOLN_HARVEST_Y_PROP))
+function HaikesiLincolnHarvestFinalize(playerID, params)
+    local unit = params and UnitManager.GetUnit(playerID, tonumber(params.UnitID)) or nil
+    local x = params and tonumber(params.X) or nil
+    local y = params and tonumber(params.Y) or nil
     local plot = x ~= nil and y ~= nil and Map.GetPlot(x, y) or nil
     local proxyInfo = GameInfo.Resources[LINCOLN_HARVEST_PROXY_RESOURCE]
-    if plot ~= nil and proxyInfo ~= nil and plot:GetResourceType() == proxyInfo.Index then
-        Haikesi_LincolnClearPendingHarvest(unit)
+    if plot == nil or proxyInfo == nil then
+        print('[Haikesi Lincoln] harvest finalize skipped: plot or proxy unavailable')
+        return
+    end
+
+    local resourceBefore = plot:GetResourceType()
+    if resourceBefore == proxyInfo.Index then
+        -- Native harvest completed without removing the dynamically placed proxy.
+        ResourceBuilder.SetResourceType(plot, -1)
+    elseif resourceBefore == -1 then
+        -- The gameplay resource is already gone, but WorldViewIconsManager can retain
+        -- the proxy icon when the add/remove events straddle two player operations.
+        -- Emit one final ordered add/remove pair so ResourceRemovedFromMap wins last.
+        ResourceBuilder.SetResourceType(plot, proxyInfo.Index, 1)
+        ResourceBuilder.SetResourceType(plot, -1)
+    else
         print(string.format(
-            '[Haikesi Lincoln] native harvest started at (%d,%d); pending state cleared',
-            x, y
+            '[Haikesi Lincoln] harvest finalize preserved unexpected resource %s at (%d,%d)',
+            tostring(resourceBefore), x, y
         ))
+    end
+
+    if unit ~= nil then
+        Haikesi_LincolnClearPendingHarvest(unit)
+    end
+    print(string.format(
+        '[Haikesi Lincoln] native harvest finalized at (%d,%d), resource before cleanup=%s',
+        x, y, tostring(resourceBefore)
+    ))
+end
+
+function Haikesi_LincolnCleanupOrphanedHarvestProxies()
+    local proxyInfo = GameInfo.Resources[LINCOLN_HARVEST_PROXY_RESOURCE]
+    if proxyInfo == nil then return end
+
+    local removed = 0
+    for plotIndex = 0, Map.GetPlotCount() - 1 do
+        local plot = Map.GetPlotByIndex(plotIndex)
+        if plot ~= nil and plot:GetResourceType() == proxyInfo.Index then
+            ResourceBuilder.SetResourceType(plot, -1)
+            removed = removed + 1
+        end
+    end
+    for _, player in ipairs(PlayerManager.GetAliveMajors()) do
+        local units = player:GetUnits()
+        if units ~= nil then
+            for _, unit in units:Members() do
+                if tonumber(unit:GetProperty(LINCOLN_HARVEST_PENDING_PROP) or 0) == 1 then
+                    Haikesi_LincolnClearPendingHarvest(unit)
+                end
+            end
+        end
+    end
+    if removed > 0 then
+        print('[Haikesi Lincoln] removed orphaned harvest proxies on load: ' .. tostring(removed))
     end
 end
 
 local function InitializePlanter()
     Haikesi_PlanterBuildValidImprovementCache()
+    Haikesi_LincolnCleanupOrphanedHarvestProxies()
     GameEvents.HaikesiPlantResource.Add(HaikesiPlantResource)
     GameEvents.HaikesiLincolnHarvest.Add(HaikesiLincolnHarvest)
     GameEvents.HaikesiLincolnHarvestRollback.Add(HaikesiLincolnHarvestRollback)
+    GameEvents.HaikesiLincolnHarvestFinalize.Add(HaikesiLincolnHarvestFinalize)
     GameEvents.HaikesiSyncSecretSociety.Add(HaikesiSyncSecretSociety)
     if ExposedMembers ~= nil then
         ExposedMembers.Haikesi_ApplyFarmImmortalPlusRelic = Haikesi_ApplyFarmImmortalPlusRelic
     end
-    Events.UnitOperationStarted.Add(Haikesi_LincolnOnUnitOperationStarted)
     print('[Haikesi Planter] GamePlay ready (split from main script)')
 end
 
