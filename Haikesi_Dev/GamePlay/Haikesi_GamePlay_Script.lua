@@ -590,6 +590,10 @@ function ApplyRelicToPlayer(iPlayer, relicType, isSelection, decisionReason)
         -- 新领取时已由映射挂载按城市建筑筛选的新版效果链。
         pPlayer:SetProperty('PROP_NW_ARTHASHASTRA_CITY_ATTACH_V1', 1)
     end
+    if relicType == 'SHANGRILARUNE' or relicType == 'SHANGRILAPLUSPLUSRUNE' then
+        -- 新领取时已使用新版基础魅力 / ++ 种树映射，避免旧档迁移重复挂载。
+        pPlayer:SetProperty('PROP_NW_SHANGRILA_REBALANCE_V1', 1)
+    end
 
     Haikesi_ApplyLuaEffect(iPlayer, relicType)
 
@@ -2956,6 +2960,37 @@ function Initialize()
                             .. tostring(pPlayer:GetID()) .. ": " .. tostring(err))
                     end
                     break
+                end
+            end
+        end
+        -- 旧档兼容：基础层由种树改回 +1 魅力，++ 层由 +1 魅力改为种树。
+        -- 旧 ModifierId 已在 SQL 中惰性化；这里只补挂新加入映射的两项能力。
+        if pPlayer:GetProperty('PROP_NW_SHANGRILA_REBALANCE_V1') ~= 1 then
+            local selectedRelics = GetSelectedRelicTypeListForPlayer(pPlayer)
+            local hasShangrila = false
+            local hasShangrilaPlusPlus = false
+            for _, selectedRelicType in ipairs(selectedRelics) do
+                if selectedRelicType == 'SHANGRILARUNE' then
+                    hasShangrila = true
+                elseif selectedRelicType == 'SHANGRILAPLUSPLUSRUNE' then
+                    hasShangrilaPlusPlus = true
+                end
+            end
+            if hasShangrila or hasShangrilaPlusPlus then
+                local ok, err = pcall(function()
+                    if hasShangrila then
+                        pPlayer:AttachModifierByID('MODIFIER_NW_SHANGRILA_APPEAL')
+                    end
+                    if hasShangrilaPlusPlus then
+                        pPlayer:AttachModifierByID('MODIFIER_NW_SHANGRILA_PLUSPLUS_PLANT_FOREST')
+                    end
+                end)
+                if ok then
+                    pPlayer:SetProperty('PROP_NW_SHANGRILA_REBALANCE_V1', 1)
+                    print("[Haikesi GamePlay] migrated Shangrila rebalance -> Player" .. tostring(pPlayer:GetID()))
+                else
+                    print("[Haikesi GamePlay] failed Shangrila rebalance migration -> Player"
+                        .. tostring(pPlayer:GetID()) .. ": " .. tostring(err))
                 end
             end
         end

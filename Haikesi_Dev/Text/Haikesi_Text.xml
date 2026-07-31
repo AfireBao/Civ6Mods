@@ -911,7 +911,7 @@
             <Text>世外桃源</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>完成“法典”市政后，建造者即可种植树林。[NEWLINE][NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Production] 生产力。</Text>
+            <Text>所有城市的所有地块 +1 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Production] 生产力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILARUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>桃林深处无车马喧，唯听风过水田。</Text>
@@ -931,7 +931,7 @@
             <Text>世外桃源++</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILAPLUSPLUSRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>所有城市的所有地块 +1 魅力。[NEWLINE]魅力达到惊艳（≥4）的地块 +1 [ICON_Science] 科技、+1 [ICON_Culture] 文化。</Text>
+            <Text>完成“法典”市政后，建造者即可种植树林。[NEWLINE]魅力达到惊艳（≥4）的地块 +2 [ICON_Gold] 金币、+1 [ICON_Faith] 信仰。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_SHANGRILAPLUSPLUSRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>山中岁月自成书，清泉一页，云影一章。</Text>
