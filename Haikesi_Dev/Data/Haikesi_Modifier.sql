@@ -613,7 +613,7 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
     VALUES ('MODIFIER_NW_MIKAELS_FAITH', 'Amount', '100');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('MIKAELSBLESSINGRUNE', 'MODIFIER_NW_MIKAELS_FAITH');
 
--- 达弗的陈酿 (DUFFSVINTAGERUNE): 商业中心/市场/银行依次 +3/+4/+5 金币
+-- 达弗的陈酿 (DUFFSVINTAGERUNE): 商业中心/市场/银行依次 +3/+4/+5 金币，每回合 +2 大商人点数
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
     VALUES ('MODIFIER_NW_DUFFS_GOLD', 'MODIFIER_PLAYER_DISTRICTS_ADJUST_YIELD_CHANGE', 'DISTRICT_IS_COMMERCIAL_HUB');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
@@ -641,6 +641,14 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
     VALUES ('MODIFIER_NW_DUFFS_BANK_GOLD', 'YieldType', 'YIELD_GOLD');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('DUFFSVINTAGERUNE', 'MODIFIER_NW_DUFFS_BANK_GOLD');
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_DUFFS_GP_MERCHANT', 'MODIFIER_PLAYER_ADJUST_GREAT_PERSON_POINTS');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_DUFFS_GP_MERCHANT', 'Amount', '2');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_DUFFS_GP_MERCHANT', 'GreatPersonClassType', 'GREAT_PERSON_CLASS_MERCHANT');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('DUFFSVINTAGERUNE', 'MODIFIER_NW_DUFFS_GP_MERCHANT');
 
 -- 星光璀璨 (STARLIGHTSPLENDORRUNE): 招募每个伟人时完成 1 项随机市政;所有城市文化 -15%
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES ('NW_REQ_UNIT_IS_GP_GENERAL',   'REQUIREMENT_GREAT_PERSON_TYPE_MATCHES');
@@ -707,7 +715,7 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
     VALUES ('MODIFIER_NW_INFERNAL_PRODUCTION', 'YieldType', 'YIELD_PRODUCTION');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('INFERNALCONDUITRUNE', 'MODIFIER_NW_INFERNAL_PRODUCTION');
 
--- 扉八分钱 (EIGHTPENNYGATERUNE): 港口+4 金币、灯塔+3 金币
+-- 扉八分钱 (EIGHTPENNYGATERUNE): 港口+4 金币、灯塔+3 金币，每回合 +2 海军统帅点数
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, SubjectRequirementSetId)
     VALUES ('MODIFIER_NW_EIGHTPENNY_GOLD', 'MODIFIER_PLAYER_DISTRICTS_ADJUST_YIELD_CHANGE', 'DISTRICT_IS_HARBOR');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
@@ -721,6 +729,14 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIF
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_EIGHTPENNY_LIGHTHOUSE_GOLD', 'BuildingType', 'BUILDING_LIGHTHOUSE');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES ('MODIFIER_NW_EIGHTPENNY_LIGHTHOUSE_GOLD', 'YieldType', 'YIELD_GOLD');
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('EIGHTPENNYGATERUNE', 'MODIFIER_NW_EIGHTPENNY_LIGHTHOUSE_GOLD');
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_EIGHTPENNY_GP_ADMIRAL', 'MODIFIER_PLAYER_ADJUST_GREAT_PERSON_POINTS');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_EIGHTPENNY_GP_ADMIRAL', 'Amount', '2');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+    VALUES ('MODIFIER_NW_EIGHTPENNY_GP_ADMIRAL', 'GreatPersonClassType', 'GREAT_PERSON_CLASS_ADMIRAL');
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('EIGHTPENNYGATERUNE', 'MODIFIER_NW_EIGHTPENNY_GP_ADMIRAL');
 
 -- 滋长 (GROWINGSTRONGERRUNE): +30% 食物增长率、每人口+0.5 生产力
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)

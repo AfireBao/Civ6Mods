@@ -265,7 +265,7 @@
             <Text>窖藏旧酎</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_DUFFSVINTAGERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>商业中心、市场和银行依次+3、+4、+5 [ICON_Gold] 金币。</Text>
+            <Text>商业中心、市场和银行依次+3、+4、+5 [ICON_Gold] 金币。每回合获得+2 [ICON_GreatMerchant] 大商人点数。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_DUFFSVINTAGERUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>酒愈陈则价愈廉，岁久封泥，自有金来。</Text>
@@ -285,7 +285,7 @@
             <Text>航海七分仪</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EIGHTPENNYGATERUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>港口+4 [ICON_Gold] 金币、灯塔+3 [ICON_Gold] 金币。</Text>
+            <Text>港口+4 [ICON_Gold] 金币、灯塔+3 [ICON_Gold] 金币。每回合获得+2 [ICON_GreatAdmiral] 海军统帅点数。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_EIGHTPENNYGATERUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>噢...新大陆！</Text>
