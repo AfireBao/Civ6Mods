@@ -3984,3 +3984,22 @@ FROM (
 WHERE EXISTS (
     SELECT 1 FROM Haikesi_Relics WHERE RelicType = 'EMANCIPATIONPROCLAMATIONRUNE'
 );
+
+-- ===========================================================================
+-- 圣迹巡礼 (SACREDPILGRIMAGERUNE)
+-- 刚果两位领袖与雅德维加专属：领取时立即获得 1 个遗物；此后每发现一座
+-- 自然奇观再获得 1 个遗物。后者复刻康缇宗主国能力的原生 EffectType。
+-- ===========================================================================
+
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, RunOnce, Permanent) VALUES
+    ('MODIFIER_NW_SACRED_PILGRIMAGE_INITIAL_RELIC', 'MODIFIER_PLAYER_GRANT_RELIC', 1, 1),
+    ('MODIFIER_NW_SACRED_PILGRIMAGE_NATURAL_WONDER_RELIC', 'MODIFIER_PLAYER_ADJUST_NATURAL_WONDER_RELIC', 0, 1);
+
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_SACRED_PILGRIMAGE_INITIAL_RELIC', 'Amount', '1'),
+    ('MODIFIER_NW_SACRED_PILGRIMAGE_NATURAL_WONDER_RELIC', 'Amount', '1');
+
+INSERT OR IGNORE INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('SACREDPILGRIMAGERUNE', 'MODIFIER_NW_SACRED_PILGRIMAGE_INITIAL_RELIC'),
+    ('SACREDPILGRIMAGERUNE', 'MODIFIER_NW_SACRED_PILGRIMAGE_NATURAL_WONDER_RELIC');

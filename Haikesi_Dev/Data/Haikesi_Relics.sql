@@ -800,3 +800,25 @@ INSERT OR IGNORE INTO Haikesi_Relic_LeaderEligibility (RelicType, LeaderType)
 SELECT 'EMANCIPATIONPROCLAMATIONRUNE', LeaderType
 FROM Leaders
 WHERE LeaderType = 'LEADER_ABRAHAM_LINCOLN';
+
+-- 领袖专属：圣迹巡礼（姆本巴·恩津加、恩津加·姆班德与雅德维加）
+INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
+('SACREDPILGRIMAGERUNE', 'LOC_HAIKESI_RELIC_SACREDPILGRIMAGERUNE_NAME', 'LOC_HAIKESI_RELIC_SACREDPILGRIMAGERUNE_DESCRIPTION', 'LOC_HAIKESI_RELIC_SACREDPILGRIMAGERUNE_FLAVOR', 'ICON_HAIKESI_RELIC_SACREDPILGRIMAGERUNE', 'PRISMATIC');
+UPDATE Haikesi_Relics
+SET IsActive = 1,
+    IsRepeatable = 0,
+    SelectionOnly = 0,
+    Weight = 300,
+    MinTurn = NULL,
+    MaxTurn = NULL
+WHERE RelicType = 'SACREDPILGRIMAGERUNE';
+
+-- SELECT 可令未安装波兰或「伟大谈判者」领袖包时自动跳过对应领袖，避免外键校验失败。
+INSERT OR IGNORE INTO Haikesi_Relic_LeaderEligibility (RelicType, LeaderType)
+SELECT 'SACREDPILGRIMAGERUNE', LeaderType
+FROM Leaders
+WHERE LeaderType IN (
+    'LEADER_MVEMBA',
+    'LEADER_NZINGA_MBANDE',
+    'LEADER_JADWIGA'
+);

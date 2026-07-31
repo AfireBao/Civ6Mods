@@ -2342,5 +2342,16 @@
             <Text>直接收获该种植园类奢侈品或加成资源，无需先建造种植园。移除资源及其已有改良、消耗1次劳动力，按香蕉的原生收获规则获得[ICON_Food]食物和等量[ICON_Gold]金币，并获得1个具有林肯工业区赠兵属性的当前最先进近战单位。</Text>
         </Replace>
 
+        <!-- 刚果两位领袖与雅德维加专属海克斯：圣迹巡礼 -->
+        <Replace Tag="LOC_HAIKESI_RELIC_SACREDPILGRIMAGERUNE_NAME" Language="zh_Hans_CN">
+            <Text>圣迹巡礼</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SACREDPILGRIMAGERUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>立即获得1个[ICON_GreatWork_Relic]遗物。此后每发现一座自然奇观，再获得1个[ICON_GreatWork_Relic]遗物。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_SACREDPILGRIMAGERUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>天地显其奇迹，朝圣者便将见证带回人间。</Text>
+        </Replace>
+
     </LocalizedText>
 </GameData>
