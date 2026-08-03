@@ -17,11 +17,8 @@ local CREATE_PANTHEON_MOD_IDS = {
 	"b85e61c0-26b7-4098-81ba-8566b8537dcb", -- Workshop Create Your Pantheon
 };
 
-local HAIKESI_RELICS_PROPERTY_KEY = "PROP_NW_HAIKESI_RELICS";
 local HAIKESI_RELICS_COUNT_PROPERTY_KEY = "PROP_NW_HAIKESI_RELIC_COUNT";
 local HAIKESI_RELICS_SLOT_PROPERTY_PREFIX = "PROP_NW_HAIKESI_RELIC_";
-local HAIKESI_LEGACY_RELICS_COUNT_PROPERTY_KEY = "PROP_NW_HAIKESI_RELICS_COUNT";
-local HAIKESI_LEGACY_RELICS_SLOT_PROPERTY_PREFIX = "PROP_NW_HAIKESI_RELIC_SLOT_";
 local HAIKESI_LINCOLN_RELIC = "EMANCIPATIONPROCLAMATIONRUNE";
 local HAIKESI_LINCOLN_LEADER = "LEADER_ABRAHAM_LINCOLN";
 local HAIKESI_LINCOLN_HARVEST_PROXY = "RESOURCE_NW_EMANCIPATION_HARVEST_PROXY";
@@ -29,16 +26,6 @@ local g_HaikesiLincolnPlantationResourceTypes:table = nil;
 local g_HaikesiLincolnPendingHarvest:table = nil;
 
 InterfaceModeTypes.DEATH_CULT_DEVOUR = InterfaceModeTypes.DEATH_CULT_DEVOUR or DB.MakeHash("INTERFACEMODE_DEATH_CULT_DEVOUR");
-
-local function HaikesiGetRelicTypeFromIndex(index:number)
-	if GameInfo.Haikesi_Relics == nil then return nil; end
-	for row in GameInfo.Haikesi_Relics() do
-		if row.Index == index then
-			return row.RelicType;
-		end
-	end
-	return nil;
-end
 
 local function HaikesiPlayerHasRelic(playerID:number, relicType:string)
 	local pPlayer = Players[playerID];
@@ -54,17 +41,7 @@ local function HaikesiPlayerHasRelic(playerID:number, relicType:string)
 		return false;
 	end
 
-	if checkSlots(HAIKESI_RELICS_COUNT_PROPERTY_KEY, HAIKESI_RELICS_SLOT_PROPERTY_PREFIX) then return true; end
-	if checkSlots(HAIKESI_LEGACY_RELICS_COUNT_PROPERTY_KEY, HAIKESI_LEGACY_RELICS_SLOT_PROPERTY_PREFIX) then return true; end
-
-	local prop:string = tostring(pPlayer:GetProperty(HAIKESI_RELICS_PROPERTY_KEY) or "");
-	for idxStr:string in string.gmatch(prop, "[^|]+") do
-		local idx:number = tonumber(idxStr);
-		if idx ~= nil and HaikesiGetRelicTypeFromIndex(idx) == relicType then
-			return true;
-		end
-	end
-	return false;
+	return checkSlots(HAIKESI_RELICS_COUNT_PROPERTY_KEY, HAIKESI_RELICS_SLOT_PROPERTY_PREFIX);
 end
 
 local function HaikesiUnitTypeHasTag(unitType:string, wantedTag:string)

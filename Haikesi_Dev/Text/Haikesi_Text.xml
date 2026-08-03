@@ -2097,7 +2097,7 @@
             <Text>最早一批生物质：剩余 {1} 回合（到期回合 {2}）</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_BIOMASS_DURATION_UNKNOWN" Language="zh_Hans_CN">
-            <Text>生物质：未找到有效到期记录（可能来自旧档）</Text>
+            <Text>生物质：状态记录缺失</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_BIOMASS_CITY_SUMMARY" Language="zh_Hans_CN">
             <Text>本城生物质合计 +{1} [ICON_FOOD]/最早到期回合 {2}（剩余 {3} 回合）</Text>
@@ -2105,16 +2105,6 @@
 
         <Replace Tag="LOC_HAIKESI_BIOMASS_NAME_REMAIN" Language="zh_Hans_CN">
             <Text>（剩{1}回合）</Text>
-        </Replace>
-
-        <Replace Tag="LOC_UNIT_NW_WARFEED_MORSEL_NAME" Language="zh_Hans_CN">
-            <Text>生物质</Text>
-        </Replace>
-        <Replace Tag="LOC_UNIT_NW_WARFEED_MORSEL_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>（已废弃）旧版生物质单位壳，不再产生食物。</Text>
-        </Replace>
-        <Replace Tag="LOC_ABILITY_NW_WARFEED_MORSEL_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>（已废弃）生物质改为城市限时食物修正。</Text>
         </Replace>
 
         <Replace Tag="LOC_BUILDING_NW_DEATH_CULT_PROJECT_UNLOCK_NAME" Language="zh_Hans_CN">

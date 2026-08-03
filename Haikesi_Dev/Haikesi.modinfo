@@ -294,8 +294,6 @@
     <File>UI/Haikesi_Trinity_SlotMachine.lua</File>
     <File>UI/Haikesi_Trinity_SlotMachine.xml</File>
     <File>UI/Haikesi_CityPanelOverview.lua</File>
-    <File>UI/Haikesi_BarbClan_Bridge.lua</File>
-    <File>UI/Haikesi_BarbClan_Bridge.xml</File>
     <File>UI/Haikesi_ExtAI_Bridge.lua</File>
     <File>UI/Haikesi_ExtAI_Bridge.xml</File>
     <File>UI/Haikesi_Panel.lua</File>

@@ -8,7 +8,6 @@ local NECROMILITARISM_RELIC = 'NECROMILITARISMRUNE'
 local ZOMBIE_UNIT = 'UNIT_NW_ZOMBIE'
 local HERETIC_PROJECT = 'PROJECT_NW_HERETIC_SACRIFICE'
 local PROJECT_UNLOCK_BUILDING = 'BUILDING_NW_DEATH_CULT_PROJECT_UNLOCK'
-local PROJECT_UNLOCK_PLACEMENT_PROPERTY = 'PROP_NW_DEATH_CULT_PROJECT_UNLOCK_HOLY_SITE_V2'
 local PROJECT_AVAILABILITY_MODIFIER = 'MODIFIER_NW_DEATH_CULT_UNLOCK_HERETIC_SACRIFICE_V2'
 local PROJECT_AVAILABILITY_ATTACHED_PROPERTY = 'PROP_NW_DEATH_CULT_PROJECT_AVAILABILITY_V2_ATTACHED'
 local PROJECT_COMPLETION_PROPERTY = 'PROP_NW_HERETIC_SACRIFICE_COMPLETED_V2'
@@ -29,11 +28,8 @@ local BASE_MODIFIERS = {
 
 local RESURRECT_CHANCE = 33
 
-local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
-local LegacyRelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELICS_COUNT'
-local LegacyRelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_SLOT_'
 
 local g_UnitCache = {}
 local g_KillHandled = {}
@@ -41,16 +37,6 @@ local g_ProjectUnlockBuildingIndex = nil
 
 local function DC_Log(msg)
     print('[Haikesi DeathCult] ' .. tostring(msg))
-end
-
-local function DC_GetRelicTypeFromIndex(index)
-    if GameInfo.Haikesi_Relics == nil then return nil end
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType
-        end
-    end
-    return nil
 end
 
 local function DC_PlayerHasRelic(pPlayer, relicType)
@@ -66,17 +52,7 @@ local function DC_PlayerHasRelic(pPlayer, relicType)
         return false
     end
 
-    if checkSlots(RelicsCountPropertyKey, RelicsSlotPropertyPrefix) then return true end
-    if checkSlots(LegacyRelicsCountPropertyKey, LegacyRelicsSlotPropertyPrefix) then return true end
-
-    local prop = pPlayer:GetProperty(RelicsPropertyKey) or ''
-    for idxStr in string.gmatch(prop, '[^|]+') do
-        local idx = tonumber(idxStr)
-        if idx ~= nil and DC_GetRelicTypeFromIndex(idx) == relicType then
-            return true
-        end
-    end
-    return false
+    return checkSlots(RelicsCountPropertyKey, RelicsSlotPropertyPrefix)
 end
 
 local function DC_EnsureProjectAvailability(playerID)
@@ -164,19 +140,7 @@ local function DC_SetCityProjectUnlock(city, shouldHave, holySitePlot)
     local hasBuilding = buildings:HasBuilding(buildingIndex)
     if shouldHave then
         if holySitePlot == nil then return false end
-        local placementIsCurrent = tonumber(city:GetProperty(PROJECT_UNLOCK_PLACEMENT_PROPERTY) or 0) == 1
-        if hasBuilding and placementIsCurrent then return false end
-
-        if hasBuilding then
-            if buildings.RemoveBuilding == nil then return false end
-            local removed, removeErr = pcall(function()
-                buildings:RemoveBuilding(buildingIndex)
-            end)
-            if not removed then
-                DC_Log('ERROR: migrate project unlock building failed: ' .. tostring(removeErr))
-                return false
-            end
-        end
+        if hasBuilding then return false end
 
         local queue = city:GetBuildQueue()
         if queue == nil or queue.CreateIncompleteBuilding == nil then
@@ -190,17 +154,10 @@ local function DC_SetCityProjectUnlock(city, shouldHave, holySitePlot)
             DC_Log('ERROR: grant project unlock building failed: ' .. tostring(err))
             return false
         end
-        local granted = buildings:HasBuilding(buildingIndex)
-        if granted then
-            city:SetProperty(PROJECT_UNLOCK_PLACEMENT_PROPERTY, 1)
-        end
-        return granted
+        return buildings:HasBuilding(buildingIndex)
     end
 
-    if not hasBuilding then
-        city:SetProperty(PROJECT_UNLOCK_PLACEMENT_PROPERTY, 0)
-        return false
-    end
+    if not hasBuilding then return false end
     if buildings.RemoveBuilding == nil then return false end
     local ok, err = pcall(function()
         buildings:RemoveBuilding(buildingIndex)
@@ -209,7 +166,6 @@ local function DC_SetCityProjectUnlock(city, shouldHave, holySitePlot)
         DC_Log('ERROR: remove project unlock building failed: ' .. tostring(err))
         return false
     end
-    city:SetProperty(PROJECT_UNLOCK_PLACEMENT_PROPERTY, 0)
     return true
 end
 

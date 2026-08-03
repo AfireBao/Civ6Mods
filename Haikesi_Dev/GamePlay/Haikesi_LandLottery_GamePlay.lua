@@ -14,7 +14,6 @@ local LL_YIELD_KEYS = { 'YIELD_FOOD', 'YIELD_PRODUCTION', 'YIELD_GOLD', 'YIELD_F
 
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
-local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 
 -- 待随机：plotIndex -> iPlayer（仅回合边界处理）
 local g_PendingPlots = {}
@@ -42,15 +41,6 @@ local function LL_PropTruthy(value)
     return value == true or value == 1 or value == "1" or tonumber(value) == 1
 end
 
-local function LL_GetRelicTypeFromIndex(index)
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType
-        end
-    end
-    return nil
-end
-
 local function LL_PlayerHasRelic(pPlayer)
     if pPlayer == nil then return false end
     if LL_PropTruthy(pPlayer:GetProperty(LL_PLAYER_PROP)) then return true end
@@ -58,15 +48,6 @@ local function LL_PlayerHasRelic(pPlayer)
     if count > 0 then
         for i = 1, count do
             if pPlayer:GetProperty(RelicsSlotPropertyPrefix .. i) == LANDLOTTERYRUNE then
-                return true
-            end
-        end
-    end
-    local legacy = pPlayer:GetProperty(RelicsPropertyKey) or ""
-    if legacy ~= "" then
-        for idxStr in string.gmatch(legacy, "[^|]+") do
-            local idx = tonumber(idxStr)
-            if idx ~= nil and LL_GetRelicTypeFromIndex(idx) == LANDLOTTERYRUNE then
                 return true
             end
         end

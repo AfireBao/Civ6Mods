@@ -33,14 +33,6 @@ local TRI_TRADE_MIN_REMAINING_POP = 4
 local TRI_TRADE_BASE_POP = 1
 -- 仅防「当回合派出又召回」刷人口；短商路自然完成常 <18 回合，门槛不能按全程时长卡
 local TRI_TRADE_MIN_ROUTE_TURNS_STANDARD = 3
--- 同盟/宗主商路产出 Modifier（旧存档选过海克斯时需补挂，防重复 Attach）
-local TRI_TRADE_YIELD_MODS_PROP = 'PROP_NW_HAIKESI_TRI_TRADE_YIELD_MODS_V1'
-local TRI_TRADE_YIELD_MOD_IDS = {
-    'MODIFIER_NW_TRIANGULAR_TRADE_ALLY_ORIGIN_PROD',
-    'MODIFIER_NW_TRIANGULAR_TRADE_ALLY_DEST_GOLD',
-    'MODIFIER_NW_TRIANGULAR_TRADE_SUZ_ORIGIN_PROD',
-    'MODIFIER_NW_TRIANGULAR_TRADE_SUZ_DEST_GOLD',
-}
 local g_TriTradeRouteSnapshot = {}
 -- [DEV] 三角贸易监测日志；正式发布可改 false
 local TRI_TRADE_DEBUG = true
@@ -53,16 +45,6 @@ end
 -- 独立 Gameplay VM：不能调用主脚本 local GetSelectedRelicTypeListForPlayer
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
-local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
-
-local function TriTrade_GetRelicTypeFromIndex(index)
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType
-        end
-    end
-    return nil
-end
 
 local function TriTrade_GetSelectedRelicTypeList(pPlayer)
     local relicTypes = {}
@@ -78,21 +60,6 @@ local function TriTrade_GetSelectedRelicTypeList(pPlayer)
             end
         end
     end
-    if #relicTypes > 0 then
-        return relicTypes
-    end
-    local prop = pPlayer:GetProperty(RelicsPropertyKey) or ""
-    if prop ~= "" then
-        for idxStr in string.gmatch(prop, "[^|]+") do
-            local idx = tonumber(idxStr)
-            if idx ~= nil then
-                local relicType = TriTrade_GetRelicTypeFromIndex(idx)
-                if relicType ~= nil then
-                    table.insert(relicTypes, relicType)
-                end
-            end
-        end
-    end
     return relicTypes
 end
 
@@ -104,39 +71,6 @@ local function PlayerHasTriangularTradeRelic(pPlayer)
         if relicType == TRIANGULARTRADERUNE then return true end
     end
     return false
-end
-
--- 旧存档：选海克斯时尚未有同盟/宗主产出 Modifier，读档后补挂一次
-local function Haikesi_SyncTriTradeYieldModifiersForPlayer(pPlayer)
-    if pPlayer == nil or not PlayerHasTriangularTradeRelic(pPlayer) then
-        return false
-    end
-    if pPlayer:GetProperty(TRI_TRADE_YIELD_MODS_PROP) == 1 then
-        return false
-    end
-    local iPlayer = pPlayer:GetID()
-    for _, modId in ipairs(TRI_TRADE_YIELD_MOD_IDS) do
-        pPlayer:AttachModifierByID(modId)
-        TriTradeLog("sync yield mod %s -> P%d", modId, iPlayer)
-    end
-    pPlayer:SetProperty(TRI_TRADE_YIELD_MODS_PROP, 1)
-    TriTradeLog("sync yield mods done P%d", iPlayer)
-    return true
-end
-
-function Haikesi_SyncTriTradeYieldModifiersAll()
-    local n = 0
-    for iPlayer = 0, 63 do
-        local pPlayer = Players[iPlayer]
-        if pPlayer ~= nil and pPlayer:IsAlive() and pPlayer:IsMajor() then
-            if Haikesi_SyncTriTradeYieldModifiersForPlayer(pPlayer) then
-                n = n + 1
-            end
-        end
-    end
-    if n > 0 then
-        print("[Haikesi TRI] synced ally/suzerain yield mods for " .. tostring(n) .. " player(s)")
-    end
 end
 
 local function CityTouchesWater(pCity)
@@ -759,22 +693,11 @@ local function Haikesi_TriTrade_RebuildSnapshotsOnLoad()
     TriTradeLog("load rebuild done playersWithRelic=%d turn=%d", rebuiltPlayers, currentTurn)
 end
 
-function Haikesi_ApplyTriangularTradeRelicEffect(iPlayer, pPlayer)
-    if pPlayer == nil then return end
-    pPlayer:SetProperty(TRI_TRADE_YIELD_MODS_PROP, 1)
-    TriTradeLog(
-        "relic enabled P%d turn=%d — route scan/logs via UI TriTrade_Bridge",
-        iPlayer, Game.GetCurrentGameTurn()
-    )
-end
-
 local function InitializeTriTrade()
     GameEvents.HaikesiTriTradeComplete.Add(HaikesiTriTradeComplete)
     if ExposedMembers ~= nil then
         ExposedMembers.HaikesiTriTradeCompleteFromUI = Haikesi_TriTradeCompleteFromUI
-        ExposedMembers.Haikesi_ApplyTriangularTradeRelicEffect = Haikesi_ApplyTriangularTradeRelicEffect
     end
-    Haikesi_SyncTriTradeYieldModifiersAll()
     print("[Haikesi TriTrade] GamePlay bridge ready")
 end
 

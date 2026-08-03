@@ -14,19 +14,8 @@ local m_validFeaturesByResource:table = nil;
 local m_launcherAttached:boolean = false;
 local m_lastSecretSocietySync:string = nil;
 local m_lastSecretSocietySyncTurn:number = -1;
-local RelicsPropertyKey:string = "PROP_NW_HAIKESI_RELICS";
 local RelicsCountPropertyKey:string = "PROP_NW_HAIKESI_RELIC_COUNT";
 local RelicsSlotPropertyPrefix:string = "PROP_NW_HAIKESI_RELIC_";
-
-local function GetRelicTypeFromIndex(index:number)
-    if GameInfo.Haikesi_Relics == nil then return nil; end
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType;
-        end
-    end
-    return nil;
-end
 
 local function PlayerHasRelic(player:table, relicType:string)
     if player == nil or relicType == nil or relicType == "" then return false; end
@@ -39,15 +28,6 @@ local function PlayerHasRelic(player:table, relicType:string)
         end
     end
 
-    local prop:string = player:GetProperty(RelicsPropertyKey) or "";
-    if prop ~= "" then
-        for idxStr in string.gmatch(prop, "[^|]+") do
-            local idx:number = tonumber(idxStr);
-            if idx ~= nil and GetRelicTypeFromIndex(idx) == relicType then
-                return true;
-            end
-        end
-    end
     return false;
 end
 

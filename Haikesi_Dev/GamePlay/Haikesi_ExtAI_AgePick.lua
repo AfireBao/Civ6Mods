@@ -146,19 +146,11 @@ function Haikesi_JoinChoiceRelics(relics)
 end
 
 -- 已完成的 AI 选卡轮次（与人类 SELECT 轮次对齐；双选仍只 +1 轮）
--- 旧档无属性时回退到 relic 数量（双选前 1:1）
 function Haikesi_GetAISelectRound(pAI)
     if pAI == nil then
         return 0
     end
-    local marked = pAI:GetProperty(AI_SELECT_ROUND_KEY)
-    if marked ~= nil then
-        return tonumber(marked) or 0
-    end
-    if type(Haikesi_GetPlayerRelicCount) == "function" then
-        return Haikesi_GetPlayerRelicCount(pAI)
-    end
-    return tonumber(pAI:GetProperty('PROP_NW_HAIKESI_RELIC_COUNT') or 0) or 0
+    return tonumber(pAI:GetProperty(AI_SELECT_ROUND_KEY) or 0) or 0
 end
 
 function Haikesi_SetAISelectRound(pAI, roundNum)

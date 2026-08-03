@@ -9,7 +9,6 @@ local HAPPY_ACCIDENT_RELIC = 'HAPPYACCIDENTRUNE'
 
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
-local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 
 local BUILDING_LIBRARY = 'BUILDING_LIBRARY'
 local BUILDING_UNIVERSITY = 'BUILDING_UNIVERSITY'
@@ -26,34 +25,16 @@ local function EurekaLog(fmt, ...)
     print(string.format('[Haikesi Eureka] ' .. fmt, ...))
 end
 
-local function GetRelicTypeFromIndex(index)
-    if GameInfo.Haikesi_Relics == nil then return nil end
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType
-        end
-    end
-    return nil
-end
-
 local function PlayerHasRelic(pPlayer, relicType)
     if pPlayer == nil or relicType == nil then return false end
 
     local count = tonumber(pPlayer:GetProperty(RelicsCountPropertyKey) or 0) or 0
     for i = 1, count do
         local stored = pPlayer:GetProperty(RelicsSlotPropertyPrefix .. tostring(i))
-        if stored == relicType or GetRelicTypeFromIndex(tonumber(stored)) == relicType then
+        if stored == relicType then
             return true
         end
     end
-
-    local legacy = pPlayer:GetProperty(RelicsPropertyKey) or ''
-    for token in string.gmatch(tostring(legacy), '([^|,]+)') do
-        if token == relicType or GetRelicTypeFromIndex(tonumber(token)) == relicType then
-            return true
-        end
-    end
-
     return false
 end
 

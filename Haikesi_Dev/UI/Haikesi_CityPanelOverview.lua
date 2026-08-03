@@ -20,19 +20,8 @@ end
 local BIOMASS_CITY_PROP = 'PROP_NW_WARFEED_BIOMASS_V2'
 local GENESIS_RELIC = 'GENESISRUNE'
 local DEATH_CULT_RELIC = 'DEATHCULTRUNE'
-local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
-
-local function GetRelicTypeFromIndex(index)
-    if GameInfo.Haikesi_Relics == nil then return nil end
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType
-        end
-    end
-    return nil
-end
 
 local function PlayerHasRelic(playerId, relicType)
     if playerId == nil or playerId < 0 or relicType == nil then return false end
@@ -46,13 +35,6 @@ local function PlayerHasRelic(playerId, relicType)
         end
     end
 
-    local prop = player:GetProperty(RelicsPropertyKey) or ''
-    for idxStr in string.gmatch(tostring(prop), '[^|]+') do
-        local idx = tonumber(idxStr)
-        if idx ~= nil and GetRelicTypeFromIndex(idx) == relicType then
-            return true
-        end
-    end
     return false
 end
 
@@ -184,7 +166,7 @@ local function FormatDurationLines(entries)
     else
         local s = Locale.Lookup('LOC_HAIKESI_BIOMASS_DURATION_UNKNOWN')
         if s == nil or s == '' or s == 'LOC_HAIKESI_BIOMASS_DURATION_UNKNOWN' then
-            s = '生物质：未找到有效到期记录（可能来自旧档）'
+            s = '生物质：状态记录缺失'
         end
         lines[#lines + 1] = s
     end

@@ -1095,7 +1095,7 @@ local function NotifyBarbarianInvasionAssault(
     else
         nameLoc = CaptureTribeNameLoc(iTribe) or ""
     end
-    -- 第 7 段为 LOC key；旧队列无此段时 UI 仍按 6 段解析
+    -- 第 7 段为 LOC key。
     local entry = string.format(
         "%d;%d;%d;%d;%d;%d;%s",
         triggerPlayerID, iTribe, targetPlayerID, targetCityID, campX, campY, nameLoc)

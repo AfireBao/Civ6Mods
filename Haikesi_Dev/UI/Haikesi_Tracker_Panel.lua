@@ -26,9 +26,7 @@ local m_HomeTabInstance = nil
 -- ===========================================================================
 -- 反向索引
 -- ===========================================================================
-local IndexToRelic = {}
 local RelicTypeToRelic = {}
-local HAIKESI_RELICS_PROP_KEY = 'PROP_NW_HAIKESI_RELICS'
 local HAIKESI_RELIC_COUNT_KEY = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local HAIKESI_RELIC_SLOT_PREFIX = 'PROP_NW_HAIKESI_RELIC_'
 local HAIKESI_RELIC_SUMMARY_PREFIX = 'PROP_NW_HAIKESI_RELIC_SUMMARY_'
@@ -36,10 +34,8 @@ local HAIKESI_RELIC_REASON_PREFIX = 'PROP_NW_HAIKESI_RELIC_REASON_'
 local AI_RELIC_TYPE_PREFIX = 'NW_AI_'
 
 local function BuildIndexMap()
-    IndexToRelic = {}
     RelicTypeToRelic = {}
     for row in GameInfo.Haikesi_Relics() do
-        IndexToRelic[row.Index] = row
         RelicTypeToRelic[row.RelicType] = row
     end
 end
@@ -52,20 +48,6 @@ local function GetRelicCardsForPlayer(pPlayer)
             local relicType = pPlayer:GetProperty(HAIKESI_RELIC_SLOT_PREFIX .. i)
             local relicRow = RelicTypeToRelic[relicType]
             if relicRow ~= nil then
-                table.insert(relicCards, relicRow)
-            end
-        end
-    end
-    if #relicCards > 0 then
-        return relicCards
-    end
-
-    local prop = pPlayer:GetProperty(HAIKESI_RELICS_PROP_KEY) or ""
-    if prop ~= "" then
-        for idxStr in string.gmatch(prop, "[^|]+") do
-            local idx = tonumber(idxStr)
-            local relicRow = IndexToRelic[idx]
-            if relicRow then
                 table.insert(relicCards, relicRow)
             end
         end
@@ -102,37 +84,13 @@ local function GetCityStateNameForTrait(traitType)
     return nil
 end
 
--- 修复旧存档里 Lua5.1 把 \\xNN 收成字面 "xe5x88..." 的决策理由
-local function DecodeMangledHexReason(text)
-    if text == nil or text == "" then
-        return text
-    end
-    local hexBody = text:match("^((?:\\x[0-9a-fA-F][0-9a-fA-F])+)$")
-    if hexBody ~= nil then
-        hexBody = hexBody:gsub("\\x", "x")
-    else
-        hexBody = text:match("^((?:x[0-9a-fA-F][0-9a-fA-F])+)$")
-    end
-    if hexBody == nil then
-        return text
-    end
-    local bytes = {}
-    for h in hexBody:gmatch("x([0-9a-fA-F][0-9a-fA-F])") do
-        table.insert(bytes, string.char(tonumber(h, 16)))
-    end
-    if #bytes == 0 then
-        return text
-    end
-    return table.concat(bytes)
-end
-
 local function GetRelicCardDisplayText(pPlayer, slotIndex, relicRow)
     -- AI 海克斯：有大模型决策理由时显示理由；否则只显示名称（不用效果描述）
     if IsAIRelicType(relicRow.RelicType) then
         if pPlayer ~= nil and slotIndex ~= nil then
             local reason = pPlayer:GetProperty(HAIKESI_RELIC_REASON_PREFIX .. slotIndex)
             if reason ~= nil and reason ~= "" then
-                reason = DecodeMangledHexReason(tostring(reason))
+                reason = tostring(reason)
                 -- 截断残留的裸 hex 不当理由显示
                 if reason:match("^[0-9a-fA-F]+$") and #reason >= 16 then
                     reason = ""

@@ -12,11 +12,8 @@ local CONVERSION_DENOM = 100
 local CONVERSION_CHANCE = 5
 local TYRANNY_LOYALTY_DAMAGE = -20
 
-local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
-local LegacyRelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELICS_COUNT'
-local LegacyRelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_SLOT_'
 
 local g_UnitCache = {}
 local g_KillHandled = {}
@@ -24,16 +21,6 @@ local g_HasUnitKilledInCombatEvent = false
 
 local function HV_Log(msg)
     print('[Haikesi Vampire] ' .. tostring(msg))
-end
-
-local function HV_GetRelicTypeFromIndex(index)
-    if GameInfo.Haikesi_Relics == nil then return nil end
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType
-        end
-    end
-    return nil
 end
 
 local function HV_PlayerHasRelic(pPlayer, relicType)
@@ -50,19 +37,7 @@ local function HV_PlayerHasRelic(pPlayer, relicType)
         return false
     end
 
-    if checkSlots(RelicsCountPropertyKey, RelicsSlotPropertyPrefix) then return true end
-    if checkSlots(LegacyRelicsCountPropertyKey, LegacyRelicsSlotPropertyPrefix) then return true end
-
-    local prop = pPlayer:GetProperty(RelicsPropertyKey) or ''
-    if prop ~= '' then
-        for idxStr in string.gmatch(prop, '[^|]+') do
-            local idx = tonumber(idxStr)
-            if idx ~= nil and HV_GetRelicTypeFromIndex(idx) == relicType then
-                return true
-            end
-        end
-    end
-    return false
+    return checkSlots(RelicsCountPropertyKey, RelicsSlotPropertyPrefix)
 end
 
 local function HV_GetUnit(playerID, unitID)

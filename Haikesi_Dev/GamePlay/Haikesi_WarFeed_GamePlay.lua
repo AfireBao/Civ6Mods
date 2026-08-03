@@ -9,33 +9,18 @@ local BIOMASS_FPT_PERCENT = 5
 local BIOMASS_DURATION_TURNS = 10
 local BIOMASS_MAX_FOOD = 40
 local BIOMASS_BUILDING_PREFIX = 'BUILDING_NW_WARFEED_BIOMASS_P'
--- V2 Property: "amount:expire|amount:expire|..."; kill batches expire independently.
+-- Property: "amount:expire|amount:expire|..."; kill batches expire independently.
 local BIOMASS_CITY_PROP = 'PROP_NW_WARFEED_BIOMASS_V2'
-local BIOMASS_LEGACY_CITY_PROP = 'PROP_NW_WARFEED_BIOMASS'
 
-local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
-local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELICS_COUNT'
-local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_SLOT_'
+local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
+local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
 
 local g_UnitCombatCache = {}
 local g_FedKeys = {}
 local g_BiomassBuildingIndex = {} -- total food level -> Buildings.Index
 
-local WARFEED_MORSEL_UNIT = 'UNIT_NW_WARFEED_MORSEL'
-local WARFEED_MORSEL_PROP = 'PROP_NW_WARFEED_MORSEL'
-local g_MorselUnitIndex = nil
-
 local function WF_CacheKey(killedPlayerID, killedUnitID)
     return tostring(killedPlayerID) .. ':' .. tostring(killedUnitID) .. ':' .. tostring(Game.GetCurrentGameTurn())
-end
-
-local function WF_GetRelicTypeFromIndex(index)
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType
-        end
-    end
-    return nil
 end
 
 local function WF_PlayerHasRelic(pPlayer)
@@ -44,15 +29,6 @@ local function WF_PlayerHasRelic(pPlayer)
     if count > 0 then
         for i = 1, count do
             if pPlayer:GetProperty(RelicsSlotPropertyPrefix .. i) == WARFEED_RELIC then
-                return true
-            end
-        end
-    end
-    local legacy = pPlayer:GetProperty(RelicsPropertyKey) or ""
-    if legacy ~= "" then
-        for idxStr in string.gmatch(legacy, "[^|]+") do
-            local idx = tonumber(idxStr)
-            if idx ~= nil and WF_GetRelicTypeFromIndex(idx) == WARFEED_RELIC then
                 return true
             end
         end
@@ -117,43 +93,6 @@ local function WF_GetCitiesByDistance(pPlayer, iX, iY)
         return a.cityID < b.cityID
     end)
     return cities
-end
-
-local function WF_GetMorselUnitIndex()
-    if g_MorselUnitIndex ~= nil then return g_MorselUnitIndex end
-    local row = GameInfo.Units[WARFEED_MORSEL_UNIT]
-    if row == nil then return nil end
-    g_MorselUnitIndex = row.Index
-    return g_MorselUnitIndex
-end
-
-local function WF_IsLegacyMorsel(u, morselIdx)
-    if u == nil then return false end
-    local marked = u:GetProperty(WARFEED_MORSEL_PROP)
-    if marked == true or marked == 1 then return true end
-    return morselIdx ~= nil and u:GetType() == morselIdx
-end
-
-local function WF_PurgeLegacyMorsels(playerID)
-    local pPlayer = Players[playerID]
-    if pPlayer == nil then return end
-    local units = pPlayer:GetUnits()
-    if units == nil then return end
-    local morselIdx = WF_GetMorselUnitIndex()
-    local toKill = {}
-    for _, u in units:Members() do
-        if WF_IsLegacyMorsel(u, morselIdx) then
-            toKill[#toKill + 1] = u
-        end
-    end
-    for i = 1, #toKill do
-        pcall(function() UnitManager.Kill(toKill[i], false) end)
-    end
-    if #toKill > 0 then
-        print(string.format(
-            '[Haikesi WarFeed] purged %d legacy biomass units for P%d',
-            #toKill, playerID))
-    end
 end
 
 local function WF_CacheBiomassBuildingIndices()
@@ -266,8 +205,8 @@ local function WF_SetBiomassLevelBuilding(pCity, level)
     -- Add the aggregate building before deleting old levels. If creation fails,
     -- the city keeps its previous valid yield instead of losing the bonus.
     if level > 0 and not WF_AddBiomassBuilding(pCity, level) then
-        -- Recovery for legacy/over-limit cities: free every biomass slot and
-        -- retry once. Only biomass buildings are touched.
+        -- If the city-center building slot limit blocks the replacement, free
+        -- the previous biomass level and retry once.
         WF_RemoveAllBiomassBuildings(pCity)
         if not WF_AddBiomassBuilding(pCity, level) then
             return false
@@ -287,57 +226,8 @@ local function WF_SetBiomassLevelBuilding(pCity, level)
     return clean and (level == 0 or bld:HasBuilding(g_BiomassBuildingIndex[level]))
 end
 
-local function WF_MigrateLegacyCityBiomass(pCity)
-    local raw = pCity:GetProperty(BIOMASS_LEGACY_CITY_PROP)
-    local list = {}
-    if raw ~= nil and raw ~= '' then
-        local now = Game.GetCurrentGameTurn()
-        local byExpire = {}
-        for piece in string.gmatch(tostring(raw), '[^|]+') do
-            local pinStr, expStr = string.match(piece, '^(%d+):(%-?%d+)$')
-            local pin = tonumber(pinStr)
-            local expire = tonumber(expStr)
-            if pin ~= nil and pin >= 1 and pin <= BIOMASS_MAX_FOOD
-                and expire ~= nil and now < expire then
-                byExpire[expire] = (byExpire[expire] or 0) + 1
-            end
-        end
-        for expire, amount in pairs(byExpire) do
-            list[#list + 1] = { amount = amount, expire = expire }
-        end
-        table.sort(list, function(a, b) return a.expire < b.expire end)
-        print(string.format(
-            '[Haikesi WarFeed] migrated legacy biomass on %s: entries=%d total=%d',
-            Locale.Lookup(pCity:GetName()), #list, WF_TotalBiomass(list)))
-    end
-    pCity:SetProperty(BIOMASS_LEGACY_CITY_PROP, nil)
-    pCity:SetProperty(BIOMASS_CITY_PROP, WF_SerializeBiomassEntries(list))
-    -- Legacy saves may already be at the city-center building limit. Remove
-    -- every old +1 slot first so the single aggregate building can be created.
-    local removedBuildings = WF_RemoveAllBiomassBuildings(pCity)
-    local synced = WF_SetBiomassLevelBuilding(pCity, WF_TotalBiomass(list))
-    if not synced then
-        print('[Haikesi WarFeed] ERROR: failed to create aggregate biomass building after migration')
-    elseif removedBuildings > 1 then
-        print(string.format(
-            '[Haikesi WarFeed] collapsed %d legacy biomass buildings into one on %s',
-            removedBuildings, Locale.Lookup(pCity:GetName())))
-    end
-    return list
-end
-
 local function WF_LoadCityBiomass(pCity)
-    local raw = pCity:GetProperty(BIOMASS_CITY_PROP)
-    if raw ~= nil and raw ~= '' then
-        if pCity:GetProperty(BIOMASS_LEGACY_CITY_PROP) ~= nil then
-            pCity:SetProperty(BIOMASS_LEGACY_CITY_PROP, nil)
-        end
-        return WF_ParseBiomassEntries(raw)
-    end
-    if pCity:GetProperty(BIOMASS_LEGACY_CITY_PROP) ~= nil then
-        return WF_MigrateLegacyCityBiomass(pCity)
-    end
-    return {}
+    return WF_ParseBiomassEntries(pCity:GetProperty(BIOMASS_CITY_PROP))
 end
 
 local function WF_ExpireCityBiomass(pCity)
@@ -597,12 +487,6 @@ function Haikesi_OnWarFeedCombatOccurred(
 end
 
 local function OnUnitAddedToMap(playerID, unitID)
-    local morselIdx = WF_GetMorselUnitIndex()
-    local pUnit = UnitManager.GetUnit(playerID, unitID)
-    if pUnit ~= nil and WF_IsLegacyMorsel(pUnit, morselIdx) then
-        pcall(function() UnitManager.Kill(pUnit, false) end)
-        return
-    end
     WF_RememberUnit(playerID, unitID)
 end
 
@@ -611,7 +495,6 @@ local function OnUnitMoved(playerID, unitID)
 end
 
 local function OnPlayerTurnActivated(playerID, bFirstTime)
-    WF_PurgeLegacyMorsels(playerID)
     WF_ExpirePlayerBiomass(playerID)
 end
 
@@ -665,12 +548,11 @@ local function InitializeWarFeed()
     for pid = 0, 63 do
         local p = Players[pid]
         if p ~= nil and p:IsAlive() then
-            WF_PurgeLegacyMorsels(pid)
             WF_ExpirePlayerBiomass(pid)
             local units = p:GetUnits()
             if units ~= nil then
                 for _, u in units:Members() do
-                    if u ~= nil and not WF_IsLegacyMorsel(u, WF_GetMorselUnitIndex()) then
+                    if u ~= nil then
                         WF_RememberUnit(pid, u:GetID())
                     end
                 end

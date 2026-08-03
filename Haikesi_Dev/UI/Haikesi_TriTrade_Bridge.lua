@@ -535,17 +535,10 @@ local function ProcessAssaultNotifyQueue()
         end
         local localPlayer = Game.GetLocalPlayer()
         for i = (g_AssaultNotifyCursor or 0) + 1, #entries do
-            -- 新格式含第 7 段 nameLoc；兼容旧 6 段
             local triggerStr, tribeStr, targetStr, cityStr, xStr, yStr, nameLoc =
                 string.match(
                     entries[i],
                     "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(.*)$")
-            if triggerStr == nil then
-                triggerStr, tribeStr, targetStr, cityStr, xStr, yStr = string.match(
-                    entries[i],
-                    "^(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+);(%-?%d+)$")
-                nameLoc = ""
-            end
             local targetPlayerID = tonumber(targetStr)
             if targetPlayerID ~= nil and localPlayer == targetPlayerID then
                 SendAssaultNotification(
@@ -1082,12 +1075,8 @@ local function TrimExtAIPayload(text)
     text = text:gsub("^[%s\"'“”‘’]+", ""):gsub("[%s\"'“”‘’]+$", "")
     text = text:gsub("%z", "")
     -- 只保留 wire 本体。条目形如 id=RELIC*hex，多 AI 用 | 连接；
-    -- request_id 可为 turn_count_requester 或 turn_count_requester_seq。
-    -- 4 段 request_id（含重选序号）优先；兼容旧 3 段
+    -- request_id 为 turn_count_requester_seq。
     local wire = string.match(text, "(%d+_%d+_%d+_%d+#[%w_=*|]+)")
-    if wire == nil then
-        wire = string.match(text, "(%d+_%d+_%d+#[%w_=*|]+)")
-    end
     if wire ~= nil then
         wire = wire:gsub("[^%w_=*|#%.%-]+$", "")
         return wire

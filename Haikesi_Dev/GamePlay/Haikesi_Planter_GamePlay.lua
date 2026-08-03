@@ -26,7 +26,6 @@ local LINCOLN_HARVEST_OLD_RESOURCE_PROP = 'PROP_NW_LINCOLN_HARVEST_OLD_RESOURCE'
 local LINCOLN_HARVEST_OLD_RESOURCE_COUNT_PROP = 'PROP_NW_LINCOLN_HARVEST_OLD_RESOURCE_COUNT'
 local LINCOLN_HARVEST_OLD_IMPROVEMENT_PROP = 'PROP_NW_LINCOLN_HARVEST_OLD_IMPROVEMENT'
 local LINCOLN_HARVEST_SPAWNED_UNIT_PROP = 'PROP_NW_LINCOLN_HARVEST_SPAWNED_UNIT'
-local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
 local g_LincolnPlantationResourceTypes = nil
@@ -38,18 +37,6 @@ local FARM_IMMORTAL_PLUS_LEY_LINE_YIELD_MODIFIERS = {
 }
 
 local g_PlanterResourceValidImprovements = nil
-
-local function Haikesi_GetRelicTypeFromIndex(index)
-    if GameInfo.Haikesi_Relics == nil then
-        return nil
-    end
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType
-        end
-    end
-    return nil
-end
 
 local function Haikesi_PlanterPlayerHasRelic(pPlayer, relicType)
     if pPlayer == nil or relicType == nil or relicType == '' then
@@ -64,15 +51,6 @@ local function Haikesi_PlanterPlayerHasRelic(pPlayer, relicType)
         end
     end
 
-    local prop = pPlayer:GetProperty(RelicsPropertyKey) or ''
-    if prop ~= '' then
-        for idxStr in string.gmatch(prop, '[^|]+') do
-            local idx = tonumber(idxStr)
-            if idx ~= nil and Haikesi_GetRelicTypeFromIndex(idx) == relicType then
-                return true
-            end
-        end
-    end
     return false
 end
 

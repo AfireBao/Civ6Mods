@@ -23,7 +23,6 @@ local g_RelicResourceSpawnMap = nil
 local g_RelicLeaderEligibilityMap = nil
 
 --||======================= Key ========================||--
-local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
 local RelicsCountPropertyKey = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local RelicsSlotPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_'
 local RelicsSummaryPropertyPrefix = 'PROP_NW_HAIKESI_RELIC_SUMMARY_'
@@ -78,15 +77,6 @@ local function IsRelicSelectionOnly(relicType)
     return relicDef ~= nil and relicDef.SelectionOnly == 1
 end
 
-local function GetRelicTypeFromIndex(index)
-    for row in GameInfo.Haikesi_Relics() do
-        if row.Index == index then
-            return row.RelicType
-        end
-    end
-    return nil
-end
-
 local function GetSelectedRelicTypeListForPlayer(pPlayer)
     local relicTypes = {}
     local count = tonumber(pPlayer:GetProperty(RelicsCountPropertyKey) or 0) or 0
@@ -95,22 +85,6 @@ local function GetSelectedRelicTypeListForPlayer(pPlayer)
             local relicType = pPlayer:GetProperty(RelicsSlotPropertyPrefix .. i)
             if relicType ~= nil and (GameInfo.Haikesi_Relics[relicType] ~= nil or IsAIPoolRelicType(relicType)) then
                 table.insert(relicTypes, relicType)
-            end
-        end
-    end
-    if #relicTypes > 0 then
-        return relicTypes
-    end
-
-    local prop = pPlayer:GetProperty(RelicsPropertyKey) or ""
-    if prop ~= "" then
-        for idxStr in string.gmatch(prop, "[^|]+") do
-            local idx = tonumber(idxStr)
-            if idx ~= nil then
-                local relicType = GetRelicTypeFromIndex(idx)
-                if relicType ~= nil then
-                    table.insert(relicTypes, relicType)
-                end
             end
         end
     end
@@ -540,14 +514,6 @@ function ApplyRelicToPlayer(iPlayer, relicType, isSelection, decisionReason)
     local relicTypes = GetSelectedRelicTypeListForPlayer(pPlayer)
     table.insert(relicTypes, relicType)
 
-    local relicIndexes = {}
-    for _, selectedRelicType in ipairs(relicTypes) do
-        local selectedRelicDef = GameInfo.Haikesi_Relics[selectedRelicType]
-        if selectedRelicDef ~= nil then
-            table.insert(relicIndexes, tostring(selectedRelicDef.Index))
-        end
-    end
-    pPlayer:SetProperty(RelicsPropertyKey, table.concat(relicIndexes, "|"))
     pPlayer:SetProperty(RelicsCountPropertyKey, #relicTypes)
     pPlayer:SetProperty(RelicsSlotPropertyPrefix .. #relicTypes, relicType)
     if isSelection and IsAIPoolRelicType(relicType) then
@@ -589,19 +555,6 @@ function ApplyRelicToPlayer(iPlayer, relicType, isSelection, decisionReason)
     if attachedDeathCultBaseModifier then
         Haikesi_MarkDeathCultBaseModifiersAttached(pPlayer)
     end
-    if relicType == 'EMANCIPATIONPROCLAMATIONRUNE' then
-        -- 新领取时已由映射挂载新版种植园忠诚度链，记录版本以免旧档迁移重复挂载。
-        pPlayer:SetProperty('PROP_NW_EMANCIPATION_LOYALTY_ATTACH_V1', 1)
-    end
-    if relicType == 'ARTHASHASTRARUNE' then
-        -- 新领取时已由映射挂载按城市建筑筛选的新版效果链。
-        pPlayer:SetProperty('PROP_NW_ARTHASHASTRA_CITY_ATTACH_V1', 1)
-    end
-    if relicType == 'SHANGRILARUNE' or relicType == 'SHANGRILAPLUSPLUSRUNE' then
-        -- 新领取时已使用新版基础魅力 / ++ 种树映射，避免旧档迁移重复挂载。
-        pPlayer:SetProperty('PROP_NW_SHANGRILA_REBALANCE_V1', 1)
-    end
-
     Haikesi_ApplyLuaEffect(iPlayer, relicType)
 
     print("[Haikesi GamePlay] Player" .. iPlayer .. " gained relic " .. relicType .. " (Index=" .. relicIndex .. ")")
@@ -2678,7 +2631,7 @@ local function IsRelicPlaceholder(relicType)
     end
     for _, modId in ipairs(modifierIds) do
         if modId ~= PLACEHOLDER_MODIFIER_ID then
-            return false  -- 存在非占位 Modifier，视为已迁移
+            return false  -- 存在非占位 Modifier，视为已实装
         end
     end
     return true
@@ -2686,9 +2639,8 @@ end
 
 -- DICEMANIAC 持久化 Key：记录该玩家是否拥有额外刷新（+1）
 local DICEMANIAC_PROP_KEY = 'PROP_NW_HAIKESI_DICEMANIAC'
--- DOUBLEEXISTENCERUNE：刷新点数 -1（可叠）；旧档曾用 NO_REROLL 全锁，UI 现按 -1 兼容
+-- DOUBLEEXISTENCERUNE：刷新点数 -1（可叠）
 local REROLL_PENALTY_PROP_KEY = 'PROP_NW_HAIKESI_REROLL_PENALTY'
-local NO_REROLL_PROP_KEY = 'PROP_NW_HAIKESI_NO_REROLL' -- 遗留只读兼容，新逻辑不再写入
 
 function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     local pPlayer = Players[iPlayer]
@@ -3005,28 +2957,6 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     end
 
     -- ==============================
-    -- TRIANGULARTRADERUNE 三角贸易（见 Haikesi_TriTrade_GamePlay.lua）
-    -- ==============================
-    if relicType == 'TRIANGULARTRADERUNE' then
-        local applyTri = nil
-        if ExposedMembers ~= nil then
-            applyTri = ExposedMembers.Haikesi_ApplyTriangularTradeRelicEffect
-        end
-        if type(applyTri) ~= "function" then
-            applyTri = rawget(_G, "Haikesi_ApplyTriangularTradeRelicEffect")
-        end
-        if type(applyTri) == "function" then
-            local okTri, errTri = pcall(applyTri, iPlayer, pPlayer)
-            if not okTri then
-                print("[Haikesi GamePlay] TRIANGULARTRADE apply error: " .. tostring(errTri))
-            end
-        else
-            print("[Haikesi GamePlay] TRIANGULARTRADE missing apply fn (ExposedMembers not ready)")
-        end
-        return
-    end
-
-    -- ==============================
     -- LANDLOTTERYRUNE 狂野符文（见 Haikesi_LandLottery_GamePlay.lua）
     -- ==============================
     if relicType == 'LANDLOTTERYRUNE' then
@@ -3143,85 +3073,6 @@ function Initialize()
         rowCount = rowCount + 1
     end
     print("[Haikesi GamePlay] RelicModifierMap 构建完成，行数 = " .. rowCount)
-
-    -- 旧档兼容：旧实现把 -3 忠诚度挂在 ImprovementModifiers 上，已领取海克斯的存档
-    -- 不会自动获得新加入映射的玩家改良遍历 Modifier，因此在版本标记缺失时只补挂一次。
-    for _, pPlayer in ipairs(PlayerManager.GetAliveMajors()) do
-        if pPlayer:GetProperty('PROP_NW_EMANCIPATION_LOYALTY_ATTACH_V1') ~= 1 then
-            local selectedRelics = GetSelectedRelicTypeListForPlayer(pPlayer)
-            for _, selectedRelicType in ipairs(selectedRelics) do
-                if selectedRelicType == 'EMANCIPATIONPROCLAMATIONRUNE' then
-                    local ok, err = pcall(function()
-                        pPlayer:AttachModifierByID('MODIFIER_NW_EMANCIPATION_PROCLAMATION_PLANTATION_LOYALTY_ATTACH')
-                    end)
-                    if ok then
-                        pPlayer:SetProperty('PROP_NW_EMANCIPATION_LOYALTY_ATTACH_V1', 1)
-                        print("[Haikesi GamePlay] migrated emancipation plantation loyalty -> Player" .. tostring(pPlayer:GetID()))
-                    else
-                        print("[Haikesi GamePlay] failed emancipation loyalty migration -> Player"
-                            .. tostring(pPlayer:GetID()) .. ": " .. tostring(err))
-                    end
-                    break
-                end
-            end
-        end
-        -- 旧档兼容：旧版政事论仅挂载玩家属性 Marker，且该属性 RequirementType 无效。
-        -- 已领取海克斯的玩家补挂新版城市建筑效果链，避免读档后仍然没有单位加成。
-        if pPlayer:GetProperty('PROP_NW_ARTHASHASTRA_CITY_ATTACH_V1') ~= 1 then
-            local selectedRelics = GetSelectedRelicTypeListForPlayer(pPlayer)
-            for _, selectedRelicType in ipairs(selectedRelics) do
-                if selectedRelicType == 'ARTHASHASTRARUNE' then
-                    local ok, err = pcall(function()
-                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_SHRINE_MOVEMENT_ATTACH')
-                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_SHRINE_COMBAT_ATTACH')
-                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_TEMPLE_SIGHT_ATTACH')
-                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_TEMPLE_COMBAT_ATTACH')
-                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_WORSHIP_COMBAT_ATTACH')
-                        pPlayer:AttachModifierByID('MODIFIER_NW_ARTHASHASTRA_CORPS_ARMY_DISCOUNT_ATTACH')
-                    end)
-                    if ok then
-                        pPlayer:SetProperty('PROP_NW_ARTHASHASTRA_CITY_ATTACH_V1', 1)
-                        print("[Haikesi GamePlay] migrated Arthashastra city effects -> Player" .. tostring(pPlayer:GetID()))
-                    else
-                        print("[Haikesi GamePlay] failed Arthashastra city effect migration -> Player"
-                            .. tostring(pPlayer:GetID()) .. ": " .. tostring(err))
-                    end
-                    break
-                end
-            end
-        end
-        -- 旧档兼容：基础层由种树改回 +1 魅力，++ 层由 +1 魅力改为种树。
-        -- 旧 ModifierId 已在 SQL 中惰性化；这里只补挂新加入映射的两项能力。
-        if pPlayer:GetProperty('PROP_NW_SHANGRILA_REBALANCE_V1') ~= 1 then
-            local selectedRelics = GetSelectedRelicTypeListForPlayer(pPlayer)
-            local hasShangrila = false
-            local hasShangrilaPlusPlus = false
-            for _, selectedRelicType in ipairs(selectedRelics) do
-                if selectedRelicType == 'SHANGRILARUNE' then
-                    hasShangrila = true
-                elseif selectedRelicType == 'SHANGRILAPLUSPLUSRUNE' then
-                    hasShangrilaPlusPlus = true
-                end
-            end
-            if hasShangrila or hasShangrilaPlusPlus then
-                local ok, err = pcall(function()
-                    if hasShangrila then
-                        pPlayer:AttachModifierByID('MODIFIER_NW_SHANGRILA_APPEAL')
-                    end
-                    if hasShangrilaPlusPlus then
-                        pPlayer:AttachModifierByID('MODIFIER_NW_SHANGRILA_PLUSPLUS_PLANT_FOREST')
-                    end
-                end)
-                if ok then
-                    pPlayer:SetProperty('PROP_NW_SHANGRILA_REBALANCE_V1', 1)
-                    print("[Haikesi GamePlay] migrated Shangrila rebalance -> Player" .. tostring(pPlayer:GetID()))
-                else
-                    print("[Haikesi GamePlay] failed Shangrila rebalance migration -> Player"
-                        .. tostring(pPlayer:GetID()) .. ": " .. tostring(err))
-                end
-            end
-        end
-    end
 
     -- 资源创建类型配置 Map
     g_RelicResourceSpawnMap = {}

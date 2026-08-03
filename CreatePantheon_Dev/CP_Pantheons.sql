@@ -606,11 +606,6 @@ insert or ignore into Buildings
 		'DISTRICT_CITY_CENTER', 1, 1, 'ADVISOR_RELIGIOUS', 1
 	from District_GreatPersonPoints;
 
--- Marker buildings are Lua-managed state only and must never enter city production UI.
-update Buildings
-set InternalOnly = 1
-where BuildingType like 'BUILDING_CP_SPARK_%';
-
 -- Lavra-style city requirement: marker building present in this city.
 insert or ignore into Requirements(RequirementId, RequirementType) select distinct
 	'REQ_CP_SPARK_CITY_'||replace(DistrictType, 'DISTRICT_', '')||'_LO',
@@ -1275,21 +1270,6 @@ insert or ignore into PantheonTexts	 (Language,      GodhoodType,      PowerType
 -- 即使 Lua 已接管奇迹也不 Attach，仍会把 Requirement/Modifier 库撑爆 → 选工人卡顿。
 -- 现由 CP_Miracles.lua 事件路径按阈值赠送；勿恢复下方笛卡尔积。
 -- =============================================================================
-
--- =============================================================================
--- v20+ cleanup: remove legacy Miracle SQL cartesian Modifiers/RS if any remain
--- (from older Dev/Workshop DB builds). Safe no-ops when already absent.
--- =============================================================================
-delete from PantheonModifiers where PowerType = 'GOD_OF_MIRACLES'
-	and ModifierId like '%_GOD_OF_MIRACLES_%';
-delete from ModifierArguments where ModifierId like '%_GOD_OF_MIRACLES_%';
-delete from Modifiers where ModifierId like '%_GOD_OF_MIRACLES_%';
-delete from RequirementSetRequirements where RequirementSetId like '%_THRESHOLD_6_%';
-delete from RequirementSets where RequirementSetId like '%_THRESHOLD_6_%';
-delete from RequirementSetRequirements where RequirementSetId like '%_THRESHOLD_2_DISTRICT_%'
-	or RequirementSetId like '%_THRESHOLD_4_DISTRICT_%';
-delete from RequirementSets where RequirementSetId like '%_THRESHOLD_2_DISTRICT_%'
-	or RequirementSetId like '%_THRESHOLD_4_DISTRICT_%';
 
 -- =============================================================================
 -- Apply path: Player:AttachModifierByID (original Create Pantheon).

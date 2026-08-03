@@ -38,8 +38,6 @@ end
 -- ===========================================================================
 -- Index → RelicType 映射（用于从 PROP 解析已选海克斯）
 -- ===========================================================================
-local g_IndexToRelicType = nil
-local HAIKESI_RELICS_PROP_KEY = 'PROP_NW_HAIKESI_RELICS'
 local HAIKESI_RELIC_COUNT_KEY = 'PROP_NW_HAIKESI_RELIC_COUNT'
 local HAIKESI_RELIC_SLOT_PREFIX = 'PROP_NW_HAIKESI_RELIC_'
 
@@ -258,15 +256,6 @@ local function BuildAIChoicesBatch()
     return aiChoices
 end
 
-local function BuildIndexToRelicType()
-    if g_IndexToRelicType then return g_IndexToRelicType end
-    g_IndexToRelicType = {}
-    for row in GameInfo.Haikesi_Relics() do
-        g_IndexToRelicType[row.Index] = row.RelicType
-    end
-    return g_IndexToRelicType
-end
-
 local function AddSelectedRelicType(selected, relicType)
     if relicType ~= nil and GameInfo.Haikesi_Relics[relicType] ~= nil then
         selected[relicType] = true
@@ -276,32 +265,15 @@ local function AddSelectedRelicType(selected, relicType)
 end
 
 -- 获取本地玩家已选海克斯的 RelicType 集合。
--- 新存档优先读逐槽位 RelicType；旧存档回退读 Index 串。
 local function GetSelectedRelicTypes()
     local selected = {}
     local localPlayerID = Game.GetLocalPlayer()
     local pLocal = Players[localPlayerID]
     if pLocal then
-        local hasSlotData = false
         local count = tonumber(pLocal:GetProperty(HAIKESI_RELIC_COUNT_KEY) or 0) or 0
         if count > 0 then
             for i = 1, count do
-                hasSlotData = AddSelectedRelicType(selected, pLocal:GetProperty(HAIKESI_RELIC_SLOT_PREFIX .. i)) or hasSlotData
-            end
-        end
-        if hasSlotData then
-            return selected
-        end
-
-        local prop = pLocal:GetProperty(HAIKESI_RELICS_PROP_KEY) or ""
-        if prop ~= "" then
-            local indexMap = BuildIndexToRelicType()
-            for idxStr in string.gmatch(prop, "[^|]+") do
-                local idx = tonumber(idxStr)
-                local relicType = indexMap[idx]
-                if relicType then
-                    selected[relicType] = true
-                end
+                AddSelectedRelicType(selected, pLocal:GetProperty(HAIKESI_RELIC_SLOT_PREFIX .. i))
             end
         end
     end
@@ -864,7 +836,7 @@ local function OnCardClicked(index)
 end
 
 -- 当前本地玩家的单卡最大刷新次数
--- 默认 2；掷骰狂人 +1；手快全选 -1（可叠；旧档 NO_REROLL 视作 -1）
+-- 默认 2；掷骰狂人 +1；手快全选 -1（可叠）。
 local function GetMaxRerolls()
     -- 开发者模式（NW_HAIKESI_MODE == 3）：无限刷新，便于设计期反复抽取与测试
     if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) == 3 then
@@ -880,12 +852,6 @@ local function GetMaxRerolls()
             bonus = bonus + 1
         end
         penalty = tonumber(pLocal:GetProperty('PROP_NW_HAIKESI_REROLL_PENALTY') or 0) or 0
-        -- 旧档：手快全选曾写 NO_REROLL=1，现按 -1 点数兼容
-        if (pLocal:GetProperty('PROP_NW_HAIKESI_NO_REROLL') or 0) > 0 then
-            if penalty < 1 then
-                penalty = 1
-            end
-        end
     end
     local maxR = base + bonus - penalty
     if maxR < 0 then
