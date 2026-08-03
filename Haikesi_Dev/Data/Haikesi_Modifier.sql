@@ -997,7 +997,7 @@ INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('WARFEEDPRESTIGERUNE', 'MODIFIER_NW_WARFEED_PRESTIGE_POP_FAITH'),
     ('WARFEEDPRESTIGERUNE', 'MODIFIER_NW_WARFEED_PRESTIGE_NO_DAMAGE_REDUCTION_GRANT');
 
--- 弑杀蜂群 (WARFEEDRUNE): 击杀 → 最近城「生物质」buff（战力×5% 粮/回合 ×10 回合）
+-- 弑杀蜂群 (WARFEEDRUNE): 击杀 → 按距离向未满城市分配「生物质」buff（战力×5% 粮/回合 ×10 回合）
 -- 原版 POST_COMBAT 仅支持科/文/信/金，不支持 YIELD_FOOD → GamePlay/Haikesi_WarFeed_GamePlay.lua
 
 -- 急就章 (HASTYSCRIBBLERUNE): 立刻获得当前争夺的大将军
@@ -2011,12 +2011,17 @@ INSERT OR IGNORE INTO Units (
     'LOC_UNIT_NW_VAMPIRE_DUKE_DESCRIPTION',
     0, 0, 2, 2, 1,
     'DOMAIN_LAND', 'FORMATION_CLASS_LAND_COMBAT', 'PROMOTION_CLASS_NW_VAMPIRE_DUKE', 'ADVISOR_CONQUEST',
-    20, 5, 2,
+    20, 15, 2,
     'YIELD_GOLD', 1, 0, 1,
     1, 1, 'TRAIT_NW_VAMPIRE_DUKE_LOCK'
 );
-UPDATE Units SET RangedCombat = 5
-    WHERE UnitType = 'UNIT_NW_VAMPIRE_DUKE';
+-- Follow the actual ranged-unit values in the loaded ruleset (including BBG).
+UPDATE Units
+SET RangedCombat = COALESCE(
+    (SELECT RangedCombat FROM Units WHERE UnitType = 'UNIT_SLINGER'),
+    15
+)
+WHERE UnitType = 'UNIT_NW_VAMPIRE_DUKE';
 
 INSERT OR IGNORE INTO Units_XP2 (UnitType, CanFormMilitaryFormation, CanEarnExperience) VALUES
     ('UNIT_NW_VAMPIRE_DUKE', 0, 1);
@@ -2137,12 +2142,43 @@ INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, OwnerRequirementSetId
      'MODIFIER_PLAYER_UNITS_ADJUST_COMBAT_STRENGTH', 'NW_VAMPIRE_DUKE_RANGED_ADVANCED_BALLISTICS_OWNER_REQUIREMENTS', 'NW_VAMPIRE_DUKE_RANGED_ATTACK_REQUIREMENTS');
 INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
     ('MODIFIER_NW_SANGUINE_COUNT_MOVEMENT', 'Amount', '1'),
-    ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_ARCHERY', 'Amount', '5'),
-    ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_MACHINERY', 'Amount', '15'),
-    ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_BALLISTICS', 'Amount', '25'),
-    ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_ADVANCED_BALLISTICS', 'Amount', '35'),
+    ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_ARCHERY', 'Amount', '10'),
+    ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_MACHINERY', 'Amount', '25'),
+    ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_BALLISTICS', 'Amount', '45'),
+    ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_ADVANCED_BALLISTICS', 'Amount', '70'),
     ('MODIFIER_NW_VAMPIRE_DUKE_TITLE_COMBAT', 'Amount', '5'),
     ('MODIFIER_NW_VAMPIRE_DUKE_TITLE_MOVEMENT', 'Amount', '1');
+
+-- Each technology tier adds the difference from the Slinger baseline, so the
+-- Duke exactly matches the corresponding ranged unit after other mods load.
+UPDATE ModifierArguments
+SET Value = CAST(
+    COALESCE((SELECT RangedCombat FROM Units WHERE UnitType = 'UNIT_ARCHER'), 25)
+    - COALESCE((SELECT RangedCombat FROM Units WHERE UnitType = 'UNIT_SLINGER'), 15)
+    AS TEXT
+)
+WHERE ModifierId = 'MODIFIER_NW_VAMPIRE_DUKE_RANGED_ARCHERY' AND Name = 'Amount';
+UPDATE ModifierArguments
+SET Value = CAST(
+    COALESCE((SELECT RangedCombat FROM Units WHERE UnitType = 'UNIT_CROSSBOWMAN'), 40)
+    - COALESCE((SELECT RangedCombat FROM Units WHERE UnitType = 'UNIT_SLINGER'), 15)
+    AS TEXT
+)
+WHERE ModifierId = 'MODIFIER_NW_VAMPIRE_DUKE_RANGED_MACHINERY' AND Name = 'Amount';
+UPDATE ModifierArguments
+SET Value = CAST(
+    COALESCE((SELECT RangedCombat FROM Units WHERE UnitType = 'UNIT_FIELD_CANNON'), 60)
+    - COALESCE((SELECT RangedCombat FROM Units WHERE UnitType = 'UNIT_SLINGER'), 15)
+    AS TEXT
+)
+WHERE ModifierId = 'MODIFIER_NW_VAMPIRE_DUKE_RANGED_BALLISTICS' AND Name = 'Amount';
+UPDATE ModifierArguments
+SET Value = CAST(
+    COALESCE((SELECT RangedCombat FROM Units WHERE UnitType = 'UNIT_MACHINE_GUN'), 85)
+    - COALESCE((SELECT RangedCombat FROM Units WHERE UnitType = 'UNIT_SLINGER'), 15)
+    AS TEXT
+)
+WHERE ModifierId = 'MODIFIER_NW_VAMPIRE_DUKE_RANGED_ADVANCED_BALLISTICS' AND Name = 'Amount';
 INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text) VALUES
     ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_ARCHERY', 'Preview', 'LOC_HAIKESI_VAMPIRE_DUKE_RANGED_ARCHERY_PREVIEW'),
     ('MODIFIER_NW_VAMPIRE_DUKE_RANGED_MACHINERY', 'Preview', 'LOC_HAIKESI_VAMPIRE_DUKE_RANGED_MACHINERY_PREVIEW'),
@@ -3351,10 +3387,20 @@ WHERE ModifierType = 'MODIFIER_NW_PLAYER_ADD_PROJECT_AVAILABILITY';
 DELETE FROM Types
 WHERE Type = 'MODIFIER_NW_PLAYER_ADD_PROJECT_AVAILABILITY';
 
+-- V2 project gate: RequiredBuilding limits the city; this player-level effect
+-- additionally prevents stale unlock buildings from exposing the project
+-- before Death Cult is actually selected.
+INSERT OR IGNORE INTO Types (Type, Kind) VALUES
+    ('MODIFIER_NW_PLAYER_ADD_PROJECT_AVAILABILITY_V2', 'KIND_MODIFIER');
+INSERT OR IGNORE INTO DynamicModifiers (ModifierType, CollectionType, EffectType) VALUES
+    ('MODIFIER_NW_PLAYER_ADD_PROJECT_AVAILABILITY_V2',
+     'COLLECTION_OWNER', 'EFFECT_ADD_PLAYER_PROJECT_AVAILABILITY');
+
 INSERT OR IGNORE INTO Types (Type, Kind) VALUES
     ('PROJECT_NW_HERETIC_SACRIFICE',          'KIND_PROJECT'),
     ('BUILDING_NW_DEATH_CULT_PROJECT_UNLOCK', 'KIND_BUILDING'),
     ('UNIT_NW_ZOMBIE',                        'KIND_UNIT'),
+    ('ABILITY_NW_ZOMBIE_FRAIL_BODY',          'KIND_ABILITY'),
     ('ABILITY_NW_ZOMBIE_STENCH',              'KIND_ABILITY'),
     ('TRAIT_NW_DEATH_CULT_PROJECT_LOCK',      'KIND_TRAIT'),
     ('TRAIT_NW_ZOMBIE_LOCK',                  'KIND_TRAIT');
@@ -3364,10 +3410,11 @@ INSERT OR IGNORE INTO Tags (Tag, Vocabulary) VALUES
     ('CLASS_ZOMBIE',    'ABILITY_CLASS');
 
 INSERT OR IGNORE INTO TypeTags (Type, Tag) VALUES
-    ('UNIT_NW_ZOMBIE',           'CLASS_MELEE'),
-    ('UNIT_NW_ZOMBIE',           'CLASS_NW_ZOMBIE'),
-    ('UNIT_NW_ZOMBIE',           'CLASS_ZOMBIE'),
-    ('ABILITY_NW_ZOMBIE_STENCH', 'CLASS_NW_ZOMBIE');
+    ('UNIT_NW_ZOMBIE',                'CLASS_MELEE'),
+    ('UNIT_NW_ZOMBIE',                'CLASS_NW_ZOMBIE'),
+    ('UNIT_NW_ZOMBIE',                'CLASS_ZOMBIE'),
+    ('ABILITY_NW_ZOMBIE_FRAIL_BODY', 'CLASS_NW_ZOMBIE'),
+    ('ABILITY_NW_ZOMBIE_STENCH',     'CLASS_NW_ZOMBIE');
 
 INSERT OR IGNORE INTO UnitAiTypes (AiType) VALUES
     ('UNITTYPE_NW_ZOMBIE');
@@ -3388,7 +3435,7 @@ INSERT OR IGNORE INTO Units (
     UnitType, Name, Description,
     Cost, Maintenance, BaseMoves, BaseSightRange, ZoneOfControl,
     Domain, FormationClass, AdvisorType,
-    Combat, CanTrain, CanEarnExperience, CanCapture,
+    Combat, UseMaxMeleeTrainedStrength, CanTrain, CanEarnExperience, CanCapture,
     PurchaseYield, MustPurchase, TraitType
 ) VALUES (
     'UNIT_NW_ZOMBIE',
@@ -3396,12 +3443,19 @@ INSERT OR IGNORE INTO Units (
     'LOC_UNIT_NW_ZOMBIE_DESCRIPTION',
     40, 1, 2, 3, 1,
     'DOMAIN_LAND', 'FORMATION_CLASS_LAND_COMBAT', 'ADVISOR_CONQUEST',
-    15, 0, 0, 0,
+    15, 1, 0, 0, 0,
     'YIELD_GOLD', 1, 'TRAIT_NW_ZOMBIE_LOCK'
 );
 
+UPDATE Units
+SET UseMaxMeleeTrainedStrength = 1
+WHERE UnitType = 'UNIT_NW_ZOMBIE';
+
+-- Match the native Vampire scaling rule without letting Zombies recursively
+-- increase the player's recorded maximum melee strength.
 INSERT OR IGNORE INTO TypeProperties (Type, Name, Value) VALUES
-    ('UNIT_NW_ZOMBIE', 'CLAN_EXCLUDE_UNIT_TYPE', 'true');
+    ('UNIT_NW_ZOMBIE', 'CLAN_EXCLUDE_UNIT_TYPE', 'true'),
+    ('UNIT_NW_ZOMBIE', 'IGNORE_PLAYER_STAT_MAX_STRENGTH', 'true');
 
 INSERT OR IGNORE INTO Traits (TraitType, Name, Description, InternalOnly) VALUES
     ('TRAIT_NW_DEATH_CULT_PROJECT_LOCK',
@@ -3461,8 +3515,15 @@ UPDATE Projects SET
     CostProgressionModel = 'COST_PROGRESSION_GAME_PROGRESS',
     CostProgressionParam1 = 1500,
     AdvisorType = 'ADVISOR_RELIGIOUS',
-    UnlocksFromEffect = 0
+    UnlocksFromEffect = 1
 WHERE ProjectType = 'PROJECT_NW_HERETIC_SACRIFICE';
+
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, Permanent) VALUES
+    ('MODIFIER_NW_DEATH_CULT_UNLOCK_HERETIC_SACRIFICE_V2',
+     'MODIFIER_NW_PLAYER_ADD_PROJECT_AVAILABILITY_V2', 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_DEATH_CULT_UNLOCK_HERETIC_SACRIFICE_V2',
+     'ProjectType', 'PROJECT_NW_HERETIC_SACRIFICE');
 
 DELETE FROM Projects_XP2
 WHERE ProjectType = 'PROJECT_NW_HERETIC_SACRIFICE';
@@ -3473,11 +3534,45 @@ UPDATE Project_YieldConversions SET PercentOfProductionRate = 15
 WHERE ProjectType = 'PROJECT_NW_HERETIC_SACRIFICE'
   AND YieldType = 'YIELD_FAITH';
 
+-- Gameplay CityProjectCompleted is not reliable in every gameplay context.
+-- Give the city a permanent completion counter as the authoritative signal;
+-- Lua consumes every unprocessed increment on production completion/turn start.
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType, RunOnce, Permanent) VALUES
+    ('MODIFIER_NW_HERETIC_SACRIFICE_COMPLETION_COUNTER_V2',
+     'MODIFIER_SINGLE_CITY_ADJUST_PROPERTY', 1, 1);
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_HERETIC_SACRIFICE_COMPLETION_COUNTER_V2',
+     'Key', 'PROP_NW_HERETIC_SACRIFICE_COMPLETED_V2'),
+    ('MODIFIER_NW_HERETIC_SACRIFICE_COMPLETION_COUNTER_V2',
+     'Amount', '1');
+INSERT OR IGNORE INTO ProjectCompletionModifiers (ProjectType, ModifierId) VALUES
+    ('PROJECT_NW_HERETIC_SACRIFICE',
+     'MODIFIER_NW_HERETIC_SACRIFICE_COMPLETION_COUNTER_V2');
+
 INSERT OR IGNORE INTO UnitAbilities (UnitAbilityType, Name, Description, Inactive) VALUES
+    ('ABILITY_NW_ZOMBIE_FRAIL_BODY',
+     'LOC_ABILITY_NW_ZOMBIE_FRAIL_BODY_NAME',
+     'LOC_ABILITY_NW_ZOMBIE_FRAIL_BODY_DESCRIPTION',
+     0),
     ('ABILITY_NW_ZOMBIE_STENCH',
      'LOC_ABILITY_NW_ZOMBIE_STENCH_NAME',
      'LOC_ABILITY_NW_ZOMBIE_STENCH_DESCRIPTION',
      0);
+
+-- Zombie base strength follows the player's maximum melee strength, while
+-- this intrinsic ability applies the intended permanent -12 offset.
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType) VALUES
+    ('MODIFIER_NW_ZOMBIE_FRAIL_BODY_COMBAT', 'MODIFIER_UNIT_ADJUST_COMBAT_STRENGTH');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_ZOMBIE_FRAIL_BODY_COMBAT', 'Amount', '-12');
+UPDATE ModifierArguments
+SET Value = '-12'
+WHERE ModifierId = 'MODIFIER_NW_ZOMBIE_FRAIL_BODY_COMBAT'
+  AND Name = 'Amount';
+INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text) VALUES
+    ('MODIFIER_NW_ZOMBIE_FRAIL_BODY_COMBAT', 'Preview', 'LOC_HAIKESI_ZOMBIE_FRAIL_BODY_COMBAT_PREVIEW');
+INSERT OR IGNORE INTO UnitAbilityModifiers (UnitAbilityType, ModifierId) VALUES
+    ('ABILITY_NW_ZOMBIE_FRAIL_BODY', 'MODIFIER_NW_ZOMBIE_FRAIL_BODY_COMBAT');
 
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType) VALUES
     ('NW_REQUIRES_UNIT_IS_NW_ZOMBIE', 'REQUIREMENT_UNIT_TYPE_MATCHES');

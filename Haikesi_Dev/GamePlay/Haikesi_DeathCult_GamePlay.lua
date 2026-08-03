@@ -9,6 +9,10 @@ local ZOMBIE_UNIT = 'UNIT_NW_ZOMBIE'
 local HERETIC_PROJECT = 'PROJECT_NW_HERETIC_SACRIFICE'
 local PROJECT_UNLOCK_BUILDING = 'BUILDING_NW_DEATH_CULT_PROJECT_UNLOCK'
 local PROJECT_UNLOCK_PLACEMENT_PROPERTY = 'PROP_NW_DEATH_CULT_PROJECT_UNLOCK_HOLY_SITE_V2'
+local PROJECT_AVAILABILITY_MODIFIER = 'MODIFIER_NW_DEATH_CULT_UNLOCK_HERETIC_SACRIFICE_V2'
+local PROJECT_AVAILABILITY_ATTACHED_PROPERTY = 'PROP_NW_DEATH_CULT_PROJECT_AVAILABILITY_V2_ATTACHED'
+local PROJECT_COMPLETION_PROPERTY = 'PROP_NW_HERETIC_SACRIFICE_COMPLETED_V2'
+local PROJECT_PROCESSED_PROPERTY = 'PROP_NW_HERETIC_SACRIFICE_PROCESSED_V2'
 
 local MUTATION_PROPERTY = 'PROP_NW_ZOMBIE_MUTATION'
 local MUTATION_EFFECT_PROPERTY = 'PROP_NW_ZOMBIE_MUTATION_EFFECT_V2'
@@ -73,6 +77,30 @@ local function DC_PlayerHasRelic(pPlayer, relicType)
         end
     end
     return false
+end
+
+local function DC_EnsureProjectAvailability(playerID)
+    local pPlayer = Players[playerID]
+    if pPlayer == nil or not DC_PlayerHasRelic(pPlayer, DEATH_CULT_RELIC) then
+        return false
+    end
+    if tonumber(pPlayer:GetProperty(PROJECT_AVAILABILITY_ATTACHED_PROPERTY) or 0) == 1 then
+        return true
+    end
+    if type(pPlayer.AttachModifierByID) ~= 'function' then
+        DC_Log('ERROR: AttachModifierByID missing for project availability')
+        return false
+    end
+    local ok, err = pcall(function()
+        pPlayer:AttachModifierByID(PROJECT_AVAILABILITY_MODIFIER)
+    end)
+    if not ok then
+        DC_Log('ERROR: attach project availability failed P' .. tostring(playerID) .. ': ' .. tostring(err))
+        return false
+    end
+    pPlayer:SetProperty(PROJECT_AVAILABILITY_ATTACHED_PROPERTY, 1)
+    DC_Log('attached Death Cult project availability for P' .. tostring(playerID))
+    return true
 end
 
 local function DC_GetProjectUnlockBuildingIndex()
@@ -190,6 +218,9 @@ function Haikesi_RefreshDeathCultProjectUnlocks(playerID)
     if pPlayer == nil or pPlayer.GetCities == nil then return 0 end
 
     local hasDeathCult = DC_PlayerHasRelic(pPlayer, DEATH_CULT_RELIC)
+    if hasDeathCult then
+        DC_EnsureProjectAvailability(playerID)
+    end
     local changed = 0
     local cities = pPlayer:GetCities()
     if cities == nil or cities.Members == nil then return 0 end
@@ -548,6 +579,11 @@ local function DC_SacrificePopulationForZombies(playerID, city, amount)
         if ok then
             if DC_SpawnZombie(playerID, city:GetX(), city:GetY()) then
                 spawned = spawned + 1
+            else
+                -- Keep population and zombie conversion atomic when every
+                -- nearby plot is blocked or unit creation fails.
+                pcall(function() city:ChangePopulation(1) end)
+                break
             end
         else
             break
@@ -556,19 +592,9 @@ local function DC_SacrificePopulationForZombies(playerID, city, amount)
     return spawned
 end
 
-function Haikesi_OnDeathCultCityProjectCompleted(playerID, cityID, projectID)
-    local projectInfo = GameInfo.Projects[projectID]
-    if projectInfo == nil or projectInfo.ProjectType ~= HERETIC_PROJECT then return end
-
+local function DC_ResolveHereticSacrifice(playerID, city, completionNumber, source)
     local pPlayer = Players[playerID]
-    if pPlayer == nil or not DC_PlayerHasRelic(pPlayer, DEATH_CULT_RELIC) then
-        DC_Log(string.format('project completed without Death Cult P%s city=%s', tostring(playerID), tostring(cityID)))
-        return
-    end
-
-    local cities = pPlayer:GetCities()
-    local city = cities ~= nil and cities:FindID(cityID) or nil
-    if city == nil then return end
+    if pPlayer == nil or city == nil then return 0 end
 
     local foundedReligion = -1
     local pReligion = pPlayer:GetReligion()
@@ -578,10 +604,74 @@ function Haikesi_OnDeathCultCityProjectCompleted(playerID, cityID, projectID)
 
     local extraHeretics = DC_CountHereticFollowers(city, foundedReligion)
     local total = 1 + extraHeretics
+    local populationBefore = city:GetPopulation()
     local spawned = DC_SacrificePopulationForZombies(playerID, city, total)
     DC_TryClearOtherReligions(city, foundedReligion)
-    DC_NotifyFloater(playerID, city:GetX(), city:GetY(), '+' .. tostring(spawned) .. ' ' .. Locale.Lookup('LOC_UNIT_NW_ZOMBIE_NAME'))
-    DC_Log(string.format('project P%d city=%d heretics=%d spawned=%d', playerID, cityID, extraHeretics, spawned))
+    if spawned > 0 then
+        DC_NotifyFloater(playerID, city:GetX(), city:GetY(),
+            '+' .. tostring(spawned) .. ' ' .. Locale.Lookup('LOC_UNIT_NW_ZOMBIE_NAME'))
+    end
+    DC_Log(string.format(
+        'project resolved source=%s P%d city=%d completion=%d heretics=%d requested=%d pop=%d->%d spawned=%d',
+        tostring(source), playerID, city:GetID(), completionNumber,
+        extraHeretics, total, populationBefore, city:GetPopulation(), spawned))
+    return spawned
+end
+
+local function DC_ProcessCityProjectCompletions(playerID, city, source)
+    if city == nil then return 0 end
+    local completed = math.max(0, math.floor(tonumber(city:GetProperty(PROJECT_COMPLETION_PROPERTY) or 0) or 0))
+    local processed = math.max(0, math.floor(tonumber(city:GetProperty(PROJECT_PROCESSED_PROPERTY) or 0) or 0))
+    if completed <= processed then return 0 end
+
+    local pPlayer = Players[playerID]
+    if pPlayer == nil or not DC_PlayerHasRelic(pPlayer, DEATH_CULT_RELIC) then
+        city:SetProperty(PROJECT_PROCESSED_PROPERTY, completed)
+        DC_Log(string.format(
+            'ignored %d project completion(s) without Death Cult P%d city=%d source=%s',
+            completed - processed, playerID, city:GetID(), tostring(source)))
+        return 0
+    end
+
+    local totalSpawned = 0
+    for completionNumber = processed + 1, completed do
+        totalSpawned = totalSpawned
+            + DC_ResolveHereticSacrifice(playerID, city, completionNumber, source)
+        city:SetProperty(PROJECT_PROCESSED_PROPERTY, completionNumber)
+    end
+    return totalSpawned
+end
+
+local function DC_ProcessPlayerProjectCompletions(playerID, source)
+    local pPlayer = Players[playerID]
+    if pPlayer == nil or pPlayer.GetCities == nil then return 0 end
+    local cities = pPlayer:GetCities()
+    if cities == nil or cities.Members == nil then return 0 end
+    local totalSpawned = 0
+    for _, city in cities:Members() do
+        totalSpawned = totalSpawned + DC_ProcessCityProjectCompletions(playerID, city, source)
+    end
+    return totalSpawned
+end
+
+function Haikesi_OnDeathCultCityProjectCompleted(playerID, cityID, projectID)
+    local projectInfo = GameInfo.Projects[projectID]
+    local projectType = projectInfo and projectInfo.ProjectType or tostring(projectID)
+    if projectType ~= HERETIC_PROJECT then return end
+    local pPlayer = Players[playerID]
+    local cities = pPlayer ~= nil and pPlayer:GetCities() or nil
+    local city = cities ~= nil and cities:FindID(cityID) or nil
+    DC_Log(string.format('CityProjectCompleted P%s city=%s project=%s counter=%s',
+        tostring(playerID), tostring(cityID), tostring(projectType),
+        tostring(city and city:GetProperty(PROJECT_COMPLETION_PROPERTY) or nil)))
+    DC_ProcessCityProjectCompletions(playerID, city, 'CityProjectCompleted')
+end
+
+local function DC_OnCityProductionCompleted(playerID, cityID)
+    local pPlayer = Players[playerID]
+    local cities = pPlayer ~= nil and pPlayer:GetCities() or nil
+    local city = cities ~= nil and cities:FindID(cityID) or nil
+    DC_ProcessCityProjectCompletions(playerID, city, 'CityProductionCompleted')
 end
 
 local function DC_HandleUnitDeath(killedPlayerID, killedUnitID, killerPlayerID, killerUnitID, x, y, source)
@@ -802,6 +892,7 @@ local function DC_OnPlayerTurnActivated(playerID, bIsFirstTime)
     DC_EnsureDeathCultBaseModifiers(playerID)
     DC_EnsureMutationEffects(playerID)
     Haikesi_RefreshDeathCultProjectUnlocks(playerID)
+    DC_ProcessPlayerProjectCompletions(playerID, 'PlayerTurnActivated')
     DC_ProcessPendingSpawns(playerID)
 end
 
@@ -824,6 +915,11 @@ local function InitializeHaikesiDeathCult()
         Events.CityProjectCompleted.Add(Haikesi_OnDeathCultCityProjectCompleted)
     else
         DC_Log('ERROR: Events.CityProjectCompleted missing')
+    end
+    if Events.CityProductionCompleted ~= nil then
+        Events.CityProductionCompleted.Add(DC_OnCityProductionCompleted)
+    else
+        DC_Log('WARNING: Events.CityProductionCompleted missing; using turn fallback')
     end
     if Events.UnitKilledInCombat ~= nil then
         Events.UnitKilledInCombat.Add(Haikesi_OnDeathCultUnitKilledInCombat)

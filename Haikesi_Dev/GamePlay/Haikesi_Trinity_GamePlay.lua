@@ -13,6 +13,22 @@ local SLOT_LEAF = "LEAF"
 local SLOT_SYMBOLS = { SLOT_JUAN, SLOT_XIANG, SLOT_LEAF }
 local NAVAL_REWARD_WATER_SEARCH_RADIUS = 20
 
+-- Gameplay publishes a fully snapshotted slot result through player
+-- properties.  The UI polls it on its own next frame and sends only the
+-- sequence number back through EXECUTE_SCRIPT when the popup is closed.
+local SLOT_PENDING_SEQUENCE_PROP = "PROP_NW_TRINITY_SLOT_PENDING_SEQUENCE_V2"
+local SLOT_SETTLED_SEQUENCE_PROP = "PROP_NW_TRINITY_SLOT_SETTLED_SEQUENCE_V2"
+local SLOT_RESULTS_PROP = "PROP_NW_TRINITY_SLOT_RESULTS_V2"
+local SLOT_REWARD_KEY_PROP = "PROP_NW_TRINITY_SLOT_REWARD_KEY_V2"
+local SLOT_X_PROP = "PROP_NW_TRINITY_SLOT_X_V2"
+local SLOT_Y_PROP = "PROP_NW_TRINITY_SLOT_Y_V2"
+local SLOT_UNIT_TYPE_PROP = "PROP_NW_TRINITY_SLOT_UNIT_TYPE_V2"
+local SLOT_SCIENCE_PROP = "PROP_NW_TRINITY_SLOT_SCIENCE_V2"
+local SLOT_CULTURE_PROP = "PROP_NW_TRINITY_SLOT_CULTURE_V2"
+local SLOT_GOLD_PROP = "PROP_NW_TRINITY_SLOT_GOLD_V2"
+local SLOT_FAITH_PROP = "PROP_NW_TRINITY_SLOT_FAITH_V2"
+local SLOT_FLOATER_PROP = "PROP_NW_TRINITY_SLOT_FLOATER_V2"
+
 local function TrinityLog(msg)
     print("[Haikesi Trinity] " .. tostring(msg))
 end
@@ -307,56 +323,6 @@ local function ApplyIncomeBundle(pPlayer, bundle)
     end
 end
 
-local function NotifyFloater(playerID, x, y, text)
-    if text == nil or text == "" then return end
-    local fn = ExposedMembers and ExposedMembers.Haikesi_TrinityShowFloater
-    if type(fn) == "function" then
-        pcall(fn, playerID, x, y, text)
-        return
-    end
-    if LuaEvents ~= nil and LuaEvents.Haikesi_TrinityShowFloater ~= nil then
-        LuaEvents.Haikesi_TrinityShowFloater(playerID, x, y, text)
-        return
-    end
-    if Game ~= nil and Game.AddWorldViewText ~= nil then
-        pcall(function()
-            Game.AddWorldViewText({
-                MessageType = 0,
-                MessageText = text,
-                PlotX = x,
-                PlotY = y,
-                Visibility = RevealedState and RevealedState.VISIBLE or 1,
-            })
-        end)
-    end
-end
-
-local function OpenSlotMachineUI(playerID, x, y, resultCsv, rewardKey, floaterText)
-    local fn = ExposedMembers and ExposedMembers.Haikesi_OpenTrinitySlotMachine
-    if type(fn) == "function" then
-        local ok, opened = pcall(fn, playerID, x, y, resultCsv, rewardKey or "NONE", floaterText or "")
-        if not ok then
-            TrinityLog("slot UI open failed via ExposedMembers: " .. tostring(opened))
-        else
-            TrinityLog("slot UI open via ExposedMembers opened=" .. tostring(opened))
-        end
-        return ok and opened == true
-    end
-    if LuaEvents ~= nil and LuaEvents.Haikesi_OpenTrinitySlotMachine ~= nil then
-        local ok, err = pcall(function()
-            LuaEvents.Haikesi_OpenTrinitySlotMachine(playerID, x, y, resultCsv, rewardKey or "NONE", floaterText or "")
-        end)
-        if not ok then
-            TrinityLog("slot UI open failed via LuaEvents: " .. tostring(err))
-            return false
-        end
-        TrinityLog("slot UI open via LuaEvents")
-        return true
-    end
-    TrinityLog("slot UI open unavailable")
-    return false
-end
-
 local function CountSymbols(results)
     local counts = { JUAN = 0, XIANG = 0, LEAF = 0 }
     for _, sym in ipairs(results) do
@@ -373,50 +339,143 @@ local function RollSlotResults()
     return results
 end
 
-local function ApplySlotReward(playerID, x, y, results)
+local function BuildSlotRewardPlan(playerID, results)
     local pPlayer = Players[playerID]
-    if pPlayer == nil then return "NONE", nil end
+    local plan = {
+        key = "NONE",
+        unitType = "",
+        science = 0,
+        culture = 0,
+        gold = 0,
+        faith = 0,
+        floater = "",
+    }
+    if pPlayer == nil then return plan end
     local counts = CountSymbols(results)
     if counts.JUAN >= 3 then
-        local unitType = PickRandomNextEraTechUnit(playerID)
-        local unit = InitUnitAt(playerID, unitType, x, y)
-        TrinityLog(string.format("slot reward JUAN3 picked %s spawned=%s", tostring(unitType), tostring(unit ~= nil)))
-        return "JUAN3", Locale.Lookup("LOC_HAIKESI_SLOT_MACHINE_RESULT_JUAN3")
+        plan.key = "JUAN3"
+        plan.unitType = PickRandomNextEraTechUnit(playerID)
+        plan.floater = Locale.Lookup("LOC_HAIKESI_SLOT_MACHINE_RESULT_JUAN3")
     elseif counts.JUAN >= 2 then
-        local unitType = PickRandomTechUnit(playerID, { 0, -1 })
-        local unit = InitUnitAt(playerID, unitType, x, y)
-        TrinityLog(string.format("slot reward JUAN2 picked %s spawned=%s", tostring(unitType), tostring(unit ~= nil)))
-        return "JUAN2", Locale.Lookup("LOC_HAIKESI_SLOT_MACHINE_RESULT_JUAN2")
+        plan.key = "JUAN2"
+        plan.unitType = PickRandomTechUnit(playerID, { 0, -1 })
+        plan.floater = Locale.Lookup("LOC_HAIKESI_SLOT_MACHINE_RESULT_JUAN2")
     elseif counts.LEAF >= 3 then
         local bundle = GetIncomeBundle(pPlayer, 1)
-        bundle.science = bundle.science * 2
-        bundle.culture = bundle.culture * 2
-        bundle.gold = bundle.gold * 2
-        bundle.faith = bundle.faith * 2
-        ApplyIncomeBundle(pPlayer, bundle)
-        return "LEAF3", string.format(
+        plan.key = "LEAF3"
+        plan.science = bundle.science * 2
+        plan.culture = bundle.culture * 2
+        plan.gold = bundle.gold * 2
+        plan.faith = bundle.faith * 2
+        plan.floater = string.format(
             "+%d [ICON_Science] +%d [ICON_Culture] +%d [ICON_Gold] +%d [ICON_Faith]",
-            bundle.science, bundle.culture, bundle.gold, bundle.faith)
+            plan.science, plan.culture, plan.gold, plan.faith)
     elseif counts.LEAF >= 2 then
         local bundle = GetIncomeBundle(pPlayer, 5)
-        ApplyIncomeBundle(pPlayer, bundle)
-        return "LEAF2", string.format(
+        plan.key = "LEAF2"
+        plan.science = bundle.science
+        plan.culture = bundle.culture
+        plan.gold = bundle.gold
+        plan.faith = bundle.faith
+        plan.floater = string.format(
             "+%d [ICON_Science] +%d [ICON_Culture] +%d [ICON_Gold] +%d [ICON_Faith]",
-            bundle.science, bundle.culture, bundle.gold, bundle.faith)
+            plan.science, plan.culture, plan.gold, plan.faith)
     elseif counts.XIANG >= 3 then
+        plan.key = "XIANG3"
+        plan.floater = Locale.Lookup("LOC_HAIKESI_SLOT_MACHINE_RESULT_XIANG3")
+    elseif counts.XIANG >= 2 then
+        plan.key = "XIANG2"
+        plan.floater = Locale.Lookup("LOC_HAIKESI_SLOT_MACHINE_RESULT_XIANG2")
+    end
+    return plan
+end
+
+local function PublishPendingSlot(pPlayer, playerID, x, y, resultCsv, plan)
+    local pending = tonumber(pPlayer:GetProperty(SLOT_PENDING_SEQUENCE_PROP) or 0) or 0
+    local settled = tonumber(pPlayer:GetProperty(SLOT_SETTLED_SEQUENCE_PROP) or 0) or 0
+    local sequence = math.max(pending, settled) + 1
+
+    -- Publish payload first and sequence last so UI never observes a partial
+    -- transaction on the frame where the result becomes visible.
+    pPlayer:SetProperty(SLOT_RESULTS_PROP, resultCsv)
+    pPlayer:SetProperty(SLOT_REWARD_KEY_PROP, plan.key)
+    pPlayer:SetProperty(SLOT_X_PROP, x)
+    pPlayer:SetProperty(SLOT_Y_PROP, y)
+    pPlayer:SetProperty(SLOT_UNIT_TYPE_PROP, plan.unitType)
+    pPlayer:SetProperty(SLOT_SCIENCE_PROP, plan.science)
+    pPlayer:SetProperty(SLOT_CULTURE_PROP, plan.culture)
+    pPlayer:SetProperty(SLOT_GOLD_PROP, plan.gold)
+    pPlayer:SetProperty(SLOT_FAITH_PROP, plan.faith)
+    pPlayer:SetProperty(SLOT_FLOATER_PROP, plan.floater)
+    pPlayer:SetProperty(SLOT_PENDING_SEQUENCE_PROP, sequence)
+    TrinityLog(string.format(
+        "slot pending published P%d seq=%d results=%s reward=%s unit=%s yields=%d/%d/%d/%d",
+        playerID, sequence, tostring(resultCsv), tostring(plan.key), tostring(plan.unitType),
+        plan.science, plan.culture, plan.gold, plan.faith))
+    return sequence
+end
+
+local function ApplyPublishedSlotReward(playerID, pPlayer, rewardKey, x, y)
+    if rewardKey == "JUAN3" or rewardKey == "JUAN2" then
+        local unitType = tostring(pPlayer:GetProperty(SLOT_UNIT_TYPE_PROP) or "")
+        local unit = InitUnitAt(playerID, unitType, x, y)
+        TrinityLog(string.format("slot settle %s picked=%s spawned=%s",
+            rewardKey, tostring(unitType), tostring(unit ~= nil)))
+    elseif rewardKey == "LEAF3" or rewardKey == "LEAF2" then
+        ApplyIncomeBundle(pPlayer, {
+            science = tonumber(pPlayer:GetProperty(SLOT_SCIENCE_PROP) or 0) or 0,
+            culture = tonumber(pPlayer:GetProperty(SLOT_CULTURE_PROP) or 0) or 0,
+            gold = tonumber(pPlayer:GetProperty(SLOT_GOLD_PROP) or 0) or 0,
+            faith = tonumber(pPlayer:GetProperty(SLOT_FAITH_PROP) or 0) or 0,
+        })
+    elseif rewardKey == "XIANG3" then
         local fn = ExposedMembers and ExposedMembers.Haikesi_SpawnBarbarianInvasionAtNewestCity
         if type(fn) == "function" then
-            pcall(fn, playerID, playerID)
+            local ok, err = pcall(fn, playerID, playerID)
+            TrinityLog("slot settle XIANG3 ok=" .. tostring(ok) .. " err=" .. tostring(ok and "" or err))
+        else
+            TrinityLog("slot settle XIANG3 unavailable")
         end
-        return "XIANG3", Locale.Lookup("LOC_HAIKESI_SLOT_MACHINE_RESULT_XIANG3")
-    elseif counts.XIANG >= 2 then
+    elseif rewardKey == "XIANG2" then
         local fn = ExposedMembers and ExposedMembers.Haikesi_SpawnBarbarianEraMeleeNearNewestCity
         if type(fn) == "function" then
-            pcall(fn, playerID, 2, 4)
+            local ok, err = pcall(fn, playerID, 2, 4)
+            TrinityLog("slot settle XIANG2 ok=" .. tostring(ok) .. " err=" .. tostring(ok and "" or err))
+        else
+            TrinityLog("slot settle XIANG2 unavailable")
         end
-        return "XIANG2", Locale.Lookup("LOC_HAIKESI_SLOT_MACHINE_RESULT_XIANG2")
     end
-    return "NONE", nil
+end
+
+function HaikesiTrinitySettle(playerID, param)
+    local pPlayer = Players[playerID]
+    local requested = param and tonumber(param.TrinitySlotSequence) or nil
+    if pPlayer == nil or requested == nil then
+        TrinityLog("slot settle rejected: invalid player/sequence")
+        return false
+    end
+
+    local pending = tonumber(pPlayer:GetProperty(SLOT_PENDING_SEQUENCE_PROP) or 0) or 0
+    local settled = tonumber(pPlayer:GetProperty(SLOT_SETTLED_SEQUENCE_PROP) or 0) or 0
+    if requested <= settled then
+        TrinityLog(string.format("slot settle duplicate ignored P%d requested=%d settled=%d",
+            playerID, requested, settled))
+        return true
+    end
+    if requested ~= pending then
+        TrinityLog(string.format("slot settle rejected P%d requested=%d pending=%d settled=%d",
+            playerID, requested, pending, settled))
+        return false
+    end
+
+    local rewardKey = tostring(pPlayer:GetProperty(SLOT_REWARD_KEY_PROP) or "NONE")
+    local x = tonumber(pPlayer:GetProperty(SLOT_X_PROP) or -1) or -1
+    local y = tonumber(pPlayer:GetProperty(SLOT_Y_PROP) or -1) or -1
+    TrinityLog(string.format("slot settle begin P%d seq=%d reward=%s", playerID, requested, rewardKey))
+    ApplyPublishedSlotReward(playerID, pPlayer, rewardKey, x, y)
+    pPlayer:SetProperty(SLOT_SETTLED_SEQUENCE_PROP, requested)
+    TrinityLog(string.format("slot settle complete P%d seq=%d reward=%s", playerID, requested, rewardKey))
+    return true
 end
 
 function HaikesiTrinityRetire(playerID, param)
@@ -451,6 +510,15 @@ function HaikesiTrinityRetire(playerID, param)
         TrinityLog("retire route rejected " .. tostring(fromType) .. " -> " .. tostring(toType))
         return
     end
+    if fromType == UNIT_LAOYE then
+        local pending = tonumber(pPlayer:GetProperty(SLOT_PENDING_SEQUENCE_PROP) or 0) or 0
+        local settled = tonumber(pPlayer:GetProperty(SLOT_SETTLED_SEQUENCE_PROP) or 0) or 0
+        if pending > settled then
+            TrinityLog(string.format("retire rejected: unresolved slot P%d pending=%d settled=%d",
+                playerID, pending, settled))
+            return
+        end
+    end
     if unit:GetMovesRemaining() <= 0 then
         TrinityLog("retire rejected: no moves")
         return
@@ -466,18 +534,15 @@ function HaikesiTrinityRetire(playerID, param)
         local results = RollSlotResults()
         local resultCsv = table.concat(results, ",")
         TrinityLog("slot rolled P" .. tostring(playerID) .. " results=" .. resultCsv)
-        local rewardKey, floaterText = ApplySlotReward(playerID, x, y, results)
-        TrinityLog("slot reward resolved key=" .. tostring(rewardKey) .. " floater=" .. tostring(floaterText))
-        if not OpenSlotMachineUI(playerID, x, y, resultCsv, rewardKey, floaterText) then
-            TrinityLog("slot UI fallback floater")
-            NotifyFloater(playerID, x, y, floaterText)
-        end
+        local plan = BuildSlotRewardPlan(playerID, results)
+        PublishPendingSlot(pPlayer, playerID, x, y, resultCsv, plan)
     end
 end
 
 local function Initialize()
     if ExposedMembers ~= nil then
         ExposedMembers.HaikesiTrinityRetire = HaikesiTrinityRetire
+        ExposedMembers.HaikesiTrinitySettle = HaikesiTrinitySettle
     end
     TrinityLog("GamePlay ready")
 end

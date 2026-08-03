@@ -1966,6 +1966,21 @@ local function OnExternalAICheck(_, bIsFirstTime)
 end
 
 function HaikesiSelectRelic(iPlayer, param)
+    if param ~= nil and param.TrinitySlotSettle ~= nil and tostring(param.TrinitySlotSettle) ~= "" then
+        print("[Haikesi Trinity] HaikesiSelectRelic settle path caller=P" .. tostring(iPlayer)
+            .. " seq=" .. tostring(param.TrinitySlotSequence))
+        local fn = ExposedMembers and ExposedMembers.HaikesiTrinitySettle
+        if type(fn) == "function" then
+            local ok, err = pcall(fn, iPlayer, param)
+            if not ok then
+                print("[Haikesi Trinity] settle failed: " .. tostring(err))
+            end
+        else
+            print("[Haikesi Trinity] HaikesiTrinitySettle missing")
+        end
+        return
+    end
+
     if param ~= nil and param.TrinityRetire ~= nil and tostring(param.TrinityRetire) ~= "" then
         print("[Haikesi Trinity] HaikesiSelectRelic retire path caller=P" .. tostring(iPlayer))
         local fn = ExposedMembers and ExposedMembers.HaikesiTrinityRetire
@@ -2498,7 +2513,7 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
             iPlayer, builderCount, builderCount, builderCount))
     end
 
-    if relicType == 'DEATHCULTRUNE' then
+    if relicType == 'MIKAELSBLESSINGRUNE' or relicType == 'DEATHCULTRUNE' then
         local refreshFn = ExposedMembers and ExposedMembers.Haikesi_RefreshDeathCultProjectUnlocks
         if type(refreshFn) == 'function' then
             local okRefresh, errRefresh = pcall(refreshFn, iPlayer)

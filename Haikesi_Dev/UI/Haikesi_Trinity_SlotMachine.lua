@@ -19,6 +19,14 @@ local REWARD_TEXT = {
     XIANG3 = "LOC_HAIKESI_SLOT_MACHINE_RESULT_XIANG3",
 }
 
+local SLOT_PENDING_SEQUENCE_PROP = "PROP_NW_TRINITY_SLOT_PENDING_SEQUENCE_V2"
+local SLOT_SETTLED_SEQUENCE_PROP = "PROP_NW_TRINITY_SLOT_SETTLED_SEQUENCE_V2"
+local SLOT_RESULTS_PROP = "PROP_NW_TRINITY_SLOT_RESULTS_V2"
+local SLOT_REWARD_KEY_PROP = "PROP_NW_TRINITY_SLOT_REWARD_KEY_V2"
+local SLOT_X_PROP = "PROP_NW_TRINITY_SLOT_X_V2"
+local SLOT_Y_PROP = "PROP_NW_TRINITY_SLOT_Y_V2"
+local SLOT_FLOATER_PROP = "PROP_NW_TRINITY_SLOT_FLOATER_V2"
+
 local m_FinalSymbols = nil
 local m_RewardKey = "NONE"
 local m_PendingFloaterPlayerID = nil
@@ -28,9 +36,19 @@ local m_PendingFloaterText = nil
 local m_IsRolling = false
 local m_Elapsed = 0
 local m_Tick = 0
+local m_ActiveSequence = nil
+local m_LastOpenedSequence = 0
+local m_AwaitingSettlementSequence = nil
+local m_AwaitingFloaterPlayerID = nil
+local m_AwaitingFloaterX = nil
+local m_AwaitingFloaterY = nil
+local m_AwaitingFloaterText = nil
+local m_SettleRetryElapsed = 0
 local ROLL_DURATION = 1.75
 local TICK_TIME = 0.075
+local SETTLE_RETRY_TIME = 0.75
 local ShowFloater = nil
+local OpenSlotMachine = nil
 
 local function SlotLog(msg)
     print("[Haikesi Trinity UI] " .. tostring(msg))
@@ -46,6 +64,14 @@ local function ResetSlotState()
     m_IsRolling = false
     m_Elapsed = 0
     m_Tick = 0
+    m_ActiveSequence = nil
+    m_LastOpenedSequence = 0
+    m_AwaitingSettlementSequence = nil
+    m_AwaitingFloaterPlayerID = nil
+    m_AwaitingFloaterX = nil
+    m_AwaitingFloaterY = nil
+    m_AwaitingFloaterText = nil
+    m_SettleRetryElapsed = 0
     if Controls ~= nil and Controls.ResultText ~= nil then
         Controls.ResultText:SetText("")
     end
@@ -105,21 +131,76 @@ local function FinishRoll()
     SlotLog("finish reward=" .. tostring(m_RewardKey))
 end
 
-local function OnUpdate(deltaTime)
-    if not m_IsRolling then
+local function RequestSettlement(sequence)
+    local localPlayer = Game.GetLocalPlayer()
+    if sequence == nil or localPlayer == nil or localPlayer < 0 then
+        SlotLog("settle request skipped seq=" .. tostring(sequence) .. " local=" .. tostring(localPlayer))
         return
     end
-    m_Elapsed = m_Elapsed + (tonumber(deltaTime) or 0)
-    m_Tick = m_Tick + (tonumber(deltaTime) or 0)
-    if m_Tick >= TICK_TIME then
-        m_Tick = 0
-        RandomizeSlots()
-        if UI ~= nil and UI.PlaySound ~= nil then
-            UI.PlaySound("Main_Menu_Mouse_Over")
+    UI.RequestPlayerOperation(localPlayer, PlayerOperations.EXECUTE_SCRIPT, {
+        OnStart = "HaikesiSelectRelic",
+        TrinitySlotSettle = "1",
+        TrinitySlotSequence = tostring(sequence),
+    })
+    m_SettleRetryElapsed = 0
+    SlotLog("settle requested seq=" .. tostring(sequence))
+end
+
+local function PollSlotState(deltaTime)
+    local localPlayer = Game.GetLocalPlayer()
+    local pPlayer = localPlayer ~= nil and localPlayer >= 0 and Players[localPlayer] or nil
+    if pPlayer == nil then return end
+
+    local settled = tonumber(pPlayer:GetProperty(SLOT_SETTLED_SEQUENCE_PROP) or 0) or 0
+    if m_AwaitingSettlementSequence ~= nil then
+        if settled >= m_AwaitingSettlementSequence then
+            SlotLog("settle acknowledged seq=" .. tostring(m_AwaitingSettlementSequence))
+            if m_AwaitingFloaterText ~= nil and m_AwaitingFloaterText ~= "" and ShowFloater ~= nil then
+                ShowFloater(m_AwaitingFloaterPlayerID, m_AwaitingFloaterX,
+                    m_AwaitingFloaterY, m_AwaitingFloaterText)
+            end
+            m_AwaitingSettlementSequence = nil
+            m_AwaitingFloaterPlayerID = nil
+            m_AwaitingFloaterX = nil
+            m_AwaitingFloaterY = nil
+            m_AwaitingFloaterText = nil
+            m_SettleRetryElapsed = 0
+        else
+            m_SettleRetryElapsed = m_SettleRetryElapsed + (tonumber(deltaTime) or 0)
+            if m_SettleRetryElapsed >= SETTLE_RETRY_TIME then
+                RequestSettlement(m_AwaitingSettlementSequence)
+            end
         end
+        return
     end
-    if m_Elapsed >= ROLL_DURATION then
-        FinishRoll()
+
+    if m_ActiveSequence ~= nil then return end
+    local pending = tonumber(pPlayer:GetProperty(SLOT_PENDING_SEQUENCE_PROP) or 0) or 0
+    if pending <= settled or pending <= m_LastOpenedSequence then return end
+
+    local resultCsv = tostring(pPlayer:GetProperty(SLOT_RESULTS_PROP) or "")
+    local rewardKey = tostring(pPlayer:GetProperty(SLOT_REWARD_KEY_PROP) or "NONE")
+    local x = tonumber(pPlayer:GetProperty(SLOT_X_PROP) or -1) or -1
+    local y = tonumber(pPlayer:GetProperty(SLOT_Y_PROP) or -1) or -1
+    local floaterText = tostring(pPlayer:GetProperty(SLOT_FLOATER_PROP) or "")
+    OpenSlotMachine(pending, localPlayer, x, y, resultCsv, rewardKey, floaterText)
+end
+
+local function OnUpdate(deltaTime)
+    PollSlotState(deltaTime)
+    if m_IsRolling then
+        m_Elapsed = m_Elapsed + (tonumber(deltaTime) or 0)
+        m_Tick = m_Tick + (tonumber(deltaTime) or 0)
+        if m_Tick >= TICK_TIME then
+            m_Tick = 0
+            RandomizeSlots()
+            if UI ~= nil and UI.PlaySound ~= nil then
+                UI.PlaySound("Main_Menu_Mouse_Over")
+            end
+        end
+        if m_Elapsed >= ROLL_DURATION then
+            FinishRoll()
+        end
     end
 end
 
@@ -132,26 +213,39 @@ local function Close()
     else
         ContextPtr:SetHide(true)
     end
-    if m_PendingFloaterText ~= nil and m_PendingFloaterText ~= "" and ShowFloater ~= nil then
-        ShowFloater(m_PendingFloaterPlayerID, m_PendingFloaterX, m_PendingFloaterY, m_PendingFloaterText)
+    local closingSequence = m_ActiveSequence
+    if closingSequence ~= nil then
+        m_AwaitingSettlementSequence = closingSequence
+        m_AwaitingFloaterPlayerID = m_PendingFloaterPlayerID
+        m_AwaitingFloaterX = m_PendingFloaterX
+        m_AwaitingFloaterY = m_PendingFloaterY
+        m_AwaitingFloaterText = m_PendingFloaterText
     end
+    m_ActiveSequence = nil
     m_PendingFloaterPlayerID = nil
     m_PendingFloaterX = nil
     m_PendingFloaterY = nil
     m_PendingFloaterText = nil
-    SlotLog("closed")
+    if closingSequence ~= nil then
+        RequestSettlement(closingSequence)
+    end
+    SlotLog("closed seq=" .. tostring(closingSequence) .. "; reward settlement deferred to Gameplay")
 end
 
-local function OpenSlotMachine(playerID, x, y, resultCsv, rewardKey, floaterText)
+OpenSlotMachine = function(sequence, playerID, x, y, resultCsv, rewardKey, floaterText)
     local localPlayer = Game.GetLocalPlayer()
     if tonumber(playerID) ~= localPlayer then
         SlotLog("skip open for nonlocal P" .. tostring(playerID))
         return false
     end
+    SlotLog("opening seq=" .. tostring(sequence) .. " results=" .. tostring(resultCsv)
+        .. " reward=" .. tostring(rewardKey))
     if UIManager:IsInPopupQueue(ContextPtr) then
         UIManager:DequeuePopup(ContextPtr)
         SlotLog("dequeued stale popup before open")
     end
+    m_ActiveSequence = tonumber(sequence)
+    m_LastOpenedSequence = tonumber(sequence) or m_LastOpenedSequence
     m_FinalSymbols = SplitCsv(resultCsv)
     m_RewardKey = tostring(rewardKey or "NONE")
     m_PendingFloaterPlayerID = playerID
@@ -173,7 +267,8 @@ local function OpenSlotMachine(playerID, x, y, resultCsv, rewardKey, floaterText
     kParameters.InputAtCurrentParent = true
     kParameters.AlwaysVisibleInQueue = true
     UIManager:QueuePopup(ContextPtr, PopupPriority.Low, kParameters)
-    SlotLog("open results=" .. tostring(resultCsv) .. " reward=" .. tostring(m_RewardKey))
+    SlotLog("open seq=" .. tostring(m_ActiveSequence) .. " results=" .. tostring(resultCsv)
+        .. " reward=" .. tostring(m_RewardKey))
     return true
 end
 
@@ -208,15 +303,7 @@ local function Initialize()
     ContextPtr:SetInputHandler(OnInputHandler, true)
     ContextPtr:SetUpdate(OnUpdate)
     Controls.CloseButton:RegisterCallback(Mouse.eLClick, Close)
-    if ExposedMembers ~= nil then
-        ExposedMembers.Haikesi_OpenTrinitySlotMachine = OpenSlotMachine
-        ExposedMembers.Haikesi_TrinityShowFloater = ShowFloater
-    end
-    if LuaEvents ~= nil then
-        LuaEvents.Haikesi_OpenTrinitySlotMachine.Add(OpenSlotMachine)
-        LuaEvents.Haikesi_TrinityShowFloater.Add(ShowFloater)
-    end
-    SlotLog("slot machine ready")
+    SlotLog("slot machine ready (property polling; close-to-settle)")
 end
 
 Events.LoadScreenClose.Add(Initialize)

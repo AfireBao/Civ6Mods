@@ -376,7 +376,8 @@ UPDATE GovernorPromotions SET Level=3, Column=1 WHERE GovernorPromotionType='GOV
 -- 30/09/25 : Give 6 loyalty bonus (starts at 8)
 UPDATE Governors SET IdentityPressure=14 WHERE GovernorType='GOVERNOR_THE_DEFENDER';
 
--- LI Garrison Commander : Units defending within the city's territory get +5 CS. Your other cities within 9 tiles gain +4 Loyalty per turn towards your civilization.
+-- LI Garrison Commander : Friendly units fighting within the city's territory get +5 CS. Your other cities within 9 tiles gain +4 Loyalty per turn towards your civilization.
+UPDATE Modifiers SET ModifierType='MODIFIER_CITY_ADJUST_CITY_FRIENDLY_COMBAT_BONUS' WHERE ModifierId='GARRISON_COMMANDER_ADJUST_CITY_COMBAT_BONUS';
 UPDATE ModifierArguments SET Value=5 WHERE ModifierId='GARRISON_COMMANDER_ADJUST_CITY_COMBAT_BONUS' AND Name='Amount';
 
 -- RI Defense Logistics : +25% production towards military units in this city

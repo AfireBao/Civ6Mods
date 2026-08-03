@@ -574,7 +574,7 @@
             <Text>弑杀蜂群：增生</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDRUNE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>击杀敌军单位后，最近的己方城市获得生物质：每回合 + 该单位战斗力 5% 的 [ICON_FOOD] 食物，持续 10 回合（多次击杀效果叠层，各自独立计时）。城市每点人口额外提供 +1 [ICON_Production] 生产力。</Text>
+            <Text>击杀敌军单位后，按距离向己方城市分配生物质：每回合 + 该单位战斗力 5% 的 [ICON_FOOD] 食物，持续 10 回合（多次击杀效果叠层，各自独立计时）。单城上限为 +40 [ICON_FOOD] 食物，达到上限后超出部分转移至下一座未满城市。城市每点人口额外提供 +1 [ICON_Production] 生产力。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_RELIC_WARFEEDRUNE_FLAVOR" Language="zh_Hans_CN">
             <Text>我们必须收集所有能收集到的生物质，实现进化，最终吞噬整片星海！</Text>
@@ -2078,13 +2078,13 @@
             <Text>生物质</Text>
         </Replace>
         <Replace Tag="LOC_BUILDING_NW_WARFEED_BIOMASS_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>弑杀蜂群限时食物：本城 +1 [ICON_FOOD] 食物。每层独立计时，默认持续 10 回合。</Text>
+            <Text>弑杀蜂群限时食物。该建筑代表本城当前全部生物质总量；每次击杀获得的食物独立计时，默认持续 10 回合。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_BIOMASS_DURATION_LINE" Language="zh_Hans_CN">
-            <Text>本层生物质：剩余 {1} 回合（到期回合 {2}）</Text>
+            <Text>最早一批生物质：剩余 {1} 回合（到期回合 {2}）</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_BIOMASS_DURATION_UNKNOWN" Language="zh_Hans_CN">
-            <Text>本层生物质：未找到到期记录（可能来自旧档）</Text>
+            <Text>生物质：未找到有效到期记录（可能来自旧档）</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_BIOMASS_CITY_SUMMARY" Language="zh_Hans_CN">
             <Text>本城生物质合计 +{1} [ICON_FOOD]/最早到期回合 {2}（剩余 {3} 回合）</Text>
@@ -2125,7 +2125,16 @@
             <Text>丧尸</Text>
         </Replace>
         <Replace Tag="LOC_UNIT_NW_ZOMBIE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>死亡崇拜创造的陆地近战单位。基础 [ICON_Strength] 战斗力 15，无法自然恢复生命值，无法获得经验升级。击杀敌军时恢复 20 点生命值。每当你的丧尸死亡时，所有你的丧尸获得 +1 [ICON_Strength] 变异之力。</Text>
+            <Text>死亡崇拜创造的陆地近战单位。基础 [ICON_Strength] 战斗力随玩家最高近战战斗力变化，但“腐肉脆骨”使其 -12 [ICON_Strength] 战斗力。无法自然恢复生命值，无法获得经验升级。击杀敌军时恢复 20 点生命值。每当你的丧尸死亡时，所有你的丧尸获得 +1 [ICON_Strength] 变异之力。</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ZOMBIE_FRAIL_BODY_NAME" Language="zh_Hans_CN">
+            <Text>腐肉脆骨</Text>
+        </Replace>
+        <Replace Tag="LOC_ABILITY_NW_ZOMBIE_FRAIL_BODY_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>-12 [ICON_Strength] 战斗力。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_ZOMBIE_FRAIL_BODY_COMBAT_PREVIEW" Language="zh_Hans_CN">
+            <Text>{1_Amount} 腐肉脆骨</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_ZOMBIE_STENCH_NAME" Language="zh_Hans_CN">
             <Text>骇人恶臭</Text>
@@ -2150,7 +2159,7 @@
             <Text>吸血鬼大公</Text>
         </Replace>
         <Replace Tag="LOC_UNIT_NW_VAMPIRE_DUKE_DESCRIPTION" Language="zh_Hans_CN">
-            <Text>血色契约：大公提供的特殊吸血鬼单位。基础近战能力与吸血鬼一致，拥有 [ICON_Range] 2 射程远程攻击，基础远程攻击力为 5；研究箭术后变为 10，研究机械后变为 20，研究弹道学后变为 30，研究高级弹道学后变为 40。击杀单位有 5% 概率在目标位置转化出 1 个满血吸血鬼。</Text>
+            <Text>血色契约：大公提供的特殊吸血鬼单位。基础近战能力与吸血鬼一致，拥有 [ICON_Range] 2 射程远程攻击。远程攻击力初始与投石兵相同；研究箭术后与弓箭手相同，研究机械后与弩手相同，研究弹道学后与野战加农炮相同，研究高级弹道学后与机关枪相同。击杀单位有 5% 概率在目标位置转化出 1 个满血吸血鬼。</Text>
         </Replace>
 
         <Replace Tag="LOC_ABILITY_NW_SANGUINE_COUNT_MOVEMENT_NAME" Language="zh_Hans_CN">
@@ -2166,16 +2175,16 @@
             <Text>击杀单位有 5% 概率在目标位置转化出 1 个满血吸血鬼。</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_VAMPIRE_DUKE_RANGED_ARCHERY_PREVIEW" Language="zh_Hans_CN">
-            <Text>吸血鬼大公远程力：箭术后变为 10 [ICON_Strength] 战斗力</Text>
+            <Text>吸血鬼大公远程力：与弓箭手相同</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_VAMPIRE_DUKE_RANGED_MACHINERY_PREVIEW" Language="zh_Hans_CN">
-            <Text>吸血鬼大公远程力：机械后变为 20 [ICON_Strength] 战斗力</Text>
+            <Text>吸血鬼大公远程力：与弩手相同</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_VAMPIRE_DUKE_RANGED_BALLISTICS_PREVIEW" Language="zh_Hans_CN">
-            <Text>吸血鬼大公远程力：弹道学后变为 30 [ICON_Strength] 战斗力</Text>
+            <Text>吸血鬼大公远程力：与野战加农炮相同</Text>
         </Replace>
         <Replace Tag="LOC_HAIKESI_VAMPIRE_DUKE_RANGED_ADVANCED_BALLISTICS_PREVIEW" Language="zh_Hans_CN">
-            <Text>吸血鬼大公远程力：高级弹道学后变为 40 [ICON_Strength] 战斗力</Text>
+            <Text>吸血鬼大公远程力：与机关枪相同</Text>
         </Replace>
         <Replace Tag="LOC_ABILITY_NW_VAMPIRE_DUKE_TITLE_AURA_EFFECT_NAME" Language="zh_Hans_CN">
             <Text>爵位</Text>

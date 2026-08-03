@@ -5,6 +5,9 @@
 
 --||======================= 选择后递增计数 ========================||--
 function OnRelicSelected(playerID, param)
+    if param ~= nil and param.TrinitySlotSettle ~= nil and tostring(param.TrinitySlotSettle) ~= "" then
+        return
+    end
     if param ~= nil and param.TrinityRetire ~= nil and tostring(param.TrinityRetire) ~= "" then
         return
     end

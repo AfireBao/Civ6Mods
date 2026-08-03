@@ -17,7 +17,7 @@ for _, file in ipairs(files) do
     end
 end
 
-local BIOMASS_CITY_PROP = 'PROP_NW_WARFEED_BIOMASS'
+local BIOMASS_CITY_PROP = 'PROP_NW_WARFEED_BIOMASS_V2'
 local GENESIS_RELIC = 'GENESISRUNE'
 local DEATH_CULT_RELIC = 'DEATHCULTRUNE'
 local RelicsPropertyKey = 'PROP_NW_HAIKESI_RELICS'
@@ -103,10 +103,10 @@ local function FormatPlusMinusPercent(value)
     return tostring(rounded) .. '%'
 end
 
-local function ParseBiomassPin(buildingType)
+local function ParseBiomassLevel(buildingType)
     if buildingType == nil then return nil end
-    local pinStr = string.match(buildingType, '^BUILDING_NW_WARFEED_BIOMASS_P(%d+)$')
-    return tonumber(pinStr)
+    local levelStr = string.match(buildingType, '^BUILDING_NW_WARFEED_BIOMASS_P(%d+)$')
+    return tonumber(levelStr)
 end
 
 local function IsHaikesiHiddenBuilding(buildingType)
@@ -114,17 +114,17 @@ local function IsHaikesiHiddenBuilding(buildingType)
 end
 
 local function ParseCityBiomassProp(raw)
-    local byPin = {}
-    if raw == nil or raw == '' then return byPin end
+    local entries = {}
+    if raw == nil or raw == '' then return entries end
     for piece in string.gmatch(tostring(raw), '[^|]+') do
-        local pinStr, expStr = string.match(piece, '^(%d+):(%-?%d+)$')
-        local pin = tonumber(pinStr)
+        local amountStr, expStr = string.match(piece, '^(%d+):(%-?%d+)$')
+        local amount = tonumber(amountStr)
         local exp = tonumber(expStr)
-        if pin ~= nil and exp ~= nil then
-            byPin[pin] = exp
+        if amount ~= nil and amount > 0 and exp ~= nil then
+            entries[#entries + 1] = { amount = amount, expire = exp }
         end
     end
-    return byPin
+    return entries
 end
 
 local function GetCityBiomassProp(city)
@@ -142,46 +142,49 @@ local function GetCityBiomassProp(city)
     return ''
 end
 
-local function FormatDurationLines(pin, byPin)
+local function GetBiomassSummary(entries)
+    local now = Game.GetCurrentGameTurn()
+    local totalFood = 0
+    local soonest = nil
+    for i = 1, #entries do
+        local entry = entries[i]
+        if entry.expire ~= nil and now < entry.expire then
+            totalFood = totalFood + (entry.amount or 0)
+            if soonest == nil or entry.expire < soonest then
+                soonest = entry.expire
+            end
+        end
+    end
+    return totalFood, soonest
+end
+
+local function FormatDurationLines(entries)
     local now = Game.GetCurrentGameTurn()
     local lines = {}
-    local expire = byPin[pin]
-    if expire ~= nil then
-        local remain = expire - now
-        if remain < 0 then remain = 0 end
-        local s = Locale.Lookup('LOC_HAIKESI_BIOMASS_DURATION_LINE', remain, expire)
-        if s == nil or s == '' or s == 'LOC_HAIKESI_BIOMASS_DURATION_LINE' then
-            s = string.format('本层生物质：剩余 %d 回合（到期回合 %d）', remain, expire)
+    local totalFood, soonest = GetBiomassSummary(entries)
+    if totalFood > 0 and soonest ~= nil then
+        local remain = math.max(0, soonest - now)
+        local duration = Locale.Lookup('LOC_HAIKESI_BIOMASS_DURATION_LINE', remain, soonest)
+        if duration == nil or duration == '' or duration == 'LOC_HAIKESI_BIOMASS_DURATION_LINE' then
+            duration = string.format('最早一批生物质：剩余 %d 回合（到期回合 %d）', remain, soonest)
+        end
+        lines[#lines + 1] = duration
+
+        local s = Locale.Lookup(
+            'LOC_HAIKESI_BIOMASS_CITY_SUMMARY',
+            totalFood,
+            soonest,
+            remain)
+        if s == nil or s == '' or s == 'LOC_HAIKESI_BIOMASS_CITY_SUMMARY' then
+            s = string.format(
+                '本城生物质合计 +%d 食物；最早到期回合 %d（剩余 %d 回合）',
+                totalFood, soonest, remain)
         end
         lines[#lines + 1] = s
     else
         local s = Locale.Lookup('LOC_HAIKESI_BIOMASS_DURATION_UNKNOWN')
         if s == nil or s == '' or s == 'LOC_HAIKESI_BIOMASS_DURATION_UNKNOWN' then
-            s = '本层生物质：未找到到期记录（可能来自旧档）'
-        end
-        lines[#lines + 1] = s
-    end
-
-    local totalFood = 0
-    local soonest = nil
-    for _, exp in pairs(byPin) do
-        if exp ~= nil and now < exp then
-            totalFood = totalFood + 1
-            if soonest == nil or exp < soonest then
-                soonest = exp
-            end
-        end
-    end
-    if totalFood > 0 and soonest ~= nil then
-        local s = Locale.Lookup(
-            'LOC_HAIKESI_BIOMASS_CITY_SUMMARY',
-            totalFood,
-            soonest,
-            math.max(0, soonest - now))
-        if s == nil or s == '' or s == 'LOC_HAIKESI_BIOMASS_CITY_SUMMARY' then
-            s = string.format(
-                '本城生物质合计 +%d 食物；最早到期回合 %d（剩余 %d 回合）',
-                totalFood, soonest, math.max(0, soonest - now))
+            s = '生物质：未找到有效到期记录（可能来自旧档）'
         end
         lines[#lines + 1] = s
     end
@@ -191,11 +194,11 @@ end
 local function AppendBiomassToolTip(baseTip, buildingHash, playerId, city)
     local building = GameInfo.Buildings[buildingHash]
     if building == nil then return baseTip end
-    local pin = ParseBiomassPin(building.BuildingType)
-    if pin == nil then return baseTip end
+    local level = ParseBiomassLevel(building.BuildingType)
+    if level == nil then return baseTip end
 
-    local byPin = ParseCityBiomassProp(GetCityBiomassProp(city))
-    local extra = FormatDurationLines(pin, byPin)
+    local entries = ParseCityBiomassProp(GetCityBiomassProp(city))
+    local extra = FormatDurationLines(entries)
     if #extra == 0 then return baseTip end
 
     return AppendExtraLines(baseTip, extra)
@@ -250,12 +253,12 @@ local function RefreshDeathCultGrowthRow(data)
 end
 
 local function GetRemainSuffix(buildingType, city)
-    local pin = ParseBiomassPin(buildingType)
-    if pin == nil or city == nil then return nil end
-    local byPin = ParseCityBiomassProp(GetCityBiomassProp(city))
-    local expire = byPin[pin]
-    if expire == nil then return nil end
-    local remain = expire - Game.GetCurrentGameTurn()
+    local level = ParseBiomassLevel(buildingType)
+    if level == nil or city == nil then return nil end
+    local entries = ParseCityBiomassProp(GetCityBiomassProp(city))
+    local totalFood, soonest = GetBiomassSummary(entries)
+    if totalFood <= 0 or soonest == nil then return nil end
+    local remain = soonest - Game.GetCurrentGameTurn()
     if remain < 0 then remain = 0 end
     local s = Locale.Lookup('LOC_HAIKESI_BIOMASS_NAME_REMAIN', remain)
     if s == nil or s == '' or s == 'LOC_HAIKESI_BIOMASS_NAME_REMAIN' then

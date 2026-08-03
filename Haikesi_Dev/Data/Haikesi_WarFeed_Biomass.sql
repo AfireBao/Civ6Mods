@@ -1,5 +1,6 @@
 -- 弑杀蜂群「生物质」：隐藏建筑槽（参考烧城增益 CreateIncompleteBuilding / RemoveBuilding）
--- 每槽 +1 粮（Building_YieldChanges，仅本城）；P1..P40 可叠层；Property 记 pin:expire
+-- P1..P40 分别代表本城生物质总量 +1..+40；城市同时只保留一个档位建筑。
+-- 独立击杀批次及到期时间由 Gameplay 城市 Property 保存。
 
 INSERT OR IGNORE INTO Types (Type, Kind) VALUES
     ('TRAIT_NW_WARFEED_BIOMASS_LOCK', 'KIND_TRAIT'),
@@ -144,4 +145,9 @@ INSERT OR IGNORE INTO Building_YieldChanges (BuildingType, YieldType, YieldChang
     ('BUILDING_NW_WARFEED_BIOMASS_P39', 'YIELD_FOOD', 1),
     ('BUILDING_NW_WARFEED_BIOMASS_P40', 'YIELD_FOOD', 1);
 
+-- 将旧版 40 个“每个 +1”槽位迁移为单建筑总量档位。
+UPDATE Building_YieldChanges
+SET YieldChange = CAST(SUBSTR(BuildingType, LENGTH('BUILDING_NW_WARFEED_BIOMASS_P') + 1) AS INTEGER)
+WHERE YieldType = 'YIELD_FOOD'
+  AND BuildingType LIKE 'BUILDING_NW_WARFEED_BIOMASS_P%';
 
