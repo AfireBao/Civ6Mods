@@ -480,7 +480,7 @@ INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon
 UPDATE Haikesi_Relics SET IsActive = 1 WHERE RelicType = 'VOIDSUZERAINRUNE';
 UPDATE Haikesi_Relics SET IsRepeatable = 1 WHERE RelicType = 'VOIDSUZERAINRUNE';
 UPDATE Haikesi_Relics SET MinTurn = NULL WHERE RelicType = 'VOIDSUZERAINRUNE';
-UPDATE Haikesi_Relics SET Weight = 30000 WHERE RelicType = 'VOIDSUZERAINRUNE';
+UPDATE Haikesi_Relics SET Weight = 100 WHERE RelicType = 'VOIDSUZERAINRUNE';
 
 -- 行幄初张
 INSERT OR IGNORE INTO Haikesi_Relics (RelicType, Name, Description, Flavor, Icon, Rarity) VALUES
