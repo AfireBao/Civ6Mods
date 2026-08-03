@@ -204,6 +204,25 @@ local function OnUpdate(deltaTime)
     end
 end
 
+-- Hidden UI contexts do not reliably receive SetUpdate callbacks.  Gameplay
+-- publishes the completed conversion/result transaction through player
+-- properties, so wake the slot UI at the post-publish boundary instead of
+-- polling from the hidden popup itself.
+local function OnGameCoreEventPublishComplete()
+    PollSlotState(0)
+end
+
+local function OnLocalPlayerTurnBegin()
+    -- Recovery path for a settlement request interrupted by save/load or a
+    -- transient operation failure.  Pending but unopened results are also
+    -- restored here.
+    if m_AwaitingSettlementSequence ~= nil then
+        RequestSettlement(m_AwaitingSettlementSequence)
+    else
+        PollSlotState(0)
+    end
+end
+
 local function Close()
     if m_IsRolling then
         FinishRoll()
@@ -303,7 +322,10 @@ local function Initialize()
     ContextPtr:SetInputHandler(OnInputHandler, true)
     ContextPtr:SetUpdate(OnUpdate)
     Controls.CloseButton:RegisterCallback(Mouse.eLClick, Close)
-    SlotLog("slot machine ready (property polling; close-to-settle)")
+    Events.GameCoreEventPublishComplete.Add(OnGameCoreEventPublishComplete)
+    Events.LocalPlayerTurnBegin.Add(OnLocalPlayerTurnBegin)
+    PollSlotState(0)
+    SlotLog("slot machine ready (publish-driven open; close-to-settle)")
 end
 
 Events.LoadScreenClose.Add(Initialize)

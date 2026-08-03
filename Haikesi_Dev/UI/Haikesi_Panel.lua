@@ -1057,9 +1057,9 @@ end
 -- 触发时机常量（无需前端参数配置）
 -- ===========================================================================
 local HAIKESI_CLASSIC_TURNS  = {3, 25, 45}
-local HAIKESI_HAIKESI_FIRST  = 10
+local HAIKESI_HAIKESI_FIRST  = 1
 local HAIKESI_HAIKESI_INTERVAL = 10
-local HAIKESI_MP_FIRST       = 5
+local HAIKESI_MP_FIRST       = 1
 local HAIKESI_MP_INTERVAL    = 5
 local HAIKESI_PVE_ERA_KEY    = 'PROP_NW_HAIKESI_PVE_ERA'
 
@@ -1072,13 +1072,13 @@ local function ShouldOpenForPlayer(pPlayer, mode, turn)
         -- 经典三板斧
         return selectCount < #HAIKESI_CLASSIC_TURNS and turn >= HAIKESI_CLASSIC_TURNS[selectCount + 1]
     elseif mode == 1 then
-        -- 海克斯大乱斗
+        -- 海克斯大乱斗：第1回合起，每10回合一次（1/11/21/...）
         return turn >= HAIKESI_HAIKESI_FIRST + selectCount * HAIKESI_HAIKESI_INTERVAL
     elseif mode == 3 then
         -- 开发者模式：每回合
         return true
     elseif mode == 4 then
-        -- 海克斯大乱斗（联机）：每5回合
+        -- 海克斯大乱斗（联机）：第1回合起，每5回合一次（1/6/11/...）
         return turn >= HAIKESI_MP_FIRST + selectCount * HAIKESI_MP_INTERVAL
     end
     -- mode == 2: PVE经典，每个时代选择一次
