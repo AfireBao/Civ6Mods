@@ -528,6 +528,13 @@ function ApplyRelicToPlayer(iPlayer, relicType, isSelection, decisionReason)
         print("[Haikesi GamePlay] skipped selection-only bonus relic: " .. tostring(relicType))
         return false
     end
+    if relicType == 'COURTOFLOVERUNE'
+        and type(HaikesiHasSelectedVoidSuzerainTrait) == 'function'
+        and HaikesiHasSelectedVoidSuzerainTrait(pPlayer, 'MINOR_CIV_BABYLON_TRAIT') then
+        print("[Haikesi GamePlay] rejected Court of Love after Void Suzerainty Anshan for Player"
+            .. tostring(iPlayer))
+        return false
+    end
 
     local relicIndex = relicDef.Index
     local relicTypes = GetSelectedRelicTypeListForPlayer(pPlayer)
@@ -2148,6 +2155,202 @@ function HaikesiSelectAbility(iPlayer, param)
 
     -- UI 关闭由本地能力窗自行处理（Gameplay 不通知 UI）
 end
+
+--||======================= VOID SUZERAIN confirm ========================||--
+HAIKESI_VOID_SUZERAIN_CHOICES_PER_RELIC = 2
+
+function HaikesiGetVoidSuzerainRelicCount(pPlayer)
+    if pPlayer == nil then return 0 end
+    local count = 0
+    for _, relicType in ipairs(GetSelectedRelicTypeListForPlayer(pPlayer)) do
+        if relicType == 'VOIDSUZERAINRUNE' then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+function HaikesiGetVoidSuzerainChoiceCount(pPlayer)
+    if pPlayer == nil then return 0 end
+    return tonumber(pPlayer:GetProperty('PROP_NW_HAIKESI_VOID_SUZERAIN_CHOICE_COUNT') or 0) or 0
+end
+
+function HaikesiHasSelectedVoidSuzerainTrait(pPlayer, traitType)
+    if pPlayer == nil or traitType == nil then return false end
+    local wantedTrait = tostring(traitType)
+    local choiceCount = HaikesiGetVoidSuzerainChoiceCount(pPlayer)
+    for i = 1, choiceCount do
+        local selectedTrait = pPlayer:GetProperty('PROP_NW_HAIKESI_VOID_SUZERAIN_TRAIT_' .. tostring(i))
+        if selectedTrait ~= nil and tostring(selectedTrait) == wantedTrait then
+            return true
+        end
+    end
+    return false
+end
+
+function HaikesiIsVoidSuzerainTraitEligible(traitType)
+    if traitType == nil then return false end
+    local excludedLeaders = {
+        LEADER_MINOR_CIV_DEFAULT = true,
+        LEADER_MINOR_CIV_CULTURAL = true,
+        LEADER_MINOR_CIV_INDUSTRIAL = true,
+        LEADER_MINOR_CIV_MILITARISTIC = true,
+        LEADER_MINOR_CIV_RELIGIOUS = true,
+        LEADER_MINOR_CIV_SCIENTIFIC = true,
+        LEADER_MINOR_CIV_TRADE = true,
+        LEADER_MINOR_CIV_CARTHAGE = true,
+        LEADER_MINOR_CIV_STOCKHOLM = true,
+    }
+    for row in GameInfo.LeaderTraits() do
+        if row.TraitType == traitType then
+            local leaderType = row.LeaderType
+            local leader = GameInfo.Leaders[leaderType]
+            if leaderType ~= nil
+                and string.sub(leaderType, 1, 17) == 'LEADER_MINOR_CIV_'
+                and not excludedLeaders[leaderType]
+                and leader ~= nil
+                and leader.InheritFrom ~= nil
+                and string.sub(leader.InheritFrom, 1, 17) == 'LEADER_MINOR_CIV_' then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function HaikesiGetVoidSuzerainTraitModifiers(traitType)
+    if traitType == nil then return {}, false end
+
+    local attachedModifierByOuter = {}
+    for row in GameInfo.ModifierArguments() do
+        if row.Name == 'ModifierId' and row.Value ~= nil then
+            attachedModifierByOuter[row.ModifierId] = tostring(row.Value)
+        end
+    end
+
+    local actualModifiers = {}
+    local seenModifiers = {}
+    local grantsImprovement = false
+    for row in GameInfo.TraitModifiers() do
+        if row.TraitType == traitType then
+            local outerInfo = GameInfo.Modifiers[row.ModifierId]
+            local actualId = nil
+            if outerInfo ~= nil and outerInfo.ModifierType == 'MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER' then
+                actualId = attachedModifierByOuter[row.ModifierId]
+            elseif outerInfo ~= nil and outerInfo.ModifierType ~= 'MODIFIER_PLAYER_ADJUST_PROPERTY' then
+                actualId = row.ModifierId
+            end
+
+            local actualInfo = actualId and GameInfo.Modifiers[actualId] or nil
+            if actualInfo ~= nil then
+                if actualInfo.ModifierType == 'MODIFIER_PLAYER_ADJUST_VALID_IMPROVEMENT' then
+                    grantsImprovement = true
+                else
+                    -- 原始内层 Modifier 属于城邦宗主外壳；直接复用时部分效果
+                    -- （如安善巨作科技）不会生成新的结算实例。改挂数据库预制副本。
+                    local nestedAttachId = 'MODIFIER_NW_VOID_SUZERAIN_ANSHAN_ATTACH_' .. actualId
+                    local copyId = 'MODIFIER_NW_VOID_SUZERAIN_COPY_' .. actualId
+                    local selectedId = GameInfo.Modifiers[nestedAttachId] ~= nil
+                        and nestedAttachId or copyId
+                    if GameInfo.Modifiers[selectedId] ~= nil and not seenModifiers[selectedId] then
+                        seenModifiers[selectedId] = true
+                        table.insert(actualModifiers, selectedId)
+                    end
+                end
+            end
+        end
+    end
+
+    return actualModifiers, grantsImprovement
+end
+
+function HaikesiSelectCityStateAbility(iPlayer, param)
+    if param == nil then
+        print("[Haikesi GamePlay] invalid HaikesiSelectCityStateAbility param")
+        return
+    end
+
+    local pPlayer = Players[iPlayer]
+    if pPlayer == nil then return end
+    local ownedCount = HaikesiGetVoidSuzerainRelicCount(pPlayer)
+    local chosenCount = HaikesiGetVoidSuzerainChoiceCount(pPlayer)
+    local targetChoiceCount = ownedCount * HAIKESI_VOID_SUZERAIN_CHOICES_PER_RELIC
+    if ownedCount <= 0 then
+        print("[Haikesi GamePlay] VOID SUZERAIN rejected: Player" .. tostring(iPlayer)
+            .. " does not own the relic")
+        return
+    end
+    if chosenCount >= targetChoiceCount then
+        print("[Haikesi GamePlay] VOID SUZERAIN rejected excess choice for Player" .. tostring(iPlayer)
+            .. " choices=" .. tostring(chosenCount) .. " target=" .. tostring(targetChoiceCount))
+        return
+    end
+
+    local requestedTraits = {}
+    if param.TraitType1 ~= nil then
+        table.insert(requestedTraits, tostring(param.TraitType1))
+    elseif param.TraitType ~= nil then
+        table.insert(requestedTraits, tostring(param.TraitType))
+    end
+    if param.TraitType2 ~= nil then
+        table.insert(requestedTraits, tostring(param.TraitType2))
+    end
+
+    local requiredBatchSize = math.min(
+        HAIKESI_VOID_SUZERAIN_CHOICES_PER_RELIC,
+        targetChoiceCount - chosenCount
+    )
+    if #requestedTraits ~= requiredBatchSize then
+        print("[Haikesi GamePlay] VOID SUZERAIN rejected batch size for Player" .. tostring(iPlayer)
+            .. " requested=" .. tostring(#requestedTraits) .. " required=" .. tostring(requiredBatchSize))
+        return
+    end
+
+    local requestedSet = {}
+    local modifierBatches = {}
+    for _, traitType in ipairs(requestedTraits) do
+        if requestedSet[traitType] or HaikesiHasSelectedVoidSuzerainTrait(pPlayer, traitType) then
+            print("[Haikesi GamePlay] VOID SUZERAIN rejected duplicate trait " .. traitType)
+            return
+        end
+        requestedSet[traitType] = true
+        if not HaikesiIsVoidSuzerainTraitEligible(traitType) then
+            print("[Haikesi GamePlay] VOID SUZERAIN rejected non-city-state trait " .. traitType)
+            return
+        end
+        if traitType == 'MINOR_CIV_BABYLON_TRAIT'
+            and (tonumber(pPlayer:GetProperty('PROPERTY_NW_HAIKESI_COURT_OF_LOVE') or 0) or 0) >= 1 then
+            print("[Haikesi GamePlay] VOID SUZERAIN rejected Anshan while Court of Love is active")
+            return
+        end
+
+        local actualModifiers, grantsImprovement = HaikesiGetVoidSuzerainTraitModifiers(traitType)
+        if grantsImprovement then
+            print("[Haikesi GamePlay] VOID SUZERAIN rejected improvement trait " .. traitType)
+            return
+        end
+        if #actualModifiers <= 0 then
+            print("[Haikesi GamePlay] VOID SUZERAIN rejected empty trait " .. traitType)
+            return
+        end
+        table.insert(modifierBatches, actualModifiers)
+    end
+
+    local choiceIndex = chosenCount
+    for batchIndex, traitType in ipairs(requestedTraits) do
+        for _, modifierId in ipairs(modifierBatches[batchIndex]) do
+            pPlayer:AttachModifierByID(modifierId)
+            print("[Haikesi GamePlay] VOID SUZERAIN attached ability modifier "
+                .. tostring(modifierId) .. " -> Player" .. tostring(iPlayer))
+        end
+        choiceIndex = choiceIndex + 1
+        pPlayer:SetProperty('PROP_NW_HAIKESI_VOID_SUZERAIN_TRAIT_' .. tostring(choiceIndex), traitType)
+        print("[Haikesi GamePlay] VOID SUZERAIN Player" .. tostring(iPlayer)
+            .. " gained choice " .. tostring(choiceIndex) .. "/" .. tostring(targetChoiceCount)
+            .. " " .. traitType .. " (attached " .. tostring(#modifierBatches[batchIndex]) .. " modifiers)")
+    end
+    pPlayer:SetProperty('PROP_NW_HAIKESI_VOID_SUZERAIN_CHOICE_COUNT', choiceIndex)
+end
 --||======================= Lua Effect ========================||--
 -- 南蛮入侵 / 三角贸易 / 种地仙人 已拆至独立 GamePlay 脚本（寄存器上限）
 -- 混合层：部分海克斯效果必须 Lua 实现（无原生 Modifier 对应）
@@ -2793,6 +2996,15 @@ function Haikesi_ApplyLuaEffect(iPlayer, relicType)
     end
 
     -- ==============================
+    -- VOIDSUZERAINRUNE 虚空宗主：选择窗由 UI 端处理，确认后解开宗主能力外壳。
+    -- ==============================
+    if relicType == 'VOIDSUZERAINRUNE' then
+        print("[Haikesi GamePlay] VOID SUZERAIN Player" .. tostring(iPlayer)
+            .. " pending city-state ability choice")
+        return
+    end
+
+    -- ==============================
     -- TRIANGULARTRADERUNE 三角贸易（见 Haikesi_TriTrade_GamePlay.lua）
     -- ==============================
     if relicType == 'TRIANGULARTRADERUNE' then
@@ -3031,6 +3243,7 @@ function Initialize()
 
     GameEvents.HaikesiSelectRelic.Add(HaikesiSelectRelic)
     GameEvents.HaikesiSelectAbility.Add(HaikesiSelectAbility)
+    GameEvents.HaikesiSelectCityStateAbility.Add(HaikesiSelectCityStateAbility)
     GameEvents.CityBuilt.Add(OnHaikesiCityBuilt)
 
     if (GameConfiguration.GetValue('NW_HAIKESI_MODE') or 0) == 3 then

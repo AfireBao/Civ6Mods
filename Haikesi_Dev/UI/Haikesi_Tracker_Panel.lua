@@ -89,6 +89,19 @@ local function GetLeaderDisplayName(pPlayer)
     return Locale.Lookup(pConfig:GetLeaderName()) or Locale.Lookup(pConfig:GetPlayerName()) or ""
 end
 
+local function GetCityStateNameForTrait(traitType)
+    if traitType == nil then return nil end
+    for row in GameInfo.LeaderTraits() do
+        if row.TraitType == traitType then
+            local leader = GameInfo.Leaders[row.LeaderType]
+            if leader ~= nil and leader.Name ~= nil then
+                return Locale.Lookup(leader.Name)
+            end
+        end
+    end
+    return nil
+end
+
 -- 修复旧存档里 Lua5.1 把 \\xNN 收成字面 "xe5x88..." 的决策理由
 local function DecodeMangledHexReason(text)
     if text == nil or text == "" then
@@ -259,6 +272,7 @@ function Refresh()
 
             local rowIM = InstanceManager:new("HaikesiRelicRow", "Content", relicGrid)
             local cardIM = nil
+            local voidSuzerainCardIndex = 0
             for i, relicRow in ipairs(relicCards) do
                 if (i - 1) % 6 == 0 then
                     local rowInst = rowIM:GetInstance()
@@ -277,6 +291,21 @@ function Refresh()
                             .. "[COLOR:ResScienceLabelCS]" .. Locale.Lookup(tInfo.Name) .. "[ENDCOLOR]"
                             .. "[NEWLINE]"
                             .. Locale.Lookup(tInfo.Description)
+                    end
+                elseif relicRow.RelicType == 'VOIDSUZERAINRUNE' then
+                    voidSuzerainCardIndex = voidSuzerainCardIndex + 1
+                    for abilityOffset = 1, 2 do
+                        local abilityIndex = (voidSuzerainCardIndex - 1) * 2 + abilityOffset
+                        local trait = pPlayer:GetProperty('PROP_NW_HAIKESI_VOID_SUZERAIN_TRAIT_'
+                            .. tostring(abilityIndex))
+                        local tInfo = trait and GameInfo.Traits[trait] or nil
+                        local cityStateName = GetCityStateNameForTrait(trait)
+                        if tInfo ~= nil and tInfo.Description ~= nil and cityStateName ~= nil then
+                            tooltip = tooltip
+                                .. "[NEWLINE][NEWLINE]"
+                                .. "[COLOR:ResScienceLabelCS]" .. cityStateName .. "之力：[ENDCOLOR]"
+                                .. Locale.Lookup(tInfo.Description)
+                        end
                     end
                 end
                 card.CardIcon:SetToolTipString(tooltip)

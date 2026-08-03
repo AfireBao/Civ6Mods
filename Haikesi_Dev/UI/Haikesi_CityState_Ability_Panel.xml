@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 虚空宗主：城邦宗主能力多选弹窗 -->
+<Context Name="HaikesiCityStateAbilityPanel">
+    <Container Style="FullScreenVignetteConsumer"/>
+
+    <Container ID="PopupContainer" Anchor="C,C" Size="768,768">
+        <Container ID="ModalFrame" Style="ModalScreenWide"/>
+
+        <Container ID="AbilityArea" Size="parent,parent">
+            <Label ID="ChooserStatusMessage" Anchor="C,T" Offset="0,14" Style="FontNormal18" String="LOC_HAIKESI_CITY_STATE_ABILITY_PANEL_TITLE"/>
+
+            <ScrollPanel ID="ChooserScroll" Anchor="C,T" Offset="0,50" Size="parent-20,parent-145" Vertical="1" AutoScrollBar="1">
+                <Stack ID="ChooserTraitItem" Anchor="C,T" Offset="0,0" StackGrowth="Down" Padding="8"/>
+                <ScrollBar Anchor="R,T" Offset="-8,0" Size="8,parent-40" Style="ScrollVerticalBackingAlt">
+                    <Thumb Style="ScrollThumbHAlt"/>
+                </ScrollBar>
+            </ScrollPanel>
+
+            <Label ID="SelectionCount" Anchor="C,B" Offset="0,64" Style="FontNormal16" String="0/2"/>
+            <GridButton ID="ConfirmButton" Anchor="C,B" Offset="0,16" Size="240,41" Style="MainButton">
+                <Label ID="BeginLabel" Anchor="C,C" String="LOC_HAIKESI_ABILITY_CONFIRM" Style="FontFlair14" FontStyle="Shadows" SmallCaps="18" SmallCapsType="EveryWord"/>
+            </GridButton>
+        </Container>
+    </Container>
+
+    <Instance Name="HaikesiCityStateAbilityEntry">
+        <Container ID="Top" Size="parent,auto" Offset="0,0" Anchor="C,T">
+            <GridButton ID="Button" Size="parent,auto" AutoSizePadding="0,-5" Anchor="C,T">
+                <GridData Texture="Controls_ItemContainer" SliceCorner="8,8" SliceSize="1,1" SliceTextureSize="16,16"/>
+
+                <Grid ID="SelectorBrace" Size="parent,auto" AutoSizePadding="0,5" Anchor="C,C" Texture="Controls_SelectorBrace" SliceCorner="29,29" SliceSize="2,2" SliceTextureSize="64,64">
+                    <Label ID="Name" Anchor="C,T" Offset="0,10" Style="FontFlair16" FontStyle="Stroke" EffectColor="0,0,0,25" SmallCaps="20" SmallCapsType="EveryWord" ColorSet="ResScienceLabelCS"/>
+                    <Grid ID="InfoGrid" Size="parent-16,auto" AutoSizePadding="0,8" MinSize="0,40" Anchor="C,T" Offset="0,30" Texture="Controls_ItemContainer" SliceCorner="8,8" SliceTextureSize="16,16">
+                        <Stack ID="InfoList" Anchor="L,C" Offset="10,8" StackGrowth="Right" WrapWidth="700" WrapGrowth="Bottom">
+                            <Label ID="Info" Anchor="L,C" Style="FontNormal14" WrapWidth="700"/>
+                        </Stack>
+                    </Grid>
+                </Grid>
+            </GridButton>
+        </Container>
+    </Instance>
+</Context>

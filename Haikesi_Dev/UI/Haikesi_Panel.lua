@@ -441,6 +441,21 @@ local function ScaleTurnForGameSpeed(standardTurn)
     return math.floor(standardTurn * multiplier / 100 + 0.5)
 end
 
+local function PlayerHasSelectedVoidAnshan(pPlayer)
+    if pPlayer == nil then return false end
+    local choiceCount = tonumber(
+        pPlayer:GetProperty('PROP_NW_HAIKESI_VOID_SUZERAIN_CHOICE_COUNT') or 0
+    ) or 0
+    for i = 1, choiceCount do
+        if tostring(pPlayer:GetProperty(
+            'PROP_NW_HAIKESI_VOID_SUZERAIN_TRAIT_' .. tostring(i)
+        )) == 'MINOR_CIV_BABYLON_TRAIT' then
+            return true
+        end
+    end
+    return false
+end
+
 local function IsRelicRefreshEligible(aug, selectedTypes)
     local localPlayerID = Game.GetLocalPlayer()
     if not IsRelicLeaderEligible(localPlayerID, aug.Type) then
@@ -460,10 +475,14 @@ local function IsRelicRefreshEligible(aug, selectedTypes)
         end
     end
 
+    local pLocal = Players[localPlayerID]
+    if aug.Type == 'COURTOFLOVERUNE' and PlayerHasSelectedVoidAnshan(pLocal) then
+        return false
+    end
+
     local prereqs = BuildRelicPrerequisiteMap()[aug.Type]
     if not prereqs then return true end
 
-    local pLocal = Players[localPlayerID]
     local anyRelicPrereqs = {}
     for _, req in ipairs(prereqs) do
         if req.Kind == 'RELIC' then
@@ -796,11 +815,13 @@ local function OnConfirm()
     -- 能力窗自包含池构建+math.random抽10项（UI Context，不走 GetRandNum）
     -- Gameplay 仅在能力窗确认时 HaikesiSelectAbility 挂 Trait Modifier
     local isMimic = (aug.Type == 'MIMICRUNE')
-    if not isMimic and param.ExtraRelicTypes ~= nil then
+    local isVoidSuzerain = (aug.Type == 'VOIDSUZERAINRUNE')
+    if param.ExtraRelicTypes ~= nil then
         for _, extraType in ipairs(param.ExtraRelicTypes) do
             if extraType == 'MIMICRUNE' then
                 isMimic = true
-                break
+            elseif extraType == 'VOIDSUZERAINRUNE' then
+                isVoidSuzerain = true
             end
         end
     end
@@ -814,6 +835,10 @@ local function OnConfirm()
     -- 海克斯面板关闭后再弹能力窗（避免同帧双弹窗冲突）
     if isMimic then
         LuaEvents.Haikesi_OpenAbilityPanel()
+    elseif isVoidSuzerain then
+        -- 无需等待异步 Gameplay 写回遗物 Property：面板立即预生成候选并显示。
+        -- 最终确认若快于遗物结算，会由城邦能力面板延迟到 publish complete 后提交。
+        LuaEvents.Haikesi_OpenCityStateAbilityPanel(2)
     end
 end
 

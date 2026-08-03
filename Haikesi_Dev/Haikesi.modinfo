@@ -95,6 +95,7 @@
       <File>UI/Haikesi_Tracker_EntryButton.xml</File>
       <File>UI/Haikesi_Tracker_Panel.xml</File>
       <File>UI/Haikesi_Ability_Panel.xml</File>
+      <File>UI/Haikesi_CityState_Ability_Panel.xml</File>
       <File>UI/Haikesi_TriTrade_Bridge.xml</File>
       <File>UI/Haikesi_Bean_Bridge.xml</File>
       <File>UI/Haikesi_CrashHeli_Bridge.xml</File>
@@ -282,6 +283,8 @@
     <File>Text/Haikesi_Text.xml</File>
     <File>UI/Haikesi_Ability_Panel.lua</File>
     <File>UI/Haikesi_Ability_Panel.xml</File>
+    <File>UI/Haikesi_CityState_Ability_Panel.lua</File>
+    <File>UI/Haikesi_CityState_Ability_Panel.xml</File>
     <File>UI/Haikesi_Bean_Bridge.lua</File>
     <File>UI/Haikesi_Bean_Bridge.xml</File>
     <File>UI/Haikesi_CrashHeli_Bridge.lua</File>

@@ -193,6 +193,19 @@
             <Text>见贤思齐，择一而化。</Text>
         </Replace>
 
+        <Replace Tag="LOC_HAIKESI_RELIC_VOIDSUZERAINRUNE_NAME" Language="zh_Hans_CN">
+            <Text>虚空宗主</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_VOIDSUZERAINRUNE_DESCRIPTION" Language="zh_Hans_CN">
+            <Text>从10项随机的城邦宗主能力中选择两项获得。候选池不会出现提供特色改良的城邦或已经选择过的城邦能力；持有爱之法庭时不会出现安善。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_RELIC_VOIDSUZERAINRUNE_FLAVOR" Language="zh_Hans_CN">
+            <Text>使者未至，王冠已从虚空中降临。</Text>
+        </Replace>
+        <Replace Tag="LOC_HAIKESI_CITY_STATE_ABILITY_PANEL_TITLE" Language="zh_Hans_CN">
+            <Text>选择两种城邦之力</Text>
+        </Replace>
+
         <Replace Tag="LOC_HAIKESI_ABILITY_PANEL_TITLE" Language="zh_Hans_CN">
             <Text>您现在可以选择一个文明能力</Text>
         </Replace>

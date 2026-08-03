@@ -15,10 +15,30 @@ local function HasPendingMimicChoice()
     return hasMimic and (not hasChosenTrait)
 end
 
+local function HasPendingVoidSuzerainChoice()
+    local localPlayerID = Game.GetLocalPlayer()
+    if localPlayerID == nil or localPlayerID == PlayerTypes.NONE then return false end
+    local pPlayer = Players[localPlayerID]
+    if pPlayer == nil then return false end
+    local relicCount = 0
+    local totalRelics = tonumber(pPlayer:GetProperty('PROP_NW_HAIKESI_RELIC_COUNT') or 0) or 0
+    for i = 1, totalRelics do
+        if pPlayer:GetProperty('PROP_NW_HAIKESI_RELIC_' .. tostring(i)) == 'VOIDSUZERAINRUNE' then
+            relicCount = relicCount + 1
+        end
+    end
+    local choiceCount = tonumber(pPlayer:GetProperty('PROP_NW_HAIKESI_VOID_SUZERAIN_CHOICE_COUNT') or 0) or 0
+    return relicCount * 2 > choiceCount
+end
+
 function Toggle_HaikesiTracker_Popup()
     -- 门控优先级：MIMIC 待选能力 > 海克斯待选 > 追踪/图鉴
     if HasPendingMimicChoice() then
         LuaEvents.Haikesi_OpenAbilityPanel()
+        return
+    end
+    if HasPendingVoidSuzerainChoice() then
+        LuaEvents.Haikesi_OpenCityStateAbilityPanel()
         return
     end
     if m_HasPendingSelection then

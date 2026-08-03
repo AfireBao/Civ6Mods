@@ -167,9 +167,25 @@ function OnConfirm()
     param['TraitType'] = traitType
     UI.RequestPlayerOperation(Game.GetLocalPlayer(), PlayerOperations.EXECUTE_SCRIPT, param)
     UI.PlaySound("Confirm_Dedication")
+    local pPlayer = Players[Game.GetLocalPlayer()]
+    local openVoidSuzerain = false
+    if pPlayer ~= nil then
+        local relicCount = 0
+        local totalRelics = tonumber(pPlayer:GetProperty('PROP_NW_HAIKESI_RELIC_COUNT') or 0) or 0
+        for i = 1, totalRelics do
+            if pPlayer:GetProperty('PROP_NW_HAIKESI_RELIC_' .. tostring(i)) == 'VOIDSUZERAINRUNE' then
+                relicCount = relicCount + 1
+            end
+        end
+        local choiceCount = tonumber(pPlayer:GetProperty('PROP_NW_HAIKESI_VOID_SUZERAIN_CHOICE_COUNT') or 0) or 0
+        openVoidSuzerain = relicCount * 2 > choiceCount
+    end
     -- 确认选择后重置随机结果，下次打开重新随机
     m_PendingChoices = nil
     Close()
+    if openVoidSuzerain then
+        LuaEvents.Haikesi_OpenCityStateAbilityPanel()
+    end
 end
 
 function Open()

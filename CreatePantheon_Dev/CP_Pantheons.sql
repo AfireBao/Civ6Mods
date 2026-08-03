@@ -592,19 +592,24 @@ insert or ignore into Types(Type, Kind) select distinct
 	from District_GreatPersonPoints;
 
 insert or ignore into Buildings
-	(BuildingType, Name, Description, PrereqDistrict, Cost, MustPurchase, AdvisorType)
+	(BuildingType, Name, Description, PrereqDistrict, Cost, MustPurchase, AdvisorType, InternalOnly)
 	select distinct
 		'BUILDING_CP_SPARK_'||replace(DistrictType, 'DISTRICT_', '')||'_LO',
 		'LOC_BELIEF_DIVINE_SPARK_NAME', 'LOC_BELIEF_DIVINE_SPARK_DESCRIPTION',
-		'DISTRICT_CITY_CENTER', 1, 1, 'ADVISOR_RELIGIOUS'
+		'DISTRICT_CITY_CENTER', 1, 1, 'ADVISOR_RELIGIOUS', 1
 	from District_GreatPersonPoints;
 insert or ignore into Buildings
-	(BuildingType, Name, Description, PrereqDistrict, Cost, MustPurchase, AdvisorType)
+	(BuildingType, Name, Description, PrereqDistrict, Cost, MustPurchase, AdvisorType, InternalOnly)
 	select distinct
 		'BUILDING_CP_SPARK_'||replace(DistrictType, 'DISTRICT_', '')||'_HI',
 		'LOC_BELIEF_DIVINE_SPARK_NAME', 'LOC_BELIEF_DIVINE_SPARK_DESCRIPTION',
-		'DISTRICT_CITY_CENTER', 1, 1, 'ADVISOR_RELIGIOUS'
+		'DISTRICT_CITY_CENTER', 1, 1, 'ADVISOR_RELIGIOUS', 1
 	from District_GreatPersonPoints;
+
+-- Marker buildings are Lua-managed state only and must never enter city production UI.
+update Buildings
+set InternalOnly = 1
+where BuildingType like 'BUILDING_CP_SPARK_%';
 
 -- Lavra-style city requirement: marker building present in this city.
 insert or ignore into Requirements(RequirementId, RequirementType) select distinct

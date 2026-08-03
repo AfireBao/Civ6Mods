@@ -1307,6 +1307,16 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
     ('MODIFIER_NW_MIMIC_MARKER', 'Amount', 1);
 INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES ('MIMICRUNE', 'MODIFIER_NW_MIMIC_MARKER');
 
+-- 虚空宗主 (VOIDSUZERAINRUNE): Marker 标记待选择城邦宗主能力
+-- 实际宗主能力由独立选择 UI 确认后，在 Gameplay 层解开 PLAYER_IS_SUZERAIN 外壳并挂载内层 Modifier。
+INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
+    VALUES ('MODIFIER_NW_VOID_SUZERAIN_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
+    ('MODIFIER_NW_VOID_SUZERAIN_MARKER', 'Key',    'PROPERTY_NW_HAIKESI_VOID_SUZERAIN'),
+    ('MODIFIER_NW_VOID_SUZERAIN_MARKER', 'Amount', 1);
+INSERT INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
+    ('VOIDSUZERAINRUNE', 'MODIFIER_NW_VOID_SUZERAIN_MARKER');
+
 -- 三角贸易 (TRIANGULARTRADERUNE): Marker + 人口转移见 Lua；同盟商路双方产出见下方 Modifier（银行汇票同款 API）
 INSERT OR IGNORE INTO Modifiers (ModifierId, ModifierType)
     VALUES ('MODIFIER_NW_TRIANGULAR_TRADE_MARKER', 'MODIFIER_PLAYER_ADJUST_PROPERTY');
@@ -3739,8 +3749,9 @@ SELECT 'COURTOFLOVERUNE',
 FROM NW_CourtOfLoveGreatWorkAmounts gw
 CROSS JOIN NW_CourtOfLoveDistrictYields dy;
 
--- 安善兼容：条件为“原有 Subject 条件全部成立”且“玩家未持有爱之法庭”。
--- Haikesi 的加载顺序晚于 BBG，因此可保留 BBG_PLAYER_IS_NOT_ELEANOR 等现有要求。
+-- 安善兼容：玩家未持有爱之法庭时才生效。
+-- “未持有爱之法庭”属于玩家条件，必须放在 OwnerRequirementSetId；
+-- 安善的效果对象是城市，若覆盖 SubjectRequirementSetId，玩家 Property 条件会在城市上下文失效。
 INSERT OR IGNORE INTO Requirements (RequirementId, RequirementType, Inverse) VALUES
     ('NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE', 'REQUIREMENT_PLAYER_PROPERTY_MATCHES', 1);
 UPDATE Requirements
@@ -3750,40 +3761,19 @@ INSERT OR IGNORE INTO RequirementArguments (RequirementId, Name, Value) VALUES
     ('NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE', 'PropertyName', 'PROPERTY_NW_HAIKESI_COURT_OF_LOVE'),
     ('NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE', 'PropertyMinimum', '1');
 
-DROP TABLE IF EXISTS NW_CourtOfLoveAnshanModifiers;
-CREATE TEMP TABLE NW_CourtOfLoveAnshanModifiers (
-    ModifierId                 TEXT NOT NULL PRIMARY KEY,
-    CompatibilityRequirementSetId TEXT NOT NULL
-);
-INSERT INTO NW_CourtOfLoveAnshanModifiers (ModifierId, CompatibilityRequirementSetId) VALUES
-    ('MINOR_CIV_BABYLON_GREAT_WORK_WRITING_SCIENCE',  'NW_ANSHAN_WRITING_NO_COURT_OF_LOVE'),
-    ('MINOR_CIV_BABYLON_GREAT_WORK_RELIC_SCIENCE',    'NW_ANSHAN_RELIC_NO_COURT_OF_LOVE'),
-    ('MINOR_CIV_BABYLON_GREAT_WORK_ARTIFACT_SCIENCE', 'NW_ANSHAN_ARTIFACT_NO_COURT_OF_LOVE');
-
-INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType)
-SELECT CompatibilityRequirementSetId, 'REQUIREMENTSET_TEST_ALL'
-FROM NW_CourtOfLoveAnshanModifiers;
-
--- 在改写 Modifier 之前复制其现有 RequirementSet 成员，以兼容 BBG 或其他先加载模组。
-INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId)
-SELECT compat.CompatibilityRequirementSetId, existing.RequirementId
-FROM NW_CourtOfLoveAnshanModifiers compat
-JOIN Modifiers modifier ON modifier.ModifierId = compat.ModifierId
-JOIN RequirementSetRequirements existing
-  ON existing.RequirementSetId = modifier.SubjectRequirementSetId;
-INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId)
-SELECT CompatibilityRequirementSetId, 'NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE'
-FROM NW_CourtOfLoveAnshanModifiers;
+INSERT OR IGNORE INTO RequirementSets (RequirementSetId, RequirementSetType) VALUES
+    ('NW_PLAYER_NO_COURT_OF_LOVE', 'REQUIREMENTSET_TEST_ALL');
+INSERT OR IGNORE INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
+    ('NW_PLAYER_NO_COURT_OF_LOVE', 'NW_REQUIRES_PLAYER_NO_COURT_OF_LOVE');
 
 UPDATE Modifiers
-SET SubjectRequirementSetId = (
-    SELECT compat.CompatibilityRequirementSetId
-    FROM NW_CourtOfLoveAnshanModifiers compat
-    WHERE compat.ModifierId = Modifiers.ModifierId
-)
-WHERE ModifierId IN (SELECT ModifierId FROM NW_CourtOfLoveAnshanModifiers);
+SET OwnerRequirementSetId = 'NW_PLAYER_NO_COURT_OF_LOVE'
+WHERE ModifierId IN (
+    'MINOR_CIV_BABYLON_GREAT_WORK_WRITING_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_RELIC_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_ARTIFACT_SCIENCE'
+);
 
-DROP TABLE NW_CourtOfLoveAnshanModifiers;
 DROP TABLE NW_CourtOfLoveGreatWorkAmounts;
 DROP TABLE NW_CourtOfLoveDistrictYields;
 
@@ -4098,3 +4088,183 @@ INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value) VALUES
 INSERT OR IGNORE INTO Haikesi_Relic_Modifiers (RelicType, ModifierId) VALUES
     ('SACREDPILGRIMAGERUNE', 'MODIFIER_NW_SACRED_PILGRIMAGE_INITIAL_RELIC'),
     ('SACREDPILGRIMAGERUNE', 'MODIFIER_NW_SACRED_PILGRIMAGE_NATURAL_WONDER_RELIC');
+
+-- ===========================================================================
+-- 虚空宗主：城邦宗主能力专用 Modifier 副本
+--
+-- 城邦 Trait 通常通过 MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER 外壳，把内层
+-- Modifier 动态授予宗主。Lua 直接 AttachModifierByID 原始内层 ID 时，部分效果
+-- （例如安善的巨作科技）不会建立新的可结算实例。因此为所有现有城邦能力的
+-- 内层/直连 Modifier 生成独立副本，虚空宗主只挂载这些副本。
+-- ===========================================================================
+
+DROP TABLE IF EXISTS NW_VoidSuzerainModifierCopies;
+CREATE TEMP TABLE NW_VoidSuzerainModifierCopies (
+    SourceModifierId TEXT NOT NULL PRIMARY KEY,
+    CopyModifierId   TEXT NOT NULL UNIQUE
+);
+
+DROP TABLE IF EXISTS NW_VoidSuzerainEligibleTraits;
+CREATE TEMP TABLE NW_VoidSuzerainEligibleTraits (
+    TraitType TEXT NOT NULL PRIMARY KEY
+);
+
+-- 与选择面板保持相同候选范围，并整项排除任何包含特色改良的城邦能力。
+INSERT OR IGNORE INTO NW_VoidSuzerainEligibleTraits (TraitType)
+SELECT DISTINCT leaderTrait.TraitType
+FROM LeaderTraits leaderTrait
+JOIN Leaders leader
+  ON leader.LeaderType = leaderTrait.LeaderType
+WHERE leaderTrait.LeaderType LIKE 'LEADER_MINOR_CIV_%'
+  AND leader.InheritFrom LIKE 'LEADER_MINOR_CIV_%'
+  AND leaderTrait.LeaderType NOT IN (
+      'LEADER_MINOR_CIV_DEFAULT',
+      'LEADER_MINOR_CIV_CULTURAL',
+      'LEADER_MINOR_CIV_INDUSTRIAL',
+      'LEADER_MINOR_CIV_MILITARISTIC',
+      'LEADER_MINOR_CIV_RELIGIOUS',
+      'LEADER_MINOR_CIV_SCIENTIFIC',
+      'LEADER_MINOR_CIV_TRADE',
+      'LEADER_MINOR_CIV_CARTHAGE',
+      'LEADER_MINOR_CIV_STOCKHOLM'
+  )
+  AND NOT EXISTS (
+      SELECT 1
+      FROM TraitModifiers improvementTraitModifier
+      JOIN Modifiers improvementOuter
+        ON improvementOuter.ModifierId = improvementTraitModifier.ModifierId
+      LEFT JOIN ModifierArguments improvementAttachment
+        ON improvementAttachment.ModifierId = improvementTraitModifier.ModifierId
+       AND improvementAttachment.Name = 'ModifierId'
+      LEFT JOIN Modifiers improvementInner
+        ON improvementInner.ModifierId = improvementAttachment.Value
+      WHERE improvementTraitModifier.TraitType = leaderTrait.TraitType
+        AND (
+            improvementOuter.ModifierType = 'MODIFIER_PLAYER_ADJUST_VALID_IMPROVEMENT'
+            OR (
+                improvementOuter.ModifierType = 'MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER'
+                AND improvementInner.ModifierType = 'MODIFIER_PLAYER_ADJUST_VALID_IMPROVEMENT'
+            )
+        )
+  );
+
+-- 标准城邦宗主外壳：复制 ModifierId 参数所指向的内层 Modifier。
+INSERT OR IGNORE INTO NW_VoidSuzerainModifierCopies (SourceModifierId, CopyModifierId)
+SELECT DISTINCT attachment.Value,
+       'MODIFIER_NW_VOID_SUZERAIN_COPY_' || attachment.Value
+FROM NW_VoidSuzerainEligibleTraits eligibleTrait
+JOIN TraitModifiers traitModifier
+  ON traitModifier.TraitType = eligibleTrait.TraitType
+JOIN Modifiers outerModifier
+  ON outerModifier.ModifierId = traitModifier.ModifierId
+JOIN ModifierArguments attachment
+  ON attachment.ModifierId = traitModifier.ModifierId
+ AND attachment.Name = 'ModifierId'
+JOIN Modifiers innerModifier
+  ON innerModifier.ModifierId = attachment.Value
+WHERE outerModifier.ModifierType = 'MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER'
+  AND innerModifier.ModifierType NOT IN (
+      'MODIFIER_PLAYER_ADJUST_PROPERTY',
+      'MODIFIER_PLAYER_ADJUST_VALID_IMPROVEMENT'
+  );
+
+-- 少数城邦 Trait 直接绑定玩家 Modifier，没有宗主外壳；同样生成副本。
+INSERT OR IGNORE INTO NW_VoidSuzerainModifierCopies (SourceModifierId, CopyModifierId)
+SELECT DISTINCT traitModifier.ModifierId,
+       'MODIFIER_NW_VOID_SUZERAIN_COPY_' || traitModifier.ModifierId
+FROM NW_VoidSuzerainEligibleTraits eligibleTrait
+JOIN TraitModifiers traitModifier
+  ON traitModifier.TraitType = eligibleTrait.TraitType
+JOIN Modifiers modifier
+  ON modifier.ModifierId = traitModifier.ModifierId
+WHERE modifier.ModifierType NOT IN (
+      'MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER',
+      'MODIFIER_PLAYER_ADJUST_PROPERTY',
+      'MODIFIER_PLAYER_ADJUST_VALID_IMPROVEMENT'
+  );
+
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, RunOnce, NewOnly, Permanent, Repeatable,
+     OwnerRequirementSetId, SubjectRequirementSetId, OwnerStackLimit, SubjectStackLimit)
+SELECT copy.CopyModifierId, source.ModifierType, source.RunOnce, source.NewOnly,
+       source.Permanent, source.Repeatable, source.OwnerRequirementSetId,
+       source.SubjectRequirementSetId, source.OwnerStackLimit, source.SubjectStackLimit
+FROM NW_VoidSuzerainModifierCopies copy
+JOIN Modifiers source
+  ON source.ModifierId = copy.SourceModifierId;
+
+INSERT OR IGNORE INTO ModifierArguments
+    (ModifierId, Name, Type, Value, Extra, SecondExtra)
+SELECT copy.CopyModifierId, argument.Name, argument.Type, argument.Value,
+       argument.Extra, argument.SecondExtra
+FROM NW_VoidSuzerainModifierCopies copy
+JOIN ModifierArguments argument
+  ON argument.ModifierId = copy.SourceModifierId;
+
+INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text)
+SELECT copy.CopyModifierId, string.Context, string.Text
+FROM NW_VoidSuzerainModifierCopies copy
+JOIN ModifierStrings string
+  ON string.ModifierId = copy.SourceModifierId;
+
+-- 安善的 MODIFIER_PLAYER_CITIES_ADJUST_GREATWORK_YIELD 不能脱离城邦外壳后
+-- 直接 AttachModifierByID。改为引擎稳定使用的两层结构：玩家外层枚举城市，
+-- 每座城市获得 SINGLE_CITY 巨作产出内层。
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, Permanent)
+SELECT 'MODIFIER_NW_VOID_SUZERAIN_ANSHAN_CITY_' || ModifierId,
+       'MODIFIER_SINGLE_CITY_ADJUST_GREATWORK_YIELD', 1
+FROM Modifiers
+WHERE ModifierId IN (
+    'MINOR_CIV_BABYLON_GREAT_WORK_WRITING_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_RELIC_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_ARTIFACT_SCIENCE'
+);
+
+INSERT OR IGNORE INTO ModifierArguments
+    (ModifierId, Name, Type, Value, Extra, SecondExtra)
+SELECT 'MODIFIER_NW_VOID_SUZERAIN_ANSHAN_CITY_' || ModifierId,
+       Name, Type, Value, Extra, SecondExtra
+FROM ModifierArguments
+WHERE ModifierId IN (
+    'MINOR_CIV_BABYLON_GREAT_WORK_WRITING_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_RELIC_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_ARTIFACT_SCIENCE'
+);
+
+INSERT OR IGNORE INTO ModifierStrings (ModifierId, Context, Text)
+SELECT 'MODIFIER_NW_VOID_SUZERAIN_ANSHAN_CITY_' || ModifierId,
+       Context, Text
+FROM ModifierStrings
+WHERE ModifierId IN (
+    'MINOR_CIV_BABYLON_GREAT_WORK_WRITING_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_RELIC_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_ARTIFACT_SCIENCE'
+);
+
+INSERT OR IGNORE INTO Modifiers
+    (ModifierId, ModifierType, Permanent,
+     OwnerRequirementSetId, SubjectRequirementSetId)
+SELECT 'MODIFIER_NW_VOID_SUZERAIN_ANSHAN_ATTACH_' || ModifierId,
+       'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', 1,
+       NULL, SubjectRequirementSetId
+FROM Modifiers
+WHERE ModifierId IN (
+    'MINOR_CIV_BABYLON_GREAT_WORK_WRITING_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_RELIC_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_ARTIFACT_SCIENCE'
+);
+
+INSERT OR IGNORE INTO ModifierArguments (ModifierId, Name, Value)
+SELECT 'MODIFIER_NW_VOID_SUZERAIN_ANSHAN_ATTACH_' || ModifierId,
+       'ModifierId',
+       'MODIFIER_NW_VOID_SUZERAIN_ANSHAN_CITY_' || ModifierId
+FROM Modifiers
+WHERE ModifierId IN (
+    'MINOR_CIV_BABYLON_GREAT_WORK_WRITING_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_RELIC_SCIENCE',
+    'MINOR_CIV_BABYLON_GREAT_WORK_ARTIFACT_SCIENCE'
+);
+
+DROP TABLE IF EXISTS NW_VoidSuzerainModifierCopies;
+DROP TABLE IF EXISTS NW_VoidSuzerainEligibleTraits;
